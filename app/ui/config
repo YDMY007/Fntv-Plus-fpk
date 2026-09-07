@@ -6,7 +6,7 @@
       "type": "iframe",
       "protocol": "http",
       "port": "22350",
-      "url": "/app/fntvplus/v/",
+      "url": "/v/",
       "allUsers": true,
       "control": { "accessPerm": "editable" }
     },

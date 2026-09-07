@@ -186,6 +186,7 @@ func makeProxy(d Deps, strip string) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store") // 防浏览器缓存旧 HTML
 		w.Header().Set("Content-Length", strconv.Itoa(len(newHTML)))
 		w.Header().Set("X-Fntv-Plus", "injected/"+d.Injector.Hash())
+		log.Printf("[fntv-proxy] injected %s (payload %s)", rest, d.Injector.Hash())
 		w.WriteHeader(resp.StatusCode)
 		w.Write([]byte(newHTML))
 	}
