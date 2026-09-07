@@ -8,7 +8,7 @@ maintainer=YDMY007
 maintainer_url=https://github.com/YDMY007/Fntv-Plus
 
 desktop_uidir=ui
-desktop_applaunchname=fntvplus.Application
+desktop_applaunchname=fntvplus.Settings
 
 service_port=22350
 checkport=true
