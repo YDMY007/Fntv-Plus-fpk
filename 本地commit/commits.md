@@ -17,3 +17,4 @@
 | lc-005 | 2026-09-08 | 修复桌面入口 not found（v0.3.0）：查官方文档 developer.fnnas.com 纠正端口服务模式——不存在 /app/<appname> 自动网关路由，app/ui/config 必须带 protocol=http + port=22350（fnOS 直连 NAS:端口打开入口）；后端监听 127.0.0.1 → 0.0.0.0；未知路径兜底由 404 改为全量反代上游（SPA 静态资源不全在 /v/ 下）；官方文档还确认 wizard/install 是合法目录（install/upgrade/uninstall/config 四类）、manifest 全字段语义。E2E 验证注入/admin/status/未知路径透传后重打包 |
 | lc-006 | 2026-09-08 | 上游地址管理页热修改：config.upstream 运行时生效（代理每请求取生效值，空/非法回退启动推导值）；状态卡上游地址可编辑+保存；status 上报 upstream/upstream_default；启动仅在配置为空时写入推导值不覆盖自定义。E2E 双向验证（清空→回退不通✓，热切→连通+注入✓） |
 | lc-007 | 2026-09-08 | 上游不可用出错页升级为自助修复页：502 内嵌上游地址输入框（预填当前生效值）+「保存并重试」自动刷新，不再是一行纯文本；用户反馈找不到填地址入口。干净环境回归：502✓/预填✓/保存后注入✓ |
+| lc-008 | 2026-09-08 | 修复增强不生效：embyWall 的 isFntvTvPage()（preload/core/pageMode.ts）要求 pathname 以 /v 开头，桌面入口 /app/fntvplus/v/ 不满足 → TV 改造全跳过，用户看到原样影视页；桌面入口 URL 改为 /v/（后端裸 /v/ 路由已有），SPA 视角与桌面版 Electron 一致；代理加注入成功日志便于实时日志确认 |
