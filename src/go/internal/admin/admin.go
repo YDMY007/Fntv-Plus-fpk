@@ -7,6 +7,7 @@ package admin
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -79,7 +80,8 @@ func StatusAPI(cfg *config.Config, info Info) http.HandlerFunc {
 	}
 }
 
-// LogsAPI 返回 fntvplus.log 尾部内容（?lines=N，默认 300，最大 2000）。
+// LogsAPI 返回日志尾部（?lines=N，默认 300，最大 2000；?src=backend|web|all，默认 all）。
+// all = 后端日志 + 前端(client.log)日志，两段分别标注。
 func LogsAPI(info Info) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		lines := 300
@@ -91,22 +93,76 @@ func LogsAPI(info Info) http.HandlerFunc {
 		if lines > 2000 {
 			lines = 2000
 		}
-		logPath := filepath.Join(info.VarDir, "fntvplus.log")
-		data, err := tailFile(logPath, 512*1024)
-		if err != nil {
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("(暂无日志: " + err.Error() + ")"))
-			return
+		src := r.URL.Query().Get("src")
+		if src == "" {
+			src = "all"
 		}
-		all := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
-		if len(all) > lines {
-			all = all[len(all)-lines:]
+
+		var sb strings.Builder
+		if src == "backend" || src == "all" {
+			sb.WriteString("===== 后端日志 =====\n")
+			sb.WriteString(tailStr(filepath.Join(info.VarDir, "fntvplus.log"), lines))
+			sb.WriteString("\n")
 		}
+		if src == "web" || src == "all" {
+			if src == "all" {
+				sb.WriteString("\n===== 前端日志（payload console 回传）=====\n")
+			}
+			sb.WriteString(tailStr(filepath.Join(info.VarDir, "client.log"), lines))
+		}
+
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(strings.Join(all, "\n")))
+		_, _ = w.Write([]byte(sb.String()))
+	}
+}
+
+// tailStr 读文件末尾 maxBytes 并只保留最后 lines 行；文件不存在返回提示。
+func tailStr(path string, lines int) string {
+	data, err := tailFile(path, 512*1024)
+	if err != nil {
+		return "(暂无日志: " + err.Error() + ")"
+	}
+	all := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	if len(all) > lines {
+		all = all[len(all)-lines:]
+	}
+	return strings.Join(all, "\n")
+}
+
+// ClientLogAPI 接收 payload 回传的前端诊断日志（POST 纯文本，按行落 client.log）。
+// client.log 超过 5MB 时截断保留末尾 1MB，防止无限增长。
+func ClientLogAPI(info Info) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		body, err := io.ReadAll(io.LimitReader(r.Body, 256*1024))
+		if err != nil {
+			http.Error(w, "read body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		path := filepath.Join(info.VarDir, "client.log")
+		if st, err := os.Stat(path); err == nil && st.Size() > 5*1024*1024 {
+			// 简易轮转：保留末尾 1MB
+			if keep, err := tailFile(path, 1024*1024); err == nil {
+				_ = os.WriteFile(path, keep, 0o644)
+			}
+		}
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			http.Error(w, "open log: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer f.Close()
+		text := strings.TrimRight(string(body), "\n")
+		if text == "" {
+			text = "(empty)"
+		}
+		_, _ = f.WriteString(text + "\n")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -218,6 +274,7 @@ const adminHTML = `<!doctype html>
       <select id="lines"><option>100</option><option selected>300</option><option>1000</option></select>
       <label style="gap:4px"><input type="checkbox" id="auto" checked> 自动刷新</label>
       <button id="refresh">刷新</button>
+      <span style="font-size:12px;color:#888">含前端回传：轮播墙问题看 [EmbyWall][CAROUSEL] 与 [error] 行</span>
     </div>
     <pre id="log">加载中…</pre>
   </div>

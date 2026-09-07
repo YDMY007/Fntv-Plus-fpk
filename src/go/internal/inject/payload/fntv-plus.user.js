@@ -91,6 +91,77 @@
     }
   });
 
+  // src/preload/web/diag.ts
+  var API = "/app/fntvplus/api/client-log";
+  var buf = [];
+  var timer = null;
+  function fmt(a) {
+    return a.map((x) => {
+      if (typeof x === "string") return x;
+      try {
+        return JSON.stringify(x);
+      } catch (_) {
+        return String(x);
+      }
+    }).join(" ");
+  }
+  function push(line) {
+    if (buf.length > 500) buf.splice(0, buf.length - 500);
+    let t2 = "";
+    try {
+      t2 = (/* @__PURE__ */ new Date()).toISOString().slice(11, 23);
+    } catch (_) {
+    }
+    buf.push(t2 + " " + line);
+    if (buf.length >= 20) flush();
+    else if (!timer) timer = setTimeout(flush, 2e3);
+  }
+  function flush() {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (!buf.length) return;
+    const body = buf.splice(0).join("\n");
+    try {
+      fetch(API, { method: "POST", body, headers: { "Content-Type": "text/plain; charset=utf-8" } }).catch(() => {
+      });
+    } catch (_) {
+    }
+  }
+  function installDiag() {
+    const orig = {
+      log: console.log.bind(console),
+      warn: console.warn.bind(console),
+      error: console.error.bind(console)
+    };
+    const wrap = (origFn, level) => (...args) => {
+      try {
+        const s = fmt(args);
+        if (level === "error" || s.startsWith("[EmbyWall]") || s.startsWith("[fntv")) {
+          push("[" + level + "] " + s);
+        }
+      } catch (_) {
+      }
+      origFn(...args);
+    };
+    console.log = wrap(orig.log, "log");
+    console.warn = wrap(orig.warn, "warn");
+    console.error = wrap(orig.error, "error");
+    try {
+      window.addEventListener("error", (e) => {
+        push("[onerror] " + (e.message || String(e)) + " @" + (e.filename || "") + ":" + (e.lineno || ""));
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        const r = e.reason;
+        push("[unhandledrejection] " + (r && (r.stack || r.message) || String(r)));
+      });
+      window.addEventListener("beforeunload", flush);
+    } catch (_) {
+    }
+    push("[diag] installed @" + location.href);
+  }
+
   // src/preload/plugins/embyWall/modals/feedback.ts
   init_electron();
   var ABOUT_LINK_URL = "https://github.com/YDMY007/Fntv-Plus";
@@ -791,12 +862,12 @@ html.fnos-perf.dark{
       const path = `/v/api/v1/item/${id}`;
       const authx = await ipcRenderer2.invoke("fnos-gen-authx", path);
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 4e3);
+      const timer2 = setTimeout(() => ctrl.abort(), 4e3);
       let resp;
       try {
         resp = await fetch(`${base}${path}`, { credentials: "include", headers: { "Authx": authx }, signal: ctrl.signal });
       } finally {
-        clearTimeout(timer);
+        clearTimeout(timer2);
       }
       if (!resp.ok) return null;
       const json = await resp.json();
@@ -1040,7 +1111,7 @@ html.fnos-perf.dark{
     const headers = { "Content-Type": "application/json" };
     if (authx) headers.Authx = String(authx);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const timer2 = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const resp = await fetch(base + ITEM_LIST_PATH, {
         method: "POST",
@@ -1056,7 +1127,7 @@ html.fnos-perf.dark{
       }
       return json;
     } finally {
-      clearTimeout(timer);
+      clearTimeout(timer2);
     }
   }
   function posterUrl(base, rawPoster) {
@@ -4958,13 +5029,13 @@ html.fnos-perf.dark{
       });
       if (S.carouselPosterStrip && S.carouselPosterStrip._highlight) S.carouselPosterStrip._highlight(idx);
     }
-    let timer = setInterval(() => goTo((currentIdx + 1) % shows.length), 6e3);
+    let timer2 = setInterval(() => goTo((currentIdx + 1) % shows.length), 6e3);
     const _onEnter = () => {
-      clearInterval(timer);
+      clearInterval(timer2);
     };
     const _onLeave = () => {
-      clearInterval(timer);
-      timer = setInterval(() => goTo((currentIdx + 1) % shows.length), 6e3);
+      clearInterval(timer2);
+      timer2 = setInterval(() => goTo((currentIdx + 1) % shows.length), 6e3);
     };
     container.addEventListener("mouseenter", _onEnter);
     container.addEventListener("mouseleave", _onLeave);
@@ -4985,7 +5056,7 @@ html.fnos-perf.dark{
     container.addEventListener("mousedown", _onDown);
     container.addEventListener("mouseup", _onUp);
     S.carouselCleanup = () => {
-      clearInterval(timer);
+      clearInterval(timer2);
       container.removeEventListener("mouseenter", _onEnter);
       container.removeEventListener("mouseleave", _onLeave);
       posterStrip.removeEventListener("mouseenter", _onEnter);
@@ -4995,8 +5066,8 @@ html.fnos-perf.dark{
     };
     S.carouselResume = () => {
       if (!document.body.contains(container)) return;
-      clearInterval(timer);
-      timer = setInterval(() => goTo((currentIdx + 1) % shows.length), 6e3);
+      clearInterval(timer2);
+      timer2 = setInterval(() => goTo((currentIdx + 1) % shows.length), 6e3);
     };
     if (!rebuild) target.appendChild(wrapper);
     autoFetchDescs(base, shows, infos);
@@ -8003,8 +8074,8 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         const sub = document.createElement("div");
         sub.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);opacity:.7;";
         if (info && info.total && info.total > 0) {
-          const fmt = (n) => (n / 1024).toFixed(0) + " KB";
-          sub.textContent = `${fmt(info.loaded || 0)} / ${fmt(info.total)}`;
+          const fmt2 = (n) => (n / 1024).toFixed(0) + " KB";
+          sub.textContent = `${fmt2(info.loaded || 0)} / ${fmt2(info.total)}`;
         } else {
           sub.textContent = state === "applying" ? "\u6B63\u5728\u5199\u5165\u8865\u4E01\u6587\u4EF6\u2026" : restarting ? "\u5373\u5C06\u91CD\u542F\u5E94\u7528\u4F7F\u8865\u4E01\u751F\u6548" : "\u4E0B\u8F7D\u4E2D\uFF0C\u8BF7\u7A0D\u5019\u2026";
         }
@@ -9850,13 +9921,13 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         if (/^```/.test(line)) {
           closeList();
           i++;
-          const buf2 = [];
+          const buf3 = [];
           while (i < lines.length && !/^```/.test(lines[i])) {
-            buf2.push(lines[i]);
+            buf3.push(lines[i]);
             i++;
           }
           i++;
-          html += `<pre><code>${escapeHtml2(buf2.join("\n"))}</code></pre>`;
+          html += `<pre><code>${escapeHtml2(buf3.join("\n"))}</code></pre>`;
           continue;
         }
         if (/^(\-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
@@ -9875,12 +9946,12 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         }
         if (/^>\s?/.test(line)) {
           closeList();
-          const buf2 = [];
+          const buf3 = [];
           while (i < lines.length && /^>\s?/.test(lines[i])) {
-            buf2.push(lines[i].replace(/^>\s?/, ""));
+            buf3.push(lines[i].replace(/^>\s?/, ""));
             i++;
           }
-          html += `<blockquote>${inlineMd(escapeHtml2(buf2.join("\n"))).replace(/\n/g, "<br>")}</blockquote>`;
+          html += `<blockquote>${inlineMd(escapeHtml2(buf3.join("\n"))).replace(/\n/g, "<br>")}</blockquote>`;
           continue;
         }
         if (/\|/.test(line) && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
@@ -9929,13 +10000,13 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           continue;
         }
         closeList();
-        const buf = [line];
+        const buf2 = [line];
         i++;
         while (i < lines.length && lines[i].trim() !== "" && !isBlockStart(lines[i])) {
-          buf.push(lines[i]);
+          buf2.push(lines[i]);
           i++;
         }
-        html += `<p>${inlineMd(escapeHtml2(buf.join("\n"))).replace(/\n/g, "<br>")}</p>`;
+        html += `<p>${inlineMd(escapeHtml2(buf2.join("\n"))).replace(/\n/g, "<br>")}</p>`;
       }
       closeList();
       return `<div class="md-body">${html}</div>`;
@@ -10748,8 +10819,8 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
             const sub = document.createElement("div");
             sub.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);opacity:.7;";
             if (info && info.total && info.total > 0) {
-              const fmt = (n) => (n / 1024).toFixed(0) + " KB";
-              sub.textContent = `${fmt(info.loaded || 0)} / ${fmt(info.total)}`;
+              const fmt2 = (n) => (n / 1024).toFixed(0) + " KB";
+              sub.textContent = `${fmt2(info.loaded || 0)} / ${fmt2(info.total)}`;
             } else {
               sub.textContent = done ? "\u5373\u5C06\u91CD\u542F\u5E94\u7528\u4F7F\u8865\u4E01\u751F\u6548" : "\u4E0B\u8F7D\u4E2D\uFF0C\u8BF7\u7A0D\u5019\u2026";
             }
@@ -11654,7 +11725,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }).catch(() => {
       });
       colWatch.appendChild(watchedWrap);
-      const addSlider = (labelText, min, max, step, value, fmt, onInput) => {
+      const addSlider = (labelText, min, max, step, value, fmt2, onInput) => {
         const row = document.createElement("div");
         row.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:7px 6px;";
         const head = document.createElement("div");
@@ -11663,7 +11734,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         span.textContent = labelText;
         span.style.cssText = "color:var(--fnos-ui-text);font-weight:500;font-size:11.5px;";
         const valEl = document.createElement("span");
-        valEl.textContent = fmt(value);
+        valEl.textContent = fmt2(value);
         valEl.style.cssText = "color:var(--fnos-ui-sec);font-size:11px;font-variant-numeric:tabular-nums;";
         head.appendChild(span);
         head.appendChild(valEl);
@@ -11676,7 +11747,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         input.style.cssText = "width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;";
         input.addEventListener("input", () => {
           const v = parseFloat(input.value);
-          valEl.textContent = fmt(v);
+          valEl.textContent = fmt2(v);
           onInput(v);
         });
         row.appendChild(head);
@@ -13740,7 +13811,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     const _tlImgCache = /* @__PURE__ */ new Map();
     function collectTopLeftIcons() {
       const out = [];
-      const push = (el) => {
+      const push2 = (el) => {
         const h = el;
         if (!h || out.indexOf(h) >= 0) return;
         const r = h.getBoundingClientRect();
@@ -13750,9 +13821,9 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         if (getComputedStyle(h).visibility === "hidden") return;
         out.push(h);
       };
-      push(document.querySelector('button[aria-label="\u8FD4\u56DE"]'));
-      push(document.querySelector('[class*="lg:!hidden"]:not([class*="inset-0"])'));
-      push(document.getElementById("fnos-refresh-btn"));
+      push2(document.querySelector('button[aria-label="\u8FD4\u56DE"]'));
+      push2(document.querySelector('[class*="lg:!hidden"]:not([class*="inset-0"])'));
+      push2(document.getElementById("fnos-refresh-btn"));
       const burger = document.querySelector('[class*="lg:!hidden"]:not([class*="inset-0"])');
       const navBar = burger ? burger.parentElement : null;
       if (navBar) {
@@ -13761,7 +13832,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           const it = items[i];
           if (it.children.length > 0) continue;
           if (!(it.textContent || "").trim()) continue;
-          push(it);
+          push2(it);
         }
       }
       return out;
@@ -14451,6 +14522,42 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
   registerHook("onReady" /* OnReady */, handle2);
 
   // src/web-entry.ts
+  installDiag();
+  function ensureLogButton() {
+    try {
+      if (document.getElementById("fntv-log-btn")) return;
+      if (!document.body) return;
+      const b = document.createElement("div");
+      b.id = "fntv-log-btn";
+      b.textContent = "\u65E5\u5FD7";
+      b.title = "\u5F71\u89C6 Plus \u8BBE\u7F6E / \u5B9E\u65F6\u65E5\u5FD7";
+      const s = b.style;
+      s.position = "fixed";
+      s.left = "8px";
+      s.bottom = "8px";
+      s.zIndex = "2147483646";
+      s.padding = "2px 9px";
+      s.borderRadius = "10px";
+      s.fontSize = "11px";
+      s.lineHeight = "16px";
+      s.background = "rgba(0,0,0,.35)";
+      s.color = "#fff";
+      s.cursor = "pointer";
+      s.opacity = ".3";
+      s.transition = "opacity .2s";
+      s.userSelect = "none";
+      b.addEventListener("mouseenter", () => b.style.opacity = "1");
+      b.addEventListener("mouseleave", () => b.style.opacity = ".3");
+      b.addEventListener("click", () => {
+        try {
+          window.open("/app/fntvplus/admin/", "_blank");
+        } catch (_) {
+        }
+      });
+      document.body.appendChild(b);
+    } catch (_) {
+    }
+  }
   function boot() {
     try {
       runHooks("onReady" /* OnReady */);
@@ -14458,6 +14565,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     } catch (e) {
       console.error("[fntv-web] boot failed", e);
     }
+    ensureLogButton();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);

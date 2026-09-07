@@ -64,6 +64,7 @@ func NewServer(d Deps) *Server {
 	s.mux.HandleFunc("/app/fntvplus/api/settings", admin.SettingsAPI(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/api/status", admin.StatusAPI(d.Config, info))
 	s.mux.HandleFunc("/app/fntvplus/api/logs", admin.LogsAPI(info))
+	s.mux.HandleFunc("/app/fntvplus/api/client-log", admin.ClientLogAPI(info))
 
 	// 3) 白名单代理（M3 落地，M1 先占位返回 501，避免误开代理面）。
 	s.mux.HandleFunc("/app/fntvplus/api/proxy", proxyAPIStub)
