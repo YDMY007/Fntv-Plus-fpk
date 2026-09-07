@@ -1,0 +1,207 @@
+// Package proxy —— Fntv-Plus 影视增强的「反代 + 响应注入」核心。
+//
+// 链路（真实 fnOS 环境）：
+//
+//	用户点桌面图标「影视 Plus」
+//	  → 官方网关把 /app/fntvplus/* 路由到本后端（127.0.0.1:22350）
+//	  → 本处理器剥离 /app/fntvplus 前缀，回环请求影视网页服务 127.0.0.1:<webport>/v/...
+//	  → text/html 响应注入 payload 引用块后返回；非 HTML（js/css/图片/视频 206）原样透传
+//
+// 设计取舍（对比 httputil.ReverseProxy）：
+//   - 自己用 http.Transport.RoundTrip，精确控制「剥离哪个前缀」，不依赖 SingleHostReverseProxy 的路径拼接。
+//   - Transport.DisableCompression=true + 请求去掉 Accept-Encoding，确保上游返回未压缩 HTML，
+//     注入前无需先解 gzip，避免分块/gzip 导致的注入错位。
+//   - 仅对 text/html 读体注入；视频 206 等非 HTML 直接流式透传（保留 Content-Range / Accept-Ranges）。
+//   - 零系统文件改动：只读回环 + 响应注入，影视升级不失效、与 fndesk 不冲突、卸载零残留。
+package proxy
+
+import (
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"fntvplus/internal/admin"
+	"fntvplus/internal/config"
+	"fntvplus/internal/inject"
+)
+
+// Deps 是构造 Server 所需的依赖。
+type Deps struct {
+	Upstream *url.URL      // 回环上游（影视网页服务），如 http://127.0.0.1:5666
+	Config   *config.Config
+	Injector *inject.Injector
+}
+
+// Server 持有所有路由。
+type Server struct {
+	mux *http.ServeMux
+}
+
+// NewServer 组装路由与处理器。
+func NewServer(d Deps) *Server {
+	s := &Server{mux: http.NewServeMux()}
+
+	// 1) payload 端点：返回嵌入的前端脚本（带哈希版本，长缓存）。
+	s.mux.Handle("/app/fntvplus/__payload__/", d.Injector.Handler())
+
+	// 2) 管理页 + 设置 API。
+	s.mux.HandleFunc("/app/fntvplus/admin", admin.Page(d.Config))
+	s.mux.HandleFunc("/app/fntvplus/admin/", admin.Page(d.Config))
+	s.mux.HandleFunc("/app/fntvplus/api/settings", admin.SettingsAPI(d.Config))
+
+	// 3) 白名单代理（M3 落地，M1 先占位返回 501，避免误开代理面）。
+	s.mux.HandleFunc("/app/fntvplus/api/proxy", proxyAPIStub)
+
+	// 4) 影视反代：优先 /app/fntvplus/v/**（桌面入口走这里），
+	//    同时兼容裸 /v/**（SPA 内若用绝对路径 /v/... 也能命中，提升健壮性）。
+	s.mux.HandleFunc("/app/fntvplus/v/", makeProxy(d, "/app/fntvplus"))
+	s.mux.HandleFunc("/v/", makeProxy(d, ""))
+
+	// 5) 兜底：/app/fntvplus 根 → 重定向到 /v/；其余 → 404。
+	s.mux.HandleFunc("/app/fntvplus", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/app/fntvplus/v/", http.StatusFound)
+	})
+	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	})
+
+	return s
+}
+
+// ServeHTTP 实现 http.Handler。
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mux.ServeHTTP(w, r)
+}
+
+// makeProxy 返回一个反代处理器：
+//   - strip 为要从请求路径中剥离的前缀（"/app/fntvplus" 或 ""）。
+//   - 回环请求 upstream + 剩余路径；HTML 注入 payload，非 HTML 透传。
+func makeProxy(d Deps, strip string) http.HandlerFunc {
+	transport := &http.Transport{
+		DisableCompression: true, // 上游不压缩，注入更稳
+		DisableKeepAlives:  true, // 不复用回环连接，规避嵌套服务间的 keep-alive 死锁
+		MaxIdleConns:       100,
+		IdleConnTimeout:    90 * time.Second,
+		// 直连回环，不使用系统 HTTP 代理：
+		Proxy: nil,
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 剥离前缀，得到上游路径（如 /v/index.html）。
+		rest := strings.TrimPrefix(r.URL.Path, strip)
+		if rest == "" {
+			rest = "/"
+		}
+
+		target := *d.Upstream
+		target.Path = singleJoiningSlash(d.Upstream.Path, rest)
+		target.RawQuery = r.URL.RawQuery
+
+		// 克隆请求并改写目标。
+		outReq := r.Clone(r.Context())
+		outReq.URL = &target
+		outReq.Host = d.Upstream.Host
+		outReq.RequestURI = "" // 必须清空，否则 RoundTrip 报错
+		outReq.Header.Del("Accept-Encoding")
+		outReq.Header.Del("Connection")
+		// 去掉逐跳头，避免透传到上游。
+		for _, h := range hopHeaders {
+			outReq.Header.Del(h)
+		}
+
+		resp, err := transport.RoundTrip(outReq)
+		if err != nil {
+			log.Printf("[fntv-proxy] upstream error for %s: %v", target.String(), err)
+			http.Error(w, "upstream unavailable: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		ct := resp.Header.Get("Content-Type")
+		enhance := d.Config.Get().EnhancementEnabled
+
+		// 非 HTML，或增强关闭 → 原样透传（含视频 206 / Range / 分块）。
+		if !enhance || !strings.Contains(strings.ToLower(ct), "text/html") {
+			copyHeader(w.Header(), resp.Header)
+			w.WriteHeader(resp.StatusCode)
+			io.Copy(w, resp.Body)
+			return
+		}
+
+		// HTML：读体（DisableCompression 保证未压缩）。
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, "read upstream body: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		html := string(body)
+		if d.Injector.AlreadyInjected(html) {
+			copyHeader(w.Header(), resp.Header)
+			w.WriteHeader(resp.StatusCode)
+			io.Copy(w, strings.NewReader(html))
+			return
+		}
+		newHTML, ok := d.Injector.Inject(html)
+		if !ok {
+			copyHeader(w.Header(), resp.Header)
+			w.WriteHeader(resp.StatusCode)
+			io.Copy(w, strings.NewReader(html))
+			return
+		}
+
+		// 写回注入后的 HTML。
+		copyHeader(w.Header(), resp.Header)
+		w.Header().Del("Content-Encoding")
+		w.Header().Del("Transfer-Encoding")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store") // 防浏览器缓存旧 HTML
+		w.Header().Set("Content-Length", strconv.Itoa(len(newHTML)))
+		w.Header().Set("X-Fntv-Plus", "injected/"+d.Injector.Hash())
+		w.WriteHeader(resp.StatusCode)
+		w.Write([]byte(newHTML))
+	}
+}
+
+// proxyAPIStub 是白名单代理的占位（M3 落地）。M1 阶段返回 501，避免误开代理面。
+func proxyAPIStub(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "proxy API not implemented yet (planned M3)", http.StatusNotImplemented)
+}
+
+// singleJoiningSlash 拼接两段路径，保证恰好一个斜杠。
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+	return a + b
+}
+
+// copyHeader 浅拷贝所有响应头（逐跳头由调用方按需删除）。
+func copyHeader(dst, src http.Header) {
+	for k, vs := range src {
+		for _, v := range vs {
+			dst.Add(k, v)
+		}
+	}
+}
+
+// hopHeaders 是必须去除的逐跳头。
+var hopHeaders = []string{
+	"Connection",
+	"Proxy-Connection",
+	"Keep-Alive",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"Te",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
+}

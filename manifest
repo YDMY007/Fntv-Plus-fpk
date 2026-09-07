@@ -1,0 +1,19 @@
+appname=fntvplus
+version=0.1.0
+display_name=Fntv-Plus 影视增强
+desc=为飞牛影视网页端提供界面增强（海报墙 / 轮播 / 沉浸式美化 / Logo 自定义），通过官方桌面入口注入到网页版飞牛影视，零系统文件改动
+source=thirdparty
+platform=x86
+maintainer=YDMY007
+maintainer_url=https://github.com/YDMY007/Fntv-Plus
+
+desktop_uidir=ui
+desktop_applaunchname=fntvplus.Application
+
+service_port=22350
+checkport=true
+ctl_stop=true
+micro_app=true
+disable_authorization_path=true
+
+changelog=首个版本：Go 反代注入后端 + 增强总开关

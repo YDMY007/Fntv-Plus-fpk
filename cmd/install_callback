@@ -1,0 +1,15 @@
+#!/bin/bash
+# 安装后回调：幂等初始化运行时目录。
+# payload 已编译进 Go 单二进制（//go:embed），无需额外拷入；
+# 此处仅确保 var/etc 目录存在，真正的 config.json 由后端首次运行自动生成。
+
+mkdir -p "$TRIM_PKGVAR" "$TRIM_PKGETC"
+touch "$TRIM_PKGVAR/.installed"
+
+# 若发布包附带可覆盖用的 payload，则放到 var 目录（后端目前以内置嵌入为准，此处为扩展预留）。
+if [ -f "$TRIM_APPDEST/app/server/payload/fntv-plus.user.js" ]; then
+  mkdir -p "$TRIM_PKGVAR/payload"
+  cp "$TRIM_APPDEST/app/server/payload/fntv-plus.user.js" "$TRIM_PKGVAR/payload/fntv-plus.user.js"
+fi
+
+exit 0
