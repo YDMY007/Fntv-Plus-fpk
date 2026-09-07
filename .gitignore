@@ -16,3 +16,4 @@ tools/
 # 本地测试残留
 src/go/*.exe
 zzz_var/
+src/zzz_*/

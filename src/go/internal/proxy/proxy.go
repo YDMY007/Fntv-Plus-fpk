@@ -16,6 +16,8 @@
 package proxy
 
 import (
+	"fmt"
+	"html"
 	"io"
 	"log"
 	"net/http"
@@ -129,7 +131,17 @@ func makeProxy(d Deps, strip string) http.HandlerFunc {
 		resp, err := transport.RoundTrip(outReq)
 		if err != nil {
 			log.Printf("[fntv-proxy] upstream error for %s: %v", target.String(), err)
-			http.Error(w, "upstream unavailable: "+err.Error(), http.StatusBadGateway)
+			// 出错页直接内置上游设置框：填对端口当场保存当场生效，不用去设置页找。
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusBadGateway)
+			cur := d.Config.Get().Upstream
+			if cur == "" {
+				cur = d.Upstream.String()
+			}
+			fmt.Fprintf(w, upstreamErrorHTML,
+				html.EscapeString(err.Error()),
+				html.EscapeString(cur))
 			return
 		}
 		defer resp.Body.Close()
@@ -188,6 +200,50 @@ func effectiveUpstream(d Deps) *url.URL {
 	}
 	return d.Upstream
 }
+
+// upstreamErrorHTML 是上游不可用时的自助修复页：内置上游地址输入框，保存后立即重试。
+// 两个 %s 占位依次为：错误信息、当前生效上游（用于预填输入框）。
+const upstreamErrorHTML = `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>影视 Plus · 上游不可用</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "PingFang SC", sans-serif; max-width: 560px; margin: 60px auto; padding: 0 16px; }
+  .card { border: 1px solid #8884; border-radius: 12px; padding: 20px 24px; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  .err { color: #c44; font-size: 13px; word-break: break-all; }
+  .row { display: flex; gap: 8px; margin-top: 14px; }
+  input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #8886; background: transparent; color: inherit; }
+  button { padding: 8px 16px; border-radius: 8px; border: 1px solid #2a8; color: #2a8; background: transparent; cursor: pointer; }
+  .hint { color: #888; font-size: 13px; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>连不上飞牛影视网页服务</h1>
+    <div class="err">%s</div>
+    <div class="row">
+      <input id="up" value="%s" placeholder="http://127.0.0.1:端口">
+      <button onclick="save()">保存并重试</button>
+    </div>
+    <div class="hint">填飞牛影视网页的真实回环地址（常见：浏览器平时打开飞牛的地址）。保存后本页自动刷新；更多设置见 <a href="/app/fntvplus/admin/">管理页</a>。</div>
+  </div>
+  <script>
+    async function save() {
+      const v = document.getElementById('up').value.trim();
+      await fetch('/app/fntvplus/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upstream: v })
+      });
+      location.reload();
+    }
+  </script>
+</body>
+</html>`
 
 // proxyAPIStub 是白名单代理的占位（M3 落地）。M1 阶段返回 501，避免误开代理面。
 func proxyAPIStub(w http.ResponseWriter, r *http.Request) {
