@@ -4,6 +4,8 @@
       "title": "影视 Plus",
       "icon": "images/icon_{0}.png",
       "type": "iframe",
+      "protocol": "http",
+      "port": "22350",
       "url": "/app/fntvplus/v/",
       "allUsers": true,
       "control": { "accessPerm": "editable" }
@@ -12,6 +14,8 @@
       "title": "影视 Plus 设置",
       "icon": "images/icon_{0}.png",
       "type": "iframe",
+      "protocol": "http",
+      "port": "22350",
       "url": "/app/fntvplus/admin/",
       "allUsers": false
     }

@@ -71,13 +71,13 @@ func NewServer(d Deps) *Server {
 	s.mux.HandleFunc("/app/fntvplus/v/", makeProxy(d, "/app/fntvplus"))
 	s.mux.HandleFunc("/v/", makeProxy(d, ""))
 
-	// 5) 兜底：/app/fntvplus 根 → 重定向到 /v/；其余 → 404。
+	// 5) 兜底：/app/fntvplus 根 → 重定向到 /v/；
+	//    其余全部路径（/libs、/static 等 SPA 资源，影视网页的静态资源不一定都在 /v/ 下）
+	//    一律反代给上游——端口服务模式下浏览器直连本端口，本服务就是影视网页的完整镜像。
 	s.mux.HandleFunc("/app/fntvplus", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/app/fntvplus/v/", http.StatusFound)
 	})
-	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	})
+	s.mux.HandleFunc("/", makeProxy(d, ""))
 
 	return s
 }

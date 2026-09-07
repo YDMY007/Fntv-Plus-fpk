@@ -29,7 +29,7 @@ import (
 )
 
 // appVersion 与根目录 manifest 的 version 保持一致（改动版本时两处同步）。
-const appVersion = "0.2.0"
+const appVersion = "0.3.0"
 
 func main() {
 	port := flag.String("port", envOr("TRIM_SERVICE_PORT", "22350"), "监听端口")
@@ -68,7 +68,8 @@ func main() {
 		Version:  appVersion,
 	})
 
-	addr := "127.0.0.1:" + *port
+	// 端口服务模式：桌面入口直连 http://<NAS>:port，必须绑 0.0.0.0（绑 127.0.0.1 浏览器连不上）。
+	addr := "0.0.0.0:" + *port
 	log.Printf("[fntvplus] v%s listening on %s (etc=%s var=%s dest=%s)", appVersion, addr, *etcDir, *varDir, *destDir)
 	if err := http.ListenAndServe(addr, srv); err != nil {
 		log.Fatalf("listen %s: %v", addr, err)
