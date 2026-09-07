@@ -20,3 +20,4 @@
 | lc-008 | 2026-09-08 | 修复增强不生效：embyWall 的 isFntvTvPage()（preload/core/pageMode.ts）要求 pathname 以 /v 开头，桌面入口 /app/fntvplus/v/ 不满足 → TV 改造全跳过，用户看到原样影视页；桌面入口 URL 改为 /v/（后端裸 /v/ 路由已有），SPA 视角与桌面版 Electron 一致；代理加注入成功日志便于实时日志确认 |
 | lc-009 | 2026-09-08 | 应用中心打开应用 → 配置页（desktop_applaunchname 改指 fntvplus.Settings），配置+状态+实时日志作为主入口；影视 Plus 仍走桌面图标 |
 | lc-010 | 2026-09-08 | 桌面入口 iframe→url：点应用在新浏览器标签页打开完整网页（非 fnOS 应用小窗），两入口（影视 Plus/设置）都改 |
+| lc-011 | 2026-09-08 | 日志入口三件套：payload 诊断回传（web/diag.ts 拦 [EmbyWall]/[fntv] console + 全局错误 → POST /api/client-log）；后端落 client.log（5MB 轮转）+ logs 接口合并后端/前端两路；注入页左下角半透明「日志」按钮 → 设置页。轮播墙失败原因从此可在实时日志看到 |
