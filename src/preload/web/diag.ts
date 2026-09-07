@@ -11,6 +11,108 @@ const API = '/app/fntvplus/api/client-log';
 const buf: string[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 
+/* ========== Authx 捕获：记录页面自身请求的合法签名，供 shim 的 fnos-gen-authx 回放 ========== */
+// fnOS 前端自己调 item/list 等接口时带合法 Authx（axios 走 XHR）。网页 shim 没有桌面主进程的
+// 签名器，回放页面捕获值是零逆向的权宜之计；同源 sys/img GET 则靠剥掉坏头 + cookie 直取。
+const authxMap: Array<{ path: string; authx: string }> = [];
+
+function normalizePath(url: string): string {
+  let p = String(url || '');
+  const m = p.match(/^https?:\/\/[^/]+(\/.*)$/);
+  if (m) p = m[1];
+  else if (!p.startsWith('/')) return '';
+  return p.split('?')[0]; // 签名按 path 匹配（query 差异容忍，前缀双向兜底）
+}
+
+function recordAuthx(url: string, authx: string): void {
+  if (!authx || authx === 'undefined' || authx === 'null') return;
+  const path = normalizePath(url);
+  if (!path) return;
+  for (let i = authxMap.length - 1; i >= 0; i--) {
+    if (authxMap[i].path === path) {
+      authxMap[i].authx = authx; // 刷新为最新（签名可能带时间戳）
+      return;
+    }
+  }
+  if (authxMap.length > 200) authxMap.shift();
+  authxMap.push({ path, authx });
+  push('[diag] captured Authx for ' + path);
+}
+
+/** shim 的 fnos-gen-authx 查询入口：精确 → 双向前缀匹配，取最新捕获值。 */
+export function getCapturedAuthx(path: string): string {
+  const p = normalizePath(path);
+  if (!p) return '';
+  for (let i = authxMap.length - 1; i >= 0; i--) {
+    if (authxMap[i].path === p) return authxMap[i].authx;
+  }
+  for (let i = authxMap.length - 1; i >= 0; i--) {
+    if (p.startsWith(authxMap[i].path) || authxMap[i].path.startsWith(p)) return authxMap[i].authx;
+  }
+  return '';
+}
+
+/** 钩 XHR/fetch：捕获页面自身请求的 Authx + 剥离同源请求里 undefined/空的坏 Authx 头。 */
+function installCapture(): void {
+  try {
+    const xo = XMLHttpRequest.prototype.open as any;
+    const xs = XMLHttpRequest.prototype.setRequestHeader as any;
+    (XMLHttpRequest.prototype as any).open = function (method: string, url: any, ...rest: any[]) {
+      try {
+        (this as any).__fntvUrl = String(url);
+      } catch (_) {}
+      return xo.apply(this, [method, url, ...rest] as any);
+    };
+    (XMLHttpRequest.prototype as any).setRequestHeader = function (n: string, v: string) {
+      try {
+        if (String(n).toLowerCase() === 'authx') recordAuthx((this as any).__fntvUrl || '', String(v));
+      } catch (_) {}
+      return xs.apply(this, [n, v] as any);
+    };
+  } catch (_) {}
+
+  try {
+    const fo = window.fetch.bind(window);
+    const stripBadAuthx = (hs: any): boolean => {
+      // 返回 true 表示发生了剥离
+      let stripped = false;
+      if (hs && typeof hs === 'object' && !Array.isArray(hs) && typeof hs.forEach !== 'function') {
+        for (const k of Object.keys(hs)) {
+          if (k.toLowerCase() === 'authx') {
+            const v = hs[k];
+            if (v === undefined || v === null || v === '' || v === 'undefined') {
+              delete hs[k];
+              stripped = true;
+            }
+          }
+        }
+      }
+      return stripped;
+    };
+    window.fetch = (input: any, init?: any) => {
+      try {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        let authx = '';
+        const hs = init && init.headers;
+        if (hs) {
+          if (typeof hs.forEach === 'function') {
+            hs.forEach((v: any, k: any) => {
+              if (String(k).toLowerCase() === 'authx') authx = String(v);
+            });
+          } else if (Array.isArray(hs)) {
+            for (const kv of hs) if (String(kv[0]).toLowerCase() === 'authx') authx = String(kv[1]);
+          } else {
+            for (const k of Object.keys(hs)) if (k.toLowerCase() === 'authx') authx = String(hs[k]);
+          }
+        }
+        recordAuthx(url, authx);
+        if (stripBadAuthx(init && init.headers)) push('[diag] stripped bad Authx for ' + url);
+      } catch (_) {}
+      return fo(input, init);
+    };
+  } catch (_) {}
+}
+
 function fmt(a: any[]): string {
   return a
     .map((x) => {
@@ -49,8 +151,10 @@ function flush(): void {
   }
 }
 
-/** 拦截 console（仅捕获转发，原样放行）+ 全局错误钩子。在 payload boot 最前调用。 */
+/** 拦截 console（仅捕获转发，原样放行）+ 全局错误钩子 + Authx 捕获。在 payload boot 最前调用。 */
 export function installDiag(): void {
+  installCapture();
+
   const orig = {
     log: console.log.bind(console),
     warn: console.warn.bind(console),

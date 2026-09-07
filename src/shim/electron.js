@@ -4,6 +4,12 @@
 //
 // 策略：设置类调用（settings:get/set-*）走 localStorage 镜像；其余调用安全 no-op。
 // 目的不是 100% 还原客户端行为，而是让被复用的代码能 import、能 boot、能在真实影视页面上渲染。
+//
+// Authx 签名：桌面端由主进程 fnos-gen-authx 计算；网页端没有主进程，改为回放
+// diag.ts 从页面自身请求里捕获的合法签名（item/list 等接口），未捕获到返回空串
+// （images.ts/itemListApi 对空值会跳过或由 diag 剥离坏头，靠 cookie 直取同源图片）。
+
+import { getCapturedAuthx } from '../preload/web/diag';
 
 const LS_KEY = 'fntv:electron-settings';
 
@@ -29,11 +35,24 @@ const ipcRenderer = {
     if (channel === 'settings:read-changelog') return Promise.resolve({ content: '' });
     if (channel === 'settings:check-update') return Promise.resolve();
     if (channel === 'get-version') return Promise.resolve({ version: '0.0.0-web' });
+    if (channel === 'fnos-gen-authx') {
+      // 回放页面自身请求捕获的合法签名；未捕获到返回 ''（调用方会跳过/被 diag 剥离坏头）
+      return Promise.resolve(getCapturedAuthx(String(args[0] || '')));
+    }
     // 其它一律安全 no-op
     return Promise.resolve(undefined);
   },
   send(/* channel, ...args */) { /* no-op：浏览器无主进程通道 */ },
-  on(/* channel, cb */) { return () => {}; },
+  on(channel, cb) {
+    // 网页端没有主进程下发调试过滤 → 默认打开 embyWall 日志总开关，
+    // 让 [DIAG] fetchImg 等诊断流进 console → diag 回传后端，用户在实时日志可见。
+    if (channel === 'debug-filter' && typeof cb === 'function') {
+      setTimeout(() => {
+        try { cb({}, { enabled: true, components: {} }); } catch { /* ignore */ }
+      }, 0);
+    }
+    return () => {};
+  },
   once(channel, cb) {
     // 兼容 embyWall 的 get-version → version-info 握手
     if (channel === 'version-info') { try { cb({}, { version: '0.0.0-web' }); } catch {} }

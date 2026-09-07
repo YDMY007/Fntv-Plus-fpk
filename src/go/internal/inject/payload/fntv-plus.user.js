@@ -20,81 +20,101 @@
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // src/shim/electron.js
-  var electron_exports = {};
-  __export(electron_exports, {
-    ipcRenderer: () => ipcRenderer,
-    shell: () => shell
-  });
-  function loadSettings() {
-    try {
-      return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
-    } catch {
-      return {};
-    }
+  // src/preload/web/diag.ts
+  function normalizePath(url) {
+    let p = String(url || "");
+    const m = p.match(/^https?:\/\/[^/]+(\/.*)$/);
+    if (m) p = m[1];
+    else if (!p.startsWith("/")) return "";
+    return p.split("?")[0];
   }
-  function saveSettings(s) {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(s));
-    } catch {
+  function recordAuthx(url, authx) {
+    if (!authx || authx === "undefined" || authx === "null") return;
+    const path = normalizePath(url);
+    if (!path) return;
+    for (let i = authxMap.length - 1; i >= 0; i--) {
+      if (authxMap[i].path === path) {
+        authxMap[i].authx = authx;
+        return;
+      }
     }
+    if (authxMap.length > 200) authxMap.shift();
+    authxMap.push({ path, authx });
+    push("[diag] captured Authx for " + path);
   }
-  var LS_KEY, ipcRenderer, shell;
-  var init_electron = __esm({
-    "src/shim/electron.js"() {
-      LS_KEY = "fntv:electron-settings";
-      ipcRenderer = {
-        invoke(channel, ...args) {
-          if (channel === "settings:get") return Promise.resolve(loadSettings());
-          if (typeof channel === "string" && channel.startsWith("settings:set-")) {
-            const key = channel.replace("settings:set-", "");
-            const s = loadSettings();
-            s[key] = args[0];
-            saveSettings(s);
-            return Promise.resolve();
-          }
-          if (channel === "settings:list-changelogs") return Promise.resolve([]);
-          if (channel === "settings:read-changelog") return Promise.resolve({ content: "" });
-          if (channel === "settings:check-update") return Promise.resolve();
-          if (channel === "get-version") return Promise.resolve({ version: "0.0.0-web" });
-          return Promise.resolve(void 0);
-        },
-        send() {
-        },
-        on() {
-          return () => {
-          };
-        },
-        once(channel, cb) {
-          if (channel === "version-info") {
-            try {
-              cb({}, { version: "0.0.0-web" });
-            } catch {
+  function getCapturedAuthx(path) {
+    const p = normalizePath(path);
+    if (!p) return "";
+    for (let i = authxMap.length - 1; i >= 0; i--) {
+      if (authxMap[i].path === p) return authxMap[i].authx;
+    }
+    for (let i = authxMap.length - 1; i >= 0; i--) {
+      if (p.startsWith(authxMap[i].path) || authxMap[i].path.startsWith(p)) return authxMap[i].authx;
+    }
+    return "";
+  }
+  function installCapture() {
+    try {
+      const xo = XMLHttpRequest.prototype.open;
+      const xs = XMLHttpRequest.prototype.setRequestHeader;
+      XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        try {
+          this.__fntvUrl = String(url);
+        } catch (_) {
+        }
+        return xo.apply(this, [method, url, ...rest]);
+      };
+      XMLHttpRequest.prototype.setRequestHeader = function(n, v) {
+        try {
+          if (String(n).toLowerCase() === "authx") recordAuthx(this.__fntvUrl || "", String(v));
+        } catch (_) {
+        }
+        return xs.apply(this, [n, v]);
+      };
+    } catch (_) {
+    }
+    try {
+      const fo = window.fetch.bind(window);
+      const stripBadAuthx = (hs) => {
+        let stripped = false;
+        if (hs && typeof hs === "object" && !Array.isArray(hs) && typeof hs.forEach !== "function") {
+          for (const k of Object.keys(hs)) {
+            if (k.toLowerCase() === "authx") {
+              const v = hs[k];
+              if (v === void 0 || v === null || v === "" || v === "undefined") {
+                delete hs[k];
+                stripped = true;
+              }
             }
           }
-          return () => {
-          };
-        },
-        removeListener() {
-        },
-        removeAllListeners() {
         }
+        return stripped;
       };
-      shell = {
-        openExternal() {
-        },
-        openPath() {
-        },
-        showItemInFolder() {
+      window.fetch = (input, init) => {
+        try {
+          const url = typeof input === "string" ? input : input && input.url || "";
+          let authx = "";
+          const hs = init && init.headers;
+          if (hs) {
+            if (typeof hs.forEach === "function") {
+              hs.forEach((v, k) => {
+                if (String(k).toLowerCase() === "authx") authx = String(v);
+              });
+            } else if (Array.isArray(hs)) {
+              for (const kv of hs) if (String(kv[0]).toLowerCase() === "authx") authx = String(kv[1]);
+            } else {
+              for (const k of Object.keys(hs)) if (k.toLowerCase() === "authx") authx = String(hs[k]);
+            }
+          }
+          recordAuthx(url, authx);
+          if (stripBadAuthx(init && init.headers)) push("[diag] stripped bad Authx for " + url);
+        } catch (_) {
         }
+        return fo(input, init);
       };
+    } catch (_) {
     }
-  });
-
-  // src/preload/web/diag.ts
-  var API = "/app/fntvplus/api/client-log";
-  var buf = [];
-  var timer = null;
+  }
   function fmt(a) {
     return a.map((x) => {
       if (typeof x === "string") return x;
@@ -130,6 +150,7 @@
     }
   }
   function installDiag() {
+    installCapture();
     const orig = {
       log: console.log.bind(console),
       warn: console.warn.bind(console),
@@ -161,6 +182,101 @@
     }
     push("[diag] installed @" + location.href);
   }
+  var API, buf, timer, authxMap;
+  var init_diag = __esm({
+    "src/preload/web/diag.ts"() {
+      API = "/app/fntvplus/api/client-log";
+      buf = [];
+      timer = null;
+      authxMap = [];
+    }
+  });
+
+  // src/shim/electron.js
+  var electron_exports = {};
+  __export(electron_exports, {
+    ipcRenderer: () => ipcRenderer,
+    shell: () => shell
+  });
+  function loadSettings() {
+    try {
+      return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+  function saveSettings(s) {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
+    } catch {
+    }
+  }
+  var LS_KEY, ipcRenderer, shell;
+  var init_electron = __esm({
+    "src/shim/electron.js"() {
+      init_diag();
+      LS_KEY = "fntv:electron-settings";
+      ipcRenderer = {
+        invoke(channel, ...args) {
+          if (channel === "settings:get") return Promise.resolve(loadSettings());
+          if (typeof channel === "string" && channel.startsWith("settings:set-")) {
+            const key = channel.replace("settings:set-", "");
+            const s = loadSettings();
+            s[key] = args[0];
+            saveSettings(s);
+            return Promise.resolve();
+          }
+          if (channel === "settings:list-changelogs") return Promise.resolve([]);
+          if (channel === "settings:read-changelog") return Promise.resolve({ content: "" });
+          if (channel === "settings:check-update") return Promise.resolve();
+          if (channel === "get-version") return Promise.resolve({ version: "0.0.0-web" });
+          if (channel === "fnos-gen-authx") {
+            return Promise.resolve(getCapturedAuthx(String(args[0] || "")));
+          }
+          return Promise.resolve(void 0);
+        },
+        send() {
+        },
+        on(channel, cb) {
+          if (channel === "debug-filter" && typeof cb === "function") {
+            setTimeout(() => {
+              try {
+                cb({}, { enabled: true, components: {} });
+              } catch {
+              }
+            }, 0);
+          }
+          return () => {
+          };
+        },
+        once(channel, cb) {
+          if (channel === "version-info") {
+            try {
+              cb({}, { version: "0.0.0-web" });
+            } catch {
+            }
+          }
+          return () => {
+          };
+        },
+        removeListener() {
+        },
+        removeAllListeners() {
+        }
+      };
+      shell = {
+        openExternal() {
+        },
+        openPath() {
+        },
+        showItemInFolder() {
+        }
+      };
+    }
+  });
+
+  // src/web-entry.ts
+  init_diag();
 
   // src/preload/plugins/embyWall/modals/feedback.ts
   init_electron();
