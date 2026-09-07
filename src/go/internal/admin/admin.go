@@ -50,19 +50,25 @@ func SettingsAPI(cfg *config.Config) http.HandlerFunc {
 }
 
 // StatusAPI 返回运行自检信息：版本 / 上游连通性 / payload 哈希 / 增强开关 / 日志路径。
+// 上游取「配置生效值」（管理页可热改），info.Upstream 仅作为回退默认值。
 func StatusAPI(cfg *config.Config, info Info) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		effective := strings.TrimSpace(cfg.Get().Upstream)
+		if effective == "" {
+			effective = info.Upstream
+		}
 		upstreamOK := false
-		if info.Upstream != "" {
+		if effective != "" {
 			client := &http.Client{Timeout: 2 * time.Second}
-			if resp, err := client.Get(strings.TrimRight(info.Upstream, "/") + "/v/"); err == nil {
+			if resp, err := client.Get(strings.TrimRight(effective, "/") + "/v/"); err == nil {
 				upstreamOK = resp.StatusCode < 500
 				_ = resp.Body.Close()
 			}
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"version":             info.Version,
-			"upstream":            info.Upstream,
+			"upstream":            effective,
+			"upstream_default":    info.Upstream,
 			"upstream_ok":         upstreamOK,
 			"enhancement_enabled": cfg.Get().EnhancementEnabled,
 			"payload_hash":        info.Injector.Hash(),
@@ -196,10 +202,14 @@ const adminHTML = `<!doctype html>
     <b style="font-size:14px">运行状态</b> <span style="font-size:12px;color:#888">每 5 秒自动刷新</span>
     <table style="margin-top:8px">
       <tr><td class="k">影视上游</td><td><span id="up">-</span></td></tr>
-      <tr><td class="k">上游地址</td><td id="upurl">-</td></tr>
+      <tr><td class="k">上游地址</td>
+        <td><div class="row" style="margin:0">
+          <input id="upin" style="flex:1;min-width:220px;padding:4px 8px;border-radius:6px;border:1px solid #8886;background:transparent;color:inherit" placeholder="http://127.0.0.1:端口">
+          <button id="ups">保存</button>
+        </div></td></tr>
       <tr><td class="k">日志文件</td><td id="logfile">-</td></tr>
     </table>
-    <div class="hint">「影视上游」不通 = 后端连不上飞牛影视网页服务，注入不会生效（多半是上游端口推导错了，可在 NAS 上设置环境变量 FNTV_UPSTREAM 修正）。</div>
+    <div class="hint">改完上游点「保存」，看「影视上游」是否变「连通 ✓」。不知道端口？SSH 到 NAS 跑 <code>ss -tlnp</code>，找飞牛影视/nginx 监听的端口；或直接填你浏览器打开飞牛影视用的地址（如 http://127.0.0.1:5666）。留空 = 用启动自动推导值。</div>
   </div>
 
   <div class="card">
@@ -240,10 +250,25 @@ const adminHTML = `<!doctype html>
         $('#v').textContent = s.version || '-';
         $('#ph').textContent = (s.payload_hash || '-') + ' (' + Math.round((s.payload_bytes||0)/1024) + 'KB)';
         $('#up').innerHTML = s.upstream_ok ? '<span class="ok">连通 ✓</span>' : '<span class="bad">不通 ✗</span>';
-        $('#upurl').textContent = s.upstream || '-';
+        const inp = $('#upin');
+        if (document.activeElement !== inp) inp.value = s.upstream || '';
         $('#logfile').textContent = s.log_file || '-';
       } catch (e) { $('#up').innerHTML = '<span class="bad">状态读取失败</span>'; }
     }
+
+    $('#ups').addEventListener('click', async () => {
+      $('#ups').textContent = '保存中…';
+      try {
+        await fetch(API + '/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ upstream: $('#upin').value.trim() })
+        });
+        $('#ups').textContent = '已保存';
+      } catch (e) { $('#ups').textContent = '保存失败'; }
+      loadStatus();
+      setTimeout(() => { $('#ups').textContent = '保存'; }, 1500);
+    });
 
     async function loadLogs() {
       try {

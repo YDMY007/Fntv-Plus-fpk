@@ -57,8 +57,12 @@ func main() {
 	}
 	log.Printf("[fntvplus] upstream = %s", upstream.String())
 
-	// 把解析到的上游写回配置（便于管理页/调试查看），非阻塞。
-	_ = cfg.Update(map[string]any{"upstream": upstream.String()})
+	// 把解析到的上游写回配置（仅当用户未在管理页自定义时），便于管理页/调试查看。
+	if cfg.Get().Upstream == "" {
+		_ = cfg.Update(map[string]any{"upstream": upstream.String()})
+	} else {
+		log.Printf("[fntvplus] using config upstream override: %s", cfg.Get().Upstream)
+	}
 
 	srv := proxy.NewServer(proxy.Deps{
 		Upstream: upstream,

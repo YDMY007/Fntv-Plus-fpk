@@ -101,20 +101,23 @@ func makeProxy(d Deps, strip string) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// 上游支持运行时热更新（管理页可改），每个请求取当前生效值。
+		upstream := effectiveUpstream(d)
+
 		// 剥离前缀，得到上游路径（如 /v/index.html）。
 		rest := strings.TrimPrefix(r.URL.Path, strip)
 		if rest == "" {
 			rest = "/"
 		}
 
-		target := *d.Upstream
-		target.Path = singleJoiningSlash(d.Upstream.Path, rest)
+		target := *upstream
+		target.Path = singleJoiningSlash(upstream.Path, rest)
 		target.RawQuery = r.URL.RawQuery
 
 		// 克隆请求并改写目标。
 		outReq := r.Clone(r.Context())
 		outReq.URL = &target
-		outReq.Host = d.Upstream.Host
+		outReq.Host = upstream.Host
 		outReq.RequestURI = "" // 必须清空，否则 RoundTrip 报错
 		outReq.Header.Del("Accept-Encoding")
 		outReq.Header.Del("Connection")
@@ -174,6 +177,16 @@ func makeProxy(d Deps, strip string) http.HandlerFunc {
 		w.WriteHeader(resp.StatusCode)
 		w.Write([]byte(newHTML))
 	}
+}
+
+// effectiveUpstream 返回当前生效的上游：配置里的 upstream 优先（管理页可热改），为空/非法时回退启动推导值。
+func effectiveUpstream(d Deps) *url.URL {
+	if raw := strings.TrimSpace(d.Config.Get().Upstream); raw != "" {
+		if u, err := url.Parse(raw); err == nil && u.Host != "" {
+			return u
+		}
+	}
+	return d.Upstream
 }
 
 // proxyAPIStub 是白名单代理的占位（M3 落地）。M1 阶段返回 501，避免误开代理面。
