@@ -7,3 +7,8 @@ dist/
 server/
 src/server/
 app/server/
+
+# 一键打包工具产物（源码在 tools/buildfpk/，fnpack.exe 为官方工具本地副本）
+build-fpk.exe
+tools/
+*.fpk

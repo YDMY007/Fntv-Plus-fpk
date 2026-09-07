@@ -7,9 +7,10 @@ mkdir -p "$TRIM_PKGVAR" "$TRIM_PKGETC"
 touch "$TRIM_PKGVAR/.installed"
 
 # 若发布包附带可覆盖用的 payload，则放到 var 目录（后端目前以内置嵌入为准，此处为扩展预留）。
-if [ -f "$TRIM_APPDEST/app/server/payload/fntv-plus.user.js" ]; then
+# 注：app/ 目录内容解包后直接落在 TRIM_APPDEST 根，故 app/server/payload/... → $TRIM_APPDEST/server/payload/...
+if [ -f "$TRIM_APPDEST/server/payload/fntv-plus.user.js" ]; then
   mkdir -p "$TRIM_PKGVAR/payload"
-  cp "$TRIM_APPDEST/app/server/payload/fntv-plus.user.js" "$TRIM_PKGVAR/payload/fntv-plus.user.js"
+  cp "$TRIM_APPDEST/server/payload/fntv-plus.user.js" "$TRIM_PKGVAR/payload/fntv-plus.user.js"
 fi
 
 exit 0
