@@ -12,3 +12,7 @@ app/server/
 build-fpk.exe
 tools/
 *.fpk
+
+# 本地测试残留
+src/go/*.exe
+zzz_var/

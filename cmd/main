@@ -1,14 +1,33 @@
 #!/bin/bash
 # Fntv-Plus 影视增强后端生命周期脚本（严格按照飞牛官方退出码：0=运行中 1=失败 3=未运行）。
 # 由 fnOS appcenter 在 start/stop/status 时调用。
+#
+# 注意：Windows 上 fnpack 打包的文件权限位全是 0666（无可执行位），
+# 所以 start 前必须 chmod +x 二进制，否则 nohup 直接 Permission denied。
 
 BIN="$TRIM_APPDEST/server/fntvplus"
 PIDFILE="$TRIM_PKGVAR/fntvplus.pid"
 LOG="$TRIM_PKGVAR/fntvplus.log"
 
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') [main] $*" >> "$LOG"; }
+
 start() {
-  [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && exit 0
-  mkdir -p "$TRIM_PKGVAR"
+  mkdir -p "$TRIM_PKGVAR" "$TRIM_PKGETC" 2>>"$LOG"
+  log "==== start requested ===="
+  log "BIN=$BIN"
+  log "TRIM_SERVICE_PORT=$TRIM_SERVICE_PORT TRIM_PKGETC=$TRIM_PKGETC TRIM_PKGVAR=$TRIM_PKGVAR TRIM_APPDEST=$TRIM_APPDEST"
+
+  [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && { log "already running (pid $(cat "$PIDFILE"))"; exit 0; }
+
+  if [ ! -f "$BIN" ]; then
+    log "ERROR: binary not found at $BIN (app/ 解包位置与预期不符?)"
+    ls -la "$TRIM_APPDEST" >>"$LOG" 2>&1
+    exit 1
+  fi
+
+  chmod +x "$BIN" 2>>"$LOG" || log "WARN: chmod +x failed (继续尝试)"
+  log "BIN perms: $(ls -la "$BIN")"
+
   nohup "$BIN" \
     --port "$TRIM_SERVICE_PORT" \
     --etc "$TRIM_PKGETC" \
@@ -16,12 +35,19 @@ start() {
     --dest "$TRIM_APPDEST" \
     >> "$LOG" 2>&1 &
   echo $! > "$PIDFILE"
+  sleep 1
+  if kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    log "started pid=$(cat "$PIDFILE")"
+  else
+    log "WARN: process exited immediately, see backend logs below"
+  fi
   exit 0
 }
 
 stop() {
+  log "==== stop requested ===="
   if [ -f "$PIDFILE" ]; then
-    kill "$(cat "$PIDFILE")" 2>/dev/null
+    kill "$(cat "$PIDFILE")" 2>/dev/null && log "killed pid $(cat "$PIDFILE")"
     rm -f "$PIDFILE"
   fi
   exit 0

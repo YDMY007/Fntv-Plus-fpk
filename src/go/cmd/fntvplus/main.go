@@ -28,6 +28,9 @@ import (
 	"fntvplus/internal/proxy"
 )
 
+// appVersion 与根目录 manifest 的 version 保持一致（改动版本时两处同步）。
+const appVersion = "0.2.0"
+
 func main() {
 	port := flag.String("port", envOr("TRIM_SERVICE_PORT", "22350"), "监听端口")
 	etcDir := flag.String("etc", envOr("TRIM_PKGETC", "."), "配置目录（config.json 所在）")
@@ -61,10 +64,12 @@ func main() {
 		Upstream: upstream,
 		Config:   cfg,
 		Injector: inj,
+		VarDir:   *varDir,
+		Version:  appVersion,
 	})
 
 	addr := "127.0.0.1:" + *port
-	log.Printf("[fntvplus] listening on %s (etc=%s var=%s dest=%s)", addr, *etcDir, *varDir, *destDir)
+	log.Printf("[fntvplus] v%s listening on %s (etc=%s var=%s dest=%s)", appVersion, addr, *etcDir, *varDir, *destDir)
 	if err := http.ListenAndServe(addr, srv); err != nil {
 		log.Fatalf("listen %s: %v", addr, err)
 	}

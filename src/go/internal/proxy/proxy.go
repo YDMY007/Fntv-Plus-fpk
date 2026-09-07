@@ -34,6 +34,8 @@ type Deps struct {
 	Upstream *url.URL      // 回环上游（影视网页服务），如 http://127.0.0.1:5666
 	Config   *config.Config
 	Injector *inject.Injector
+	VarDir   string // TRIM_PKGVAR（日志所在目录，供管理页日志查看）
+	Version  string // 应用版本（展示用）
 }
 
 // Server 持有所有路由。
@@ -48,10 +50,18 @@ func NewServer(d Deps) *Server {
 	// 1) payload 端点：返回嵌入的前端脚本（带哈希版本，长缓存）。
 	s.mux.Handle("/app/fntvplus/__payload__/", d.Injector.Handler())
 
-	// 2) 管理页 + 设置 API。
+	// 2) 管理页 + 设置/状态/日志 API。
+	info := admin.Info{
+		Version:  d.Version,
+		VarDir:   d.VarDir,
+		Upstream: d.Upstream.String(),
+		Injector: d.Injector,
+	}
 	s.mux.HandleFunc("/app/fntvplus/admin", admin.Page(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/admin/", admin.Page(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/api/settings", admin.SettingsAPI(d.Config))
+	s.mux.HandleFunc("/app/fntvplus/api/status", admin.StatusAPI(d.Config, info))
+	s.mux.HandleFunc("/app/fntvplus/api/logs", admin.LogsAPI(info))
 
 	// 3) 白名单代理（M3 落地，M1 先占位返回 501，避免误开代理面）。
 	s.mux.HandleFunc("/app/fntvplus/api/proxy", proxyAPIStub)
