@@ -662,7 +662,6 @@
 
   // src/preload/core/i18n.ts
   var LS_KEY = "fntv-lang";
-  var LANG_EVENT = "fntv:lang-changed";
   var EN = {
     // 自动连播卡（autoplayNext.ts）
     "UP NEXT": "UP NEXT",
@@ -951,17 +950,6 @@
       cachedLang = "zh";
     }
     return cachedLang;
-  }
-  function setLang(lang) {
-    cachedLang = lang;
-    try {
-      localStorage.setItem(LS_KEY, lang);
-    } catch {
-    }
-    try {
-      window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: lang }));
-    } catch {
-    }
   }
   function interpolate(tpl, params) {
     if (!params) return tpl;
@@ -1758,9 +1746,6 @@
   ];
   var _presetCache = /* @__PURE__ */ new Map();
   var _defaultLogoUri = "";
-  function registerDefaultLogo(uri) {
-    if (uri) _defaultLogoUri = uri;
-  }
   function presetDataUri(p) {
     if (_presetCache.has(p.id)) return _presetCache.get(p.id);
     try {
@@ -3361,387 +3346,6 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     maybeSetup._t = setTimeout(maybeSetup, 800);
   });
 
-  // src/preload/plugins/dialogUI.ts
-  init_electron();
-
-  // src/preload/markdown.ts
-  function escapeHtml(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-  function inlineMd(s) {
-    s = s.replace(/`([^`]+)`/g, (_m, c) => `<code>${c}</code>`);
-    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    s = s.replace(/__([^_]+)__/g, "<strong>$1</strong>");
-    s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
-    s = s.replace(/(^|[^\w])_([^_\n]+)_/g, "$1<em>$2</em>");
-    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, t2, u) => {
-      const safe = /^https?:\/\//i.test(u) ? u : "#";
-      return `<a href="${safe}" target="_blank" rel="noopener">${t2}</a>`;
-    });
-    return s;
-  }
-  function renderMarkdown(md) {
-    const lines = md.replace(/\r\n/g, "\n").split("\n");
-    let html = "";
-    let listType = "";
-    const closeList = () => {
-      if (listType) {
-        html += `</${listType}>`;
-        listType = "";
-      }
-    };
-    const isBlockStart = (l) => /^(#{1,6}\s|>\s?|\s*[-*+]\s|\s*\d+\.\s|```)/.test(l) || /^(\-{3,}|\*{3,}|_{3,})$/.test(l.trim());
-    let i = 0;
-    while (i < lines.length) {
-      let line = lines[i];
-      if (/^```/.test(line)) {
-        closeList();
-        i++;
-        const buf3 = [];
-        while (i < lines.length && !/^```/.test(lines[i])) {
-          buf3.push(lines[i]);
-          i++;
-        }
-        i++;
-        html += `<pre><code>${escapeHtml(buf3.join("\n"))}</code></pre>`;
-        continue;
-      }
-      if (/^(\-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-        closeList();
-        html += "<hr>";
-        i++;
-        continue;
-      }
-      const h = line.match(/^(#{1,6})\s+(.*)$/);
-      if (h) {
-        closeList();
-        const lvl = h[1].length;
-        html += `<h${lvl}>${inlineMd(escapeHtml(h[2].trim()))}</h${lvl}>`;
-        i++;
-        continue;
-      }
-      if (/^>\s?/.test(line)) {
-        closeList();
-        const buf3 = [];
-        while (i < lines.length && /^>\s?/.test(lines[i])) {
-          buf3.push(lines[i].replace(/^>\s?/, ""));
-          i++;
-        }
-        html += `<blockquote>${inlineMd(escapeHtml(buf3.join("\n"))).replace(/\n/g, "<br>")}</blockquote>`;
-        continue;
-      }
-      if (/\|/.test(line) && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
-        closeList();
-        const splitRow = (r) => r.replace(/^\s*\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
-        const headers = splitRow(line);
-        i += 2;
-        const rows = [];
-        while (i < lines.length && /\|/.test(lines[i]) && lines[i].trim() !== "") {
-          rows.push(splitRow(lines[i]));
-          i++;
-        }
-        let t2 = "<table><thead><tr>";
-        headers.forEach((hd) => {
-          t2 += `<th>${inlineMd(escapeHtml(hd))}</th>`;
-        });
-        t2 += "</tr></thead><tbody>";
-        rows.forEach((r) => {
-          t2 += "<tr>";
-          headers.forEach((_hd, idx) => {
-            t2 += `<td>${inlineMd(escapeHtml(r[idx] || ""))}</td>`;
-          });
-          t2 += "</tr>";
-        });
-        t2 += "</tbody></table>";
-        html += t2;
-        continue;
-      }
-      const ul = line.match(/^\s*[-*+]\s+(.*)$/);
-      const ol = line.match(/^\s*\d+\.\s+(.*)$/);
-      if (ul || ol) {
-        const type = ul ? "ul" : "ol";
-        if (listType !== type) {
-          closeList();
-          html += `<${type}>`;
-          listType = type;
-        }
-        const content = ul ? ul[1] : ol[1];
-        html += `<li>${inlineMd(escapeHtml(content))}</li>`;
-        i++;
-        continue;
-      }
-      if (line.trim() === "") {
-        closeList();
-        i++;
-        continue;
-      }
-      closeList();
-      const buf2 = [line];
-      i++;
-      while (i < lines.length && lines[i].trim() !== "" && !isBlockStart(lines[i])) {
-        buf2.push(lines[i]);
-        i++;
-      }
-      html += `<p>${inlineMd(escapeHtml(buf2.join("\n"))).replace(/\n/g, "<br>")}</p>`;
-    }
-    closeList();
-    return `<div class="md-body">${html}</div>`;
-  }
-  var MD_BODY_CSS = `
-.md-body{font-size:13px;line-height:1.7;color:#3a2d4d;word-break:break-word;}
-.md-body h1{font-size:18px;font-weight:700;margin:12px 0 8px;color:#262c44;border-bottom:1px solid rgba(109,127,242,.22);padding-bottom:6px;}
-.md-body h2{font-size:15.5px;font-weight:700;margin:12px 0 6px;color:#262c44;}
-.md-body h3{font-size:14px;font-weight:600;margin:10px 0 5px;color:#3a2d4d;}
-.md-body h4{font-size:13px;font-weight:600;margin:8px 0 4px;color:#3a2d4d;}
-.md-body p{margin:6px 0;}
-.md-body ul,.md-body ol{margin:6px 0;padding-left:20px;}
-.md-body li{margin:3px 0;}
-.md-body code{background:rgba(109,127,242,.12);padding:1px 5px;border-radius:4px;font-family:Consolas,Menlo,monospace;font-size:12px;color:#3d55c8;}
-.md-body pre{background:rgba(40,48,84,.06);border:1px solid rgba(109,127,242,.18);border-radius:8px;padding:10px 12px;overflow-x:auto;margin:6px 0;}
-.md-body pre code{background:none;padding:0;color:#3a2d4d;white-space:pre;}
-.md-body blockquote{margin:6px 0;padding:5px 11px;border-left:3px solid rgba(109,127,242,.4);background:rgba(109,127,242,.06);color:#5a6480;}
-.md-body a{color:#7c4dff;text-decoration:underline;}
-.md-body hr{border:none;border-top:1px solid rgba(109,127,242,.22);margin:10px 0;}
-.md-body strong{font-weight:700;}
-`;
-
-  // src/preload/plugins/dialogUI.ts
-  var ICON = {
-    info: { chr: "\u2139", color: "#5b8def" },
-    question: { chr: "?", color: "#6d7ff2" },
-    error: { chr: "\u26A0", color: "#e06a5b" },
-    none: { chr: "", color: "#6d7ff2" }
-  };
-  ipcRenderer.on("fnos-dialog:open", (_event, payload) => {
-    if (typeof document === "undefined" || !document.body) return;
-    document.body.appendChild(buildDialog(payload));
-  });
-  registerHook("onReady" /* OnReady */, () => {
-    try {
-      if (typeof document !== "undefined" && document.documentElement) ensureDialogStyle();
-    } catch {
-    }
-  });
-  function ensureDialogStyle() {
-    if (document.getElementById("fnos-dialog-style")) return;
-    const style2 = document.createElement("style");
-    style2.id = "fnos-dialog-style";
-    style2.textContent = '@media (prefers-reduced-motion: no-preference){@keyframes fnos-dlg-sheen{0%{transform:translateX(-160%) skewX(-14deg)}55%,100%{transform:translateX(310%) skewX(-14deg)}}#fnos-dialog-overlay [data-fnos-dialog-card="1"]::before{content:"";position:absolute;top:-12%;bottom:-12%;left:0;width:55%;pointer-events:none;z-index:-1;background:linear-gradient(105deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.05) 35%,rgba(255,255,255,.13) 50%,rgba(255,255,255,.05) 65%,rgba(255,255,255,0) 100%);transform:translateX(-160%) skewX(-14deg);animation:fnos-dlg-sheen 7s ease-in-out infinite;}}#fnos-dialog-overlay [data-fnos-dialog-card="1"]{background-color:rgba(255,255,255,.32)!important}html.dark #fnos-dialog-overlay [data-fnos-dialog-card="1"]{background-color:rgba(24,27,40,.45)!important}html.fnos-perf #fnos-dialog-overlay [data-fnos-dialog-card="1"]{background-color:#fafbfe!important}html.fnos-perf.dark #fnos-dialog-overlay [data-fnos-dialog-card="1"]{background-color:#1e2130!important}';
-    (document.head || document.documentElement).appendChild(style2);
-  }
-  function buildDialog(payload) {
-    var _a, _b;
-    const type = payload.type || "none";
-    const icon = ICON[type] || ICON.none;
-    if (payload.markdown) {
-      const style2 = document.createElement("style");
-      style2.setAttribute("data-fnos-md", "1");
-      style2.textContent = MD_BODY_CSS;
-      (document.head || document.documentElement).appendChild(style2);
-    }
-    ensureDialogStyle();
-    const overlay = document.createElement("div");
-    overlay.id = "fnos-dialog-overlay";
-    overlay.setAttribute("data-fnos-ui", "1");
-    overlay.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "z-index:2147483647",
-      "display:flex",
-      "align-items:center",
-      "justify-content:center",
-      "background:rgba(18,14,28,.22)!important",
-      "opacity:0",
-      "transition:opacity .18s ease",
-      'font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif'
-    ].join(";") + ";";
-    const card = document.createElement("div");
-    card.setAttribute("data-fnos-ui", "1");
-    card.setAttribute("data-fnos-dialog-card", "1");
-    card.style.cssText = [
-      "position:relative",
-      "overflow:hidden",
-      "min-width:420px",
-      "max-width:600px",
-      "width:90%",
-      "background-image:linear-gradient(165deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.015) 45%,rgba(255,255,255,.005) 100%)!important",
-      "backdrop-filter:blur(30px) saturate(150%)",
-      "-webkit-backdrop-filter:blur(30px) saturate(150%)",
-      "border-radius:18px",
-      "box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),inset 0 1px 0 rgba(255,255,255,.5),0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14)",
-      "padding:24px 24px 18px",
-      "color:var(--fnos-ui-text,#2f3550)",
-      "transform:scale(.96)",
-      "transition:transform .18s cubic-bezier(.22,.61,.36,1)"
-    ].join(";") + ";";
-    const header = document.createElement("div");
-    header.style.cssText = "display:flex;align-items:center;gap:12px;margin-bottom:14px;";
-    if (icon.chr) {
-      const ic = document.createElement("div");
-      ic.style.cssText = [
-        "flex:0 0 auto",
-        "width:34px",
-        "height:34px",
-        "border-radius:50%",
-        "display:flex",
-        "align-items:center",
-        "justify-content:center",
-        "font-size:20px",
-        "font-weight:700",
-        "color:#fff",
-        `background:${icon.color}`,
-        `box-shadow:0 4px 12px ${icon.color}55`
-      ].join(";") + ";";
-      ic.textContent = icon.chr;
-      header.appendChild(ic);
-    }
-    const title = document.createElement("div");
-    title.style.cssText = "font-size:17px;font-weight:700;color:var(--fnos-ui-text,#262c44);line-height:1.3;";
-    title.textContent = payload.title || "";
-    header.appendChild(title);
-    card.appendChild(header);
-    if (payload.message) {
-      const msg = document.createElement("div");
-      msg.style.cssText = "font-size:14px;color:var(--fnos-ui-text,#3d445e);line-height:1.55;margin-bottom:6px;white-space:pre-line;";
-      msg.textContent = payload.message;
-      card.appendChild(msg);
-    }
-    if (payload.detail) {
-      const detail = document.createElement("div");
-      detail.style.cssText = [
-        "font-size:12.5px",
-        "color:var(--fnos-ui-muted2,#737d99)",
-        "line-height:1.6",
-        "max-height:180px",
-        "overflow-y:auto",
-        "white-space:pre-line",
-        "background:var(--fnos-ui-input-bg,rgba(255,255,255,.5))!important",
-        "border-radius:10px",
-        "padding:10px 12px",
-        "margin-bottom:6px"
-      ].join(";") + ";";
-      detail.textContent = payload.detail;
-      card.appendChild(detail);
-    }
-    if (payload.markdown) {
-      const mdWrap = document.createElement("div");
-      mdWrap.style.cssText = [
-        "max-height:380px",
-        "overflow-y:auto",
-        "background:var(--fnos-ui-input-bg,rgba(255,255,255,.5))!important",
-        "border-radius:10px",
-        "padding:6px 12px",
-        "margin-bottom:6px"
-      ].join(";") + ";";
-      mdWrap.innerHTML = renderMarkdown(payload.markdown);
-      card.appendChild(mdWrap);
-    }
-    let checked = !!payload.checkboxChecked;
-    if (payload.checkboxLabel) {
-      const wrap = document.createElement("label");
-      wrap.style.cssText = "display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fnos-ui-btn-text2,#5a6480);margin-top:8px;cursor:pointer;user-select:none;";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = checked;
-      cb.style.cssText = "width:15px;height:15px;accent-color:var(--fnos-ui-accent,#6d7ff2);";
-      cb.addEventListener("change", () => {
-        checked = cb.checked;
-      });
-      const txt = document.createElement("span");
-      txt.textContent = payload.checkboxLabel;
-      wrap.appendChild(cb);
-      wrap.appendChild(txt);
-      card.appendChild(wrap);
-    }
-    const footer = document.createElement("div");
-    footer.style.cssText = "display:flex;justify-content:flex-end;gap:10px;margin-top:18px;";
-    const buttons = payload.buttons && payload.buttons.length ? payload.buttons : ["\u786E\u5B9A"];
-    const defaultId = (_a = payload.defaultId) != null ? _a : 0;
-    const cancelId = (_b = payload.cancelId) != null ? _b : buttons.length - 1;
-    let allBtns = [];
-    const closeWith = (index) => {
-      document.removeEventListener("keydown", onKey, true);
-      overlay.style.opacity = "0";
-      card.style.transform = "scale(.96)";
-      setTimeout(() => {
-        overlay.remove();
-        const mdStyle = document.querySelector('style[data-fnos-md="1"]');
-        if (mdStyle) mdStyle.remove();
-      }, 180);
-      ipcRenderer.send("fnos-dialog:result", payload.id, index, checked);
-    };
-    const onKey = (e) => {
-      if (!overlay.isConnected) {
-        document.removeEventListener("keydown", onKey, true);
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        closeWith(cancelId);
-      } else if (e.key === "Enter") {
-        const ae = document.activeElement;
-        if (ae && allBtns.includes(ae)) return;
-        e.preventDefault();
-        closeWith(defaultId);
-      }
-    };
-    buttons.forEach((label, index) => {
-      const isDefault = index === defaultId;
-      const btn = document.createElement("button");
-      if (isDefault) {
-        btn.style.cssText = [
-          "border:none",
-          "background:linear-gradient(135deg,var(--fnos-ui-accent,#6d7ff2),#8a63e8)",
-          "color:#fff",
-          "font-size:13px",
-          "font-weight:600",
-          "padding:9px 18px",
-          "border-radius:10px",
-          "cursor:pointer",
-          "transition:transform .12s ease, box-shadow .12s ease",
-          "box-shadow:0 6px 16px rgba(109,127,242,.4)"
-        ].join(";") + ";";
-      } else {
-        btn.style.cssText = [
-          "border:none",
-          "background:var(--fnos-ui-btn-bg,rgba(90,120,200,.12))!important",
-          "color:var(--fnos-ui-btn-text,#3d4a6e)",
-          "font-size:13px",
-          "font-weight:600",
-          "padding:9px 18px",
-          "border-radius:10px",
-          "cursor:pointer",
-          "transition:transform .12s ease, box-shadow .12s ease, background .15s"
-        ].join(";") + ";";
-      }
-      btn.textContent = label;
-      btn.addEventListener("mouseenter", () => {
-        btn.style.transform = "translateY(-1px)";
-        if (!isDefault) btn.style.background = "var(--fnos-ui-btn-hover,rgba(109,127,242,.30))!important";
-      });
-      btn.addEventListener("mouseleave", () => {
-        btn.style.transform = "translateY(0)";
-        if (!isDefault) btn.style.background = "var(--fnos-ui-btn-bg,rgba(90,120,200,.12))!important";
-      });
-      btn.addEventListener("click", () => closeWith(index));
-      footer.appendChild(btn);
-      allBtns.push(btn);
-    });
-    card.appendChild(footer);
-    overlay.appendChild(card);
-    document.addEventListener("keydown", onKey, true);
-    requestAnimationFrame(() => {
-      void overlay.offsetWidth;
-      requestAnimationFrame(() => {
-        if (allBtns[defaultId]) allBtns[defaultId].focus();
-        overlay.style.opacity = "1";
-        card.style.transform = "scale(1)";
-      });
-    });
-    return overlay;
-  }
-
   // src/preload/plugins/embyWall/modals/feedback.ts
   init_electron();
   var ABOUT_LINK_URL = "https://github.com/YDMY007/Fntv-Plus";
@@ -5037,11 +4641,11 @@ html.fnos-perf.dark{
     const wd = weekdayCnOf(it) ? `<span class="fntv-hot-wd">${weekdayCnOf(it)}</span>` : "";
     const rt = typeof it.rating === "number" && it.rating ? `<span class="fntv-hot-rt">\u2605 ${it.rating.toFixed(1)}</span>` : "";
     return `
-  <div class="fntv-hot-card" data-id="bg|${it.id}" data-url="${it.url}" data-title-cn="${escapeHtml2(titleCn)}" data-title="${escapeHtml2(titleOrig)}">
+  <div class="fntv-hot-card" data-id="bg|${it.id}" data-url="${it.url}" data-title-cn="${escapeHtml(titleCn)}" data-title="${escapeHtml(titleOrig)}">
     ${img ? `<img class="fntv-hot-poster" data-poster="${img}" referrerpolicy="no-referrer" loading="lazy" alt="">` : `<div class="fntv-hot-poster"></div>`}
     <div class="fntv-hot-meta">
-      <div class="fntv-hot-title">${escapeHtml2(title)}</div>
-      <div class="fntv-hot-sub">${escapeHtml2(sub)}</div>
+      <div class="fntv-hot-title">${escapeHtml(title)}</div>
+      <div class="fntv-hot-sub">${escapeHtml(sub)}</div>
       <div class="fntv-hot-badge">${wd}${rt}</div>
     </div>
     <button class="fntv-hot-block" title="\u4E0D\u611F\u5174\u8DA3" data-id="bg|${it.id}">\u2715</button>
@@ -5053,14 +4657,14 @@ html.fnos-perf.dark{
     const titleOrig = it.name || "";
     const title = titleCn || titleOrig || "\u672A\u77E5";
     const tp = it.mediaType === "movie" ? "\u7535\u5F71" : "\u5267\u96C6";
-    const yr = it.year ? `<span class="fntv-hot-yr">${escapeHtml2(it.year)}</span>` : "";
+    const yr = it.year ? `<span class="fntv-hot-yr">${escapeHtml(it.year)}</span>` : "";
     const rt = typeof it.rating === "number" && it.rating ? `<span class="fntv-hot-rt">\u2605 ${it.rating.toFixed(1)}</span>` : "";
     return `
-  <div class="fntv-hot-card" data-id="tm|${it.id}" data-url="${it.url}" data-title-cn="${escapeHtml2(titleCn)}" data-title="${escapeHtml2(titleOrig)}">
+  <div class="fntv-hot-card" data-id="tm|${it.id}" data-url="${it.url}" data-title-cn="${escapeHtml(titleCn)}" data-title="${escapeHtml(titleOrig)}">
     ${img ? `<img class="fntv-hot-poster" data-poster="${img}" referrerpolicy="no-referrer" loading="lazy" alt="">` : `<div class="fntv-hot-poster"></div>`}
     <div class="fntv-hot-meta">
-      <div class="fntv-hot-title">${escapeHtml2(title)}</div>
-      <div class="fntv-hot-sub">${escapeHtml2(tp)}</div>
+      <div class="fntv-hot-title">${escapeHtml(title)}</div>
+      <div class="fntv-hot-sub">${escapeHtml(tp)}</div>
       <div class="fntv-hot-badge"><span class="fntv-hot-tp">${tp}</span>${yr}${rt}</div>
     </div>
     <button class="fntv-hot-block" title="\u4E0D\u611F\u5174\u8DA3" data-id="tm|${it.id}">\u2715</button>
@@ -5137,7 +4741,7 @@ html.fnos-perf.dark{
     });
     return sorted.map(renderTmdbCard).join("");
   }
-  function escapeHtml2(s) {
+  function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
   function detectHotLightMode() {
@@ -5702,7 +5306,7 @@ html.fnos-perf.dark{
       try {
         const res = await ipcRenderer.invoke("bangumi:calendar", !!force);
         if (!res || !res.ok) {
-          body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml2(res && res.error || "\u672A\u77E5\u9519\u8BEF")}</div>`;
+          body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(res && res.error || "\u672A\u77E5\u9519\u8BEF")}</div>`;
           return;
         }
         allBg.length = 0;
@@ -5710,7 +5314,7 @@ html.fnos-perf.dark{
         updateFoot(res);
         render2();
       } catch (e) {
-        body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml2(String(e && e.message || e))}</div>`;
+        body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(String(e && e.message || e))}</div>`;
       } finally {
         refreshBtn.disabled = false;
         refreshBtn.classList.remove("loading");
@@ -5726,7 +5330,7 @@ html.fnos-perf.dark{
         const res = await ipcRenderer.invoke(channel, !!force);
         if (!res || !res.ok) {
           const base = source2 === "douban" ? "\u8C46\u74E3\u6570\u636E\u83B7\u53D6\u5931\u8D25" : "TMDB \u6570\u636E\u83B7\u53D6\u5931\u8D25";
-          body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml2(res && res.error || base)}</div>`;
+          body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(res && res.error || base)}</div>`;
           return;
         }
         allTm.length = 0;
@@ -5734,15 +5338,15 @@ html.fnos-perf.dark{
         updateFoot(res);
         if (!allTm.length) {
           const tip = res.warning || (source2 === "douban" ? "\u8C46\u74E3\u672A\u8FD4\u56DE\u6570\u636E\uFF08\u53EF\u80FD\u7F51\u7EDC\u6CE2\u52A8\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\uFF09\u3002" : "TMDB \u672A\u8FD4\u56DE\u6570\u636E\uFF08\u53EF\u80FD Key \u65E0\u6548\uFF0C\u6216\u672C\u673A\u7F51\u7EDC\u65E0\u6CD5\u8FDE\u63A5 api.themoviedb.org\uFF1B\u8BF7\u5728\u8BBE\u7F6E\u5F00\u542F\u300C\u514D\u68AF\u5B50\u76F4\u8FDE\u300D\u6216\u8BBE\u7F6E HTTPS_PROXY \u540E\u91CD\u8BD5\uFF0C\u8BE6\u89C1\u65E5\u5FD7 [TMDB\u8BCA\u65AD]\uFF09");
-          body.innerHTML = `<div class="fntv-hot-err">${escapeHtml2(tip)}</div>`;
+          body.innerHTML = `<div class="fntv-hot-err">${escapeHtml(tip)}</div>`;
           return;
         }
         render2();
         if (res.warning) {
-          body.insertAdjacentHTML("afterbegin", `<div class="fntv-hot-warn">\u26A0 ${escapeHtml2(res.warning)}</div>`);
+          body.insertAdjacentHTML("afterbegin", `<div class="fntv-hot-warn">\u26A0 ${escapeHtml(res.warning)}</div>`);
         }
       } catch (e) {
-        body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml2(String(e && e.message || e))}</div>`;
+        body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(String(e && e.message || e))}</div>`;
       } finally {
         refreshBtn.disabled = false;
         refreshBtn.classList.remove("loading");
@@ -7920,132 +7524,6 @@ html.fnos-perf.dark{
       img.src = dataUrl;
     });
   }
-  function applyCarouselLogoNow() {
-    if (!S.carouselInfos.length) return;
-    if (S.carouselLogoEnabled) {
-      applyTitleLogo(S.carouselBase, S.carouselShows, S.carouselInfos);
-    } else {
-      S.carouselInfos.forEach((info) => {
-        const slide = info.closest(".fnos-slide");
-        const l = slide == null ? void 0 : slide.querySelector(".fnos-logo");
-        if (l) {
-          l.style.display = "none";
-          l.src = "";
-        }
-      });
-    }
-  }
-
-  // src/preload/plugins/embyWall/login.ts
-  init_electron();
-  (function autoJumpToTv() {
-    const tryJump = () => {
-      try {
-        if (sessionStorage.getItem("fntv-system-intent") === "1") return;
-        if (isFntvTvPage()) return;
-        const p = location.pathname || "/";
-        if (p !== "/") return;
-        const target = location.origin + "/v";
-        if (location.href === target) return;
-        ipcRenderer.send(
-          "renderer-desktop-fix",
-          "\u767B\u5F55\u540E\u81EA\u52A8\u8DF3\u5F71\u89C6: \u5F53\u524D\u5728\u98DE\u725B\u539F\u751F\u684C\u9762(/), \u8DF3\u8F6C\u5230 /v"
-        );
-        location.href = target;
-      } catch (e) {
-      }
-    };
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => setTimeout(tryJump, 1500));
-    } else {
-      setTimeout(tryJump, 1500);
-    }
-  })();
-  (function autoFillVLogin() {
-    if (location.pathname !== "/v/login") return;
-    const { ipcRenderer: ipcRenderer2 } = (init_electron(), __toCommonJS(electron_exports));
-    function triggerInput(input, value) {
-      const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
-      if (!desc || !desc.set) {
-        input.value = value;
-        return;
-      }
-      desc.set.call(input, value);
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    setTimeout(() => {
-      try {
-        ipcRenderer2.send("get-config");
-        ipcRenderer2.once("config-data", (_e, data) => {
-          try {
-            const config2 = data && data.config || {};
-            const history2 = data && data.history || [];
-            let username = config2.account || "";
-            let password = "";
-            const domain = config2.domain || "";
-            for (const h of history2) {
-              if (h.domain === domain && h.account === username && h.password) {
-                password = h.password;
-                break;
-              }
-            }
-            if (!username) {
-              log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u8DF3\u8FC7: \u65E0\u4FDD\u5B58\u7684\u8D26\u53F7");
-              return;
-            }
-            const uInput = document.getElementById("username") || document.querySelector('input[name="username"]') || document.querySelector('input[placeholder*="\u7528\u6237\u540D"]') || document.querySelector('input[placeholder*="\u8D26\u53F7"]') || function() {
-              const inputs = document.querySelectorAll('input[type="text"], input:not([type])');
-              return inputs.length > 0 ? inputs[0] : null;
-            }();
-            const pInput = document.getElementById("password") || document.querySelector('input[name="password"]') || document.querySelector('input[placeholder*="\u5BC6\u7801"]') || function() {
-              const inputs = document.querySelectorAll('input[type="password"]');
-              return inputs.length > 0 ? inputs[0] : null;
-            }();
-            if (!uInput) {
-              log6("[lc-213] /v/login \u672A\u627E\u5230\u7528\u6237\u540D\u8F93\u5165\u6846");
-              return;
-            }
-            log6(`[lc-213] /v/login \u81EA\u52A8\u586B\u5145: \u7528\u6237\u540D=${username}, \u5BC6\u7801=${password ? "\u6709" : "\u65E0(\u672A\u8BB0\u4F4F\u5BC6\u7801)"}`);
-            triggerInput(uInput, username);
-            if (password && pInput) {
-              triggerInput(pInput, password);
-              setTimeout(() => {
-                const btn = document.querySelector('button[type="submit"]') || Array.from(document.querySelectorAll("button")).find((b) => /登录/.test(b.innerText)) || document.querySelector('input[type="submit"]');
-                if (btn) {
-                  btn.click();
-                  log6("[lc-213] /v/login \u5DF2\u81EA\u52A8\u70B9\u51FB\u767B\u5F55");
-                } else {
-                  log6("[lc-213] /v/login \u672A\u627E\u5230\u767B\u5F55\u6309\u94AE");
-                }
-              }, 400);
-            } else {
-              log6('[lc-213] /v/login \u4EC5\u586B\u5145\u4E86\u7528\u6237\u540D, \u5BC6\u7801\u4E3A\u7A7A(\u9700\u7528\u6237\u624B\u52A8\u8F93\u5165\u6216\u52FE\u9009"\u8BB0\u4F4F\u5BC6\u7801")');
-            }
-          } catch (e) {
-            log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5904\u7406\u5F02\u5E38:", String(e).slice(0, 120));
-          }
-        });
-      } catch (e) {
-        log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5F02\u5E38:", String(e).slice(0, 120));
-      }
-    }, 800);
-  })();
-  function toFileUrl(p) {
-    if (!p) return "";
-    if (/^file:\/\//i.test(p)) return p;
-    const norm = p.replace(/\\/g, "/");
-    if (/^[a-zA-Z]:\//.test(norm)) return "file:///" + norm;
-    if (norm.startsWith("/")) return "file://" + norm;
-    return "file:///" + norm;
-  }
-  function applyLoginBgVar(p) {
-    if (p) {
-      document.documentElement.style.setProperty("--fnos-login-bg", 'url("' + toFileUrl(p) + '")');
-    } else {
-      document.documentElement.style.setProperty("--fnos-login-bg", "");
-    }
-  }
 
   // src/preload/plugins/embyWall/carousel/render.ts
   function destroyCarousel() {
@@ -8569,6 +8047,117 @@ html.fnos-perf.dark{
     S.carouselBase = base;
     applyTitleLogo(base, shows, infos);
     log6("carousel injected");
+  }
+
+  // src/preload/plugins/embyWall/login.ts
+  init_electron();
+  (function autoJumpToTv() {
+    const tryJump = () => {
+      try {
+        if (sessionStorage.getItem("fntv-system-intent") === "1") return;
+        if (isFntvTvPage()) return;
+        const p = location.pathname || "/";
+        if (p !== "/") return;
+        const target = location.origin + "/v";
+        if (location.href === target) return;
+        ipcRenderer.send(
+          "renderer-desktop-fix",
+          "\u767B\u5F55\u540E\u81EA\u52A8\u8DF3\u5F71\u89C6: \u5F53\u524D\u5728\u98DE\u725B\u539F\u751F\u684C\u9762(/), \u8DF3\u8F6C\u5230 /v"
+        );
+        location.href = target;
+      } catch (e) {
+      }
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => setTimeout(tryJump, 1500));
+    } else {
+      setTimeout(tryJump, 1500);
+    }
+  })();
+  (function autoFillVLogin() {
+    if (location.pathname !== "/v/login") return;
+    const { ipcRenderer: ipcRenderer2 } = (init_electron(), __toCommonJS(electron_exports));
+    function triggerInput(input, value) {
+      const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+      if (!desc || !desc.set) {
+        input.value = value;
+        return;
+      }
+      desc.set.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    setTimeout(() => {
+      try {
+        ipcRenderer2.send("get-config");
+        ipcRenderer2.once("config-data", (_e, data) => {
+          try {
+            const config2 = data && data.config || {};
+            const history2 = data && data.history || [];
+            let username = config2.account || "";
+            let password = "";
+            const domain = config2.domain || "";
+            for (const h of history2) {
+              if (h.domain === domain && h.account === username && h.password) {
+                password = h.password;
+                break;
+              }
+            }
+            if (!username) {
+              log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u8DF3\u8FC7: \u65E0\u4FDD\u5B58\u7684\u8D26\u53F7");
+              return;
+            }
+            const uInput = document.getElementById("username") || document.querySelector('input[name="username"]') || document.querySelector('input[placeholder*="\u7528\u6237\u540D"]') || document.querySelector('input[placeholder*="\u8D26\u53F7"]') || function() {
+              const inputs = document.querySelectorAll('input[type="text"], input:not([type])');
+              return inputs.length > 0 ? inputs[0] : null;
+            }();
+            const pInput = document.getElementById("password") || document.querySelector('input[name="password"]') || document.querySelector('input[placeholder*="\u5BC6\u7801"]') || function() {
+              const inputs = document.querySelectorAll('input[type="password"]');
+              return inputs.length > 0 ? inputs[0] : null;
+            }();
+            if (!uInput) {
+              log6("[lc-213] /v/login \u672A\u627E\u5230\u7528\u6237\u540D\u8F93\u5165\u6846");
+              return;
+            }
+            log6(`[lc-213] /v/login \u81EA\u52A8\u586B\u5145: \u7528\u6237\u540D=${username}, \u5BC6\u7801=${password ? "\u6709" : "\u65E0(\u672A\u8BB0\u4F4F\u5BC6\u7801)"}`);
+            triggerInput(uInput, username);
+            if (password && pInput) {
+              triggerInput(pInput, password);
+              setTimeout(() => {
+                const btn = document.querySelector('button[type="submit"]') || Array.from(document.querySelectorAll("button")).find((b) => /登录/.test(b.innerText)) || document.querySelector('input[type="submit"]');
+                if (btn) {
+                  btn.click();
+                  log6("[lc-213] /v/login \u5DF2\u81EA\u52A8\u70B9\u51FB\u767B\u5F55");
+                } else {
+                  log6("[lc-213] /v/login \u672A\u627E\u5230\u767B\u5F55\u6309\u94AE");
+                }
+              }, 400);
+            } else {
+              log6('[lc-213] /v/login \u4EC5\u586B\u5145\u4E86\u7528\u6237\u540D, \u5BC6\u7801\u4E3A\u7A7A(\u9700\u7528\u6237\u624B\u52A8\u8F93\u5165\u6216\u52FE\u9009"\u8BB0\u4F4F\u5BC6\u7801")');
+            }
+          } catch (e) {
+            log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5904\u7406\u5F02\u5E38:", String(e).slice(0, 120));
+          }
+        });
+      } catch (e) {
+        log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5F02\u5E38:", String(e).slice(0, 120));
+      }
+    }, 800);
+  })();
+  function toFileUrl(p) {
+    if (!p) return "";
+    if (/^file:\/\//i.test(p)) return p;
+    const norm = p.replace(/\\/g, "/");
+    if (/^[a-zA-Z]:\//.test(norm)) return "file:///" + norm;
+    if (norm.startsWith("/")) return "file://" + norm;
+    return "file:///" + norm;
+  }
+  function applyLoginBgVar(p) {
+    if (p) {
+      document.documentElement.style.setProperty("--fnos-login-bg", 'url("' + toFileUrl(p) + '")');
+    } else {
+      document.documentElement.style.setProperty("--fnos-login-bg", "");
+    }
   }
 
   // src/preload/plugins/embyWall/modals/patch.ts
@@ -12757,299 +12346,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }
       buildSettingsPanel();
     }
-    function escapeHtml3(s) {
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-    function inlineMd2(s) {
-      s = s.replace(/`([^`]+)`/g, (_m, c) => `<code>${c}</code>`);
-      s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-      s = s.replace(/__([^_]+)__/g, "<strong>$1</strong>");
-      s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
-      s = s.replace(/(^|[^\w])_([^_\n]+)_/g, "$1<em>$2</em>");
-      s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, t2, u) => {
-        const safe = /^https?:\/\//i.test(u) ? u : "#";
-        return `<a href="${safe}" target="_blank" rel="noopener">${t2}</a>`;
-      });
-      return s;
-    }
-    function renderMarkdown2(md) {
-      const lines = md.replace(/\r\n/g, "\n").split("\n");
-      let html = "";
-      let listType = "";
-      const closeList = () => {
-        if (listType) {
-          html += `</${listType}>`;
-          listType = "";
-        }
-      };
-      const isBlockStart = (l) => /^(#{1,6}\s|>\s?|\s*[-*+]\s|\s*\d+\.\s|```)/.test(l) || /^(\-{3,}|\*{3,}|_{3,})$/.test(l.trim());
-      let i = 0;
-      while (i < lines.length) {
-        let line = lines[i];
-        if (/^```/.test(line)) {
-          closeList();
-          i++;
-          const buf3 = [];
-          while (i < lines.length && !/^```/.test(lines[i])) {
-            buf3.push(lines[i]);
-            i++;
-          }
-          i++;
-          html += `<pre><code>${escapeHtml3(buf3.join("\n"))}</code></pre>`;
-          continue;
-        }
-        if (/^(\-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-          closeList();
-          html += "<hr>";
-          i++;
-          continue;
-        }
-        const h = line.match(/^(#{1,6})\s+(.*)$/);
-        if (h) {
-          closeList();
-          const lvl = h[1].length;
-          html += `<h${lvl}>${inlineMd2(escapeHtml3(h[2].trim()))}</h${lvl}>`;
-          i++;
-          continue;
-        }
-        if (/^>\s?/.test(line)) {
-          closeList();
-          const buf3 = [];
-          while (i < lines.length && /^>\s?/.test(lines[i])) {
-            buf3.push(lines[i].replace(/^>\s?/, ""));
-            i++;
-          }
-          html += `<blockquote>${inlineMd2(escapeHtml3(buf3.join("\n"))).replace(/\n/g, "<br>")}</blockquote>`;
-          continue;
-        }
-        if (/\|/.test(line) && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
-          closeList();
-          const splitRow = (r) => r.replace(/^\s*\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
-          const headers = splitRow(line);
-          i += 2;
-          const rows = [];
-          while (i < lines.length && /\|/.test(lines[i]) && lines[i].trim() !== "") {
-            rows.push(splitRow(lines[i]));
-            i++;
-          }
-          let t2 = "<table><thead><tr>";
-          headers.forEach((hd) => {
-            t2 += `<th>${inlineMd2(escapeHtml3(hd))}</th>`;
-          });
-          t2 += "</tr></thead><tbody>";
-          rows.forEach((r) => {
-            t2 += "<tr>";
-            headers.forEach((_hd, idx) => {
-              t2 += `<td>${inlineMd2(escapeHtml3(r[idx] || ""))}</td>`;
-            });
-            t2 += "</tr>";
-          });
-          t2 += "</tbody></table>";
-          html += t2;
-          continue;
-        }
-        const ul = line.match(/^\s*[-*+]\s+(.*)$/);
-        const ol = line.match(/^\s*\d+\.\s+(.*)$/);
-        if (ul || ol) {
-          const type = ul ? "ul" : "ol";
-          if (listType !== type) {
-            closeList();
-            html += `<${type}>`;
-            listType = type;
-          }
-          const content = ul ? ul[1] : ol[1];
-          html += `<li>${inlineMd2(escapeHtml3(content))}</li>`;
-          i++;
-          continue;
-        }
-        if (line.trim() === "") {
-          closeList();
-          i++;
-          continue;
-        }
-        closeList();
-        const buf2 = [line];
-        i++;
-        while (i < lines.length && lines[i].trim() !== "" && !isBlockStart(lines[i])) {
-          buf2.push(lines[i]);
-          i++;
-        }
-        html += `<p>${inlineMd2(escapeHtml3(buf2.join("\n"))).replace(/\n/g, "<br>")}</p>`;
-      }
-      closeList();
-      return `<div class="md-body">${html}</div>`;
-    }
-    function ensureMdStyle() {
-      if (document.getElementById("fnos-md-style")) return;
-      const st = document.createElement("style");
-      st.id = "fnos-md-style";
-      st.textContent = `
-.md-body{font-size:13px;line-height:1.7;color:#3d445e;}
-.md-body h1{font-size:20px;font-weight:700;margin:14px 0 10px;color:#262c44;border-bottom:1px solid rgba(109,127,242,.22);padding-bottom:6px;}
-.md-body h2{font-size:17px;font-weight:700;margin:16px 0 8px;color:#262c44;}
-.md-body h3{font-size:15px;font-weight:600;margin:14px 0 6px;color:#3d445e;}
-.md-body h4{font-size:13.5px;font-weight:600;margin:12px 0 6px;color:#3d445e;}
-.md-body p{margin:8px 0;}
-.md-body ul,.md-body ol{margin:8px 0;padding-left:22px;}
-.md-body li{margin:3px 0;}
-.md-body code{background:rgba(109,127,242,.12);padding:1px 5px;border-radius:4px;font-family:Consolas,Menlo,monospace;font-size:12px;color:#3d55c8;}
-.md-body pre{background:rgba(40,48,84,.06);border:1px solid rgba(109,127,242,.18);border-radius:8px;padding:12px 14px;overflow-x:auto;margin:8px 0;}
-.md-body pre code{background:none;padding:0;color:#3d445e;}
-.md-body blockquote{margin:8px 0;padding:6px 12px;border-left:3px solid rgba(109,127,242,.4);background:rgba(109,127,242,.06);color:#5a6480;}
-.md-body a{color:#4a6fd4;text-decoration:underline;}
-.md-body hr{border:none;border-top:1px solid rgba(109,127,242,.22);margin:14px 0;}
-.md-body strong{font-weight:700;}
-.md-body table{border-collapse:collapse;margin:10px 0;width:100%;font-size:12.5px;}
-.md-body th,.md-body td{border:1px solid rgba(109,127,242,.25);padding:6px 9px;text-align:left;}
-.md-body th{background:rgba(109,127,242,.10);font-weight:700;}
-`;
-      document.head.appendChild(st);
-    }
-    function openHistoryModal() {
-      if (document.getElementById("fnos-history-overlay")) return;
-      const ov = document.createElement("div");
-      ov.id = "fnos-history-overlay";
-      ov.setAttribute("data-fnos-ui", "1");
-      ov.style.cssText = [
-        "position:fixed",
-        "inset:0",
-        "z-index:2147483647",
-        "display:flex",
-        "align-items:center",
-        "justify-content:center",
-        "background:rgba(28,20,40,.40)",
-        "backdrop-filter:blur(5px)",
-        "-webkit-backdrop-filter:blur(5px)",
-        "opacity:0",
-        "transition:opacity .18s ease",
-        'font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif'
-      ].join(";") + ";";
-      const card = document.createElement("div");
-      card.setAttribute("data-fnos-ui", "1");
-      card.style.cssText = [
-        "position:relative",
-        "display:flex",
-        "flex-direction:column",
-        "width:92%",
-        "max-width:780px",
-        "height:82vh",
-        "max-height:760px",
-        "background:rgba(252,247,253,.98)!important",
-        "backdrop-filter:blur(30px) saturate(135%)",
-        "-webkit-backdrop-filter:blur(30px) saturate(135%)",
-        "border-radius:16px",
-        "box-shadow:0 18px 50px rgba(80,60,110,.30), inset 0 1px 0 rgba(255,255,255,.7)",
-        "color:#3d445e",
-        "overflow:hidden",
-        "transform:scale(.96)",
-        "transition:transform .18s cubic-bezier(.22,.61,.36,1)"
-      ].join(";") + ";";
-      const header = document.createElement("div");
-      header.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(109,127,242,.18);flex-shrink:0;";
-      const hTitle = document.createElement("div");
-      hTitle.textContent = "\u5386\u53F2\u7248\u672C";
-      hTitle.style.cssText = "font-size:16px;font-weight:700;color:#262c44;";
-      const dlBtn = document.createElement("a");
-      dlBtn.textContent = "\u5386\u53F2\u7248\u672C\u4E0B\u8F7D";
-      dlBtn.href = "https://pan.baidu.com/s/5oy1iYKBLdfxP55pgXO5X1g";
-      dlBtn.target = "_blank";
-      dlBtn.rel = "noopener";
-      dlBtn.style.cssText = "display:inline-flex;align-items:center;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:rgba(78,102,220,.90);text-decoration:none;letter-spacing:.3px;transition:background .18s ease;";
-      dlBtn.onmouseenter = () => {
-        dlBtn.style.background = "rgba(124,93,255,.95)";
-      };
-      dlBtn.onmouseleave = () => {
-        dlBtn.style.background = "rgba(78,102,220,.90)";
-      };
-      const closeBtn = document.createElement("div");
-      closeBtn.textContent = "\u2715";
-      closeBtn.style.cssText = "width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;font-size:15px;color:#6a5e7e;background:rgba(109,127,242,.10);";
-      closeBtn.onmouseenter = () => {
-        closeBtn.style.background = "rgba(109,127,242,.22)";
-      };
-      closeBtn.onmouseleave = () => {
-        closeBtn.style.background = "rgba(109,127,242,.10)";
-      };
-      closeBtn.onclick = () => closeHistory();
-      header.appendChild(hTitle);
-      header.appendChild(dlBtn);
-      header.appendChild(closeBtn);
-      card.appendChild(header);
-      const body = document.createElement("div");
-      body.style.cssText = "display:flex;flex:1;min-height:0;";
-      const listPane = document.createElement("div");
-      listPane.style.cssText = "width:230px;flex-shrink:0;border-right:1px solid rgba(109,127,242,.18);overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;";
-      const contentPane = document.createElement("div");
-      contentPane.style.cssText = "flex:1;min-width:0;overflow-y:auto;padding:18px 22px;color:#3d445e;word-break:break-word;";
-      contentPane.innerHTML = '<div class="md-body"><p style="color:#9a8eae;font-size:13px;">\u8BF7\u9009\u62E9\u5DE6\u4FA7\u7684\u5386\u53F2\u7248\u672C\u67E5\u770B\u66F4\u65B0\u5185\u5BB9\u3002</p></div>';
-      ensureMdStyle();
-      body.appendChild(listPane);
-      body.appendChild(contentPane);
-      card.appendChild(body);
-      ov.appendChild(card);
-      document.body.appendChild(ov);
-      requestAnimationFrame(() => {
-        ov.style.opacity = "1";
-        card.style.transform = "scale(1)";
-      });
-      ov.addEventListener("click", (e) => {
-        if (e.target === ov) closeHistory();
-      });
-      function closeHistory() {
-        ov.style.opacity = "0";
-        ov.style.pointerEvents = "none";
-        card.style.transform = "scale(.96)";
-        setTimeout(() => ov.remove(), 180);
-      }
-      ipcRenderer.invoke("settings:list-changelogs").then((list) => {
-        listPane.innerHTML = "";
-        if (!list || !list.length) {
-          const empty = document.createElement("div");
-          empty.textContent = "\u672A\u627E\u5230\u5386\u53F2\u7248\u672C\u6587\u4EF6";
-          empty.style.cssText = "padding:12px;font-size:12px;color:#9a8eae;";
-          listPane.appendChild(empty);
-          return;
-        }
-        list.forEach((item) => {
-          const row2 = document.createElement("div");
-          row2.style.cssText = "padding:9px 11px;border-radius:9px;cursor:pointer;font-size:13px;color:#4a3d5e;transition:background .12s;";
-          row2.textContent = item.title || item.name;
-          row2.onmouseenter = () => {
-            if (row2.dataset.active !== "1") row2.style.background = "rgba(109,127,242,.10)";
-          };
-          row2.onmouseleave = () => {
-            if (row2.dataset.active !== "1") row2.style.background = "transparent";
-          };
-          row2.onclick = () => {
-            listPane.querySelectorAll('[data-active="1"]').forEach((el) => {
-              el.style.background = "transparent";
-              el.dataset.active = "0";
-            });
-            row2.dataset.active = "1";
-            row2.style.background = "rgba(109,127,242,.20)";
-            contentPane.innerHTML = '<div class="md-body"><p style="color:#9a8eae;">\u52A0\u8F7D\u4E2D\u2026</p></div>';
-            contentPane.scrollTop = 0;
-            ipcRenderer.invoke("settings:read-changelog", item.name).then((res) => {
-              if (res && res.ok) {
-                contentPane.innerHTML = renderMarkdown2(res.content);
-                contentPane.scrollTop = 0;
-              } else {
-                contentPane.innerHTML = '<div class="md-body"><p style="color:#c0504d;">\u8BFB\u53D6\u5931\u8D25\uFF1A' + escapeHtml3(String(res && res.error || "\u672A\u77E5\u9519\u8BEF")) + "</p></div>";
-              }
-            }).catch((err) => {
-              contentPane.innerHTML = '<div class="md-body"><p style="color:#c0504d;">\u8BFB\u53D6\u5931\u8D25\uFF1A' + escapeHtml3(String(err)) + "</p></div>";
-            });
-          };
-          listPane.appendChild(row2);
-        });
-      }).catch((err) => {
-        listPane.innerHTML = "";
-        const e = document.createElement("div");
-        e.textContent = "\u52A0\u8F7D\u5931\u8D25\uFF1A" + String(err);
-        e.style.cssText = "padding:12px;font-size:12px;color:#c0504d;";
-        listPane.appendChild(e);
-      });
-    }
     function buildSettingsPanel() {
       if (document.getElementById("fnos-settings-panel")) return;
       const mkBtn = (text, small = false) => {
@@ -13277,500 +12573,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       refreshThemeSeg();
       themeRow.appendChild(themeLabel);
       themeRow.appendChild(seg);
-      const updFooter = document.createElement("div");
-      updFooter.style.cssText = "padding:2px 0 0;flex-shrink:0;";
-      const updGrid = document.createElement("div");
-      updGrid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:8px;";
-      const updBtn = mkBtn("\u68C0\u67E5\u66F4\u65B0", true);
-      const updHistoryBtn = mkBtn("\u5386\u53F2\u7248\u672C", true);
-      updGrid.appendChild(updBtn);
-      updGrid.appendChild(updHistoryBtn);
-      updFooter.appendChild(updGrid);
-      const devSep = document.createElement("div");
-      devSep.style.cssText = "display:flex;align-items:center;gap:8px;margin:12px 0 8px;color:var(--fnos-ui-muted);font-size:10.5px;opacity:.7;user-select:none;";
-      devSep.innerHTML = '<span style="flex-shrink:0;">\u7EF4\u62A4 / \u5F00\u53D1\u8005</span><span style="flex:1;height:1px;background:var(--fnos-ui-border);"></span>';
-      updFooter.appendChild(devSep);
-      const devGrid = document.createElement("div");
-      devGrid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:8px;";
-      const patchBtn = mkBtn("\u5E94\u7528\u8865\u4E01", true);
-      const rollbackBtn = mkBtn("\u56DE\u6EDA\u8865\u4E01", true);
-      const testBtn = mkBtn("\u6D4B\u8BD5\u66F4\u65B0", true);
-      const verSwitchBtn = mkBtn("\u7248\u53F7\u5207\u6362", true);
-      devGrid.appendChild(patchBtn);
-      devGrid.appendChild(rollbackBtn);
-      devGrid.appendChild(testBtn);
-      devGrid.appendChild(verSwitchBtn);
-      updFooter.appendChild(devGrid);
-      const testHint = document.createElement("div");
-      testHint.textContent = t("\u{1F527} \u6D4B\u8BD5\u66F4\u65B0 / \u7248\u53F7\u5207\u6362\uFF1A\u5F00\u53D1\u8005\u6D4B\u8BD5\u901A\u9053\uFF0C\u9700\u89E3\u9501\u7801\uFF08\u666E\u901A\u7528\u6237\u65E0\u9700\u64CD\u4F5C\uFF09");
-      testHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);opacity:.75;text-align:center;margin-top:9px;line-height:1.5;";
-      updFooter.appendChild(testHint);
-      secBodyUpd.appendChild(updFooter);
-      updBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ipcRenderer.invoke("settings:check-update");
-      });
-      updHistoryBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openHistoryModal();
-      });
-      patchBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        fntvOpenPatchApplyPopup(false);
-      });
-      testBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        if (testBtn.disabled) return;
-        const code = await promptUnlockCode({
-          title: "\u{1F527} \u5F00\u53D1\u8005\u6D4B\u8BD5\u66F4\u65B0",
-          subtitle: "\u8BF7\u8F93\u5165\u89E3\u9501\u7801\u4EE5\u83B7\u53D6 Gitee \u6D4B\u8BD5\u8865\u4E01",
-          onVerify: (c) => ipcRenderer.invoke("settings:verify-unlock-code", c).then((r) => !!r.ok)
-        });
-        if (code === null) return;
-        openTestPatchWizard(code);
-      });
-      rollbackBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ipcRenderer.invoke("settings:rollback-patch");
-      });
-      verSwitchBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        if (verSwitchBtn.disabled) return;
-        const code = await promptUnlockCode({
-          title: "\u7248\u53F7\u5207\u6362",
-          subtitle: "\u8BF7\u8F93\u5165\u89E3\u9501\u7801\u4EE5\u81EA\u5B9A\u4E49\u8F6F\u4EF6\u7248\u672C\u53F7",
-          onVerify: (c) => ipcRenderer.invoke("settings:verify-unlock-code", c).then((r) => !!r.ok)
-        });
-        if (code === null) return;
-        openVersionSwitchModal(code);
-      });
-      function showPatchToast(msg) {
-        let t2 = document.getElementById("fntv-patch-toast");
-        if (!t2) {
-          t2 = document.createElement("div");
-          t2.id = "fntv-patch-toast";
-          t2.style.cssText = "position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99999;max-width:80vw;padding:8px 14px;border-radius:8px;font-size:12px;line-height:1.5;background:rgba(20,22,30,.92);color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .25s;white-space:pre-wrap;text-align:center;";
-          document.body.appendChild(t2);
-        }
-        t2.textContent = msg;
-        requestAnimationFrame(() => {
-          if (t2) t2.style.opacity = "1";
-        });
-        setTimeout(() => {
-          if (t2) t2.style.opacity = "0";
-        }, 2400);
-      }
-      let _unlockResolve = null;
-      function promptUnlockCode(opts) {
-        return new Promise((resolve2) => {
-          let modal2 = document.getElementById("fntv-unlock-modal");
-          if (!modal2) {
-            modal2 = document.createElement("div");
-            modal2.id = "fntv-unlock-modal";
-            modal2.setAttribute("data-fnos-ui", "1");
-            modal2.style.cssText = "position:fixed;z-index:2147483710;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-            modal2.addEventListener("click", (e) => {
-              if (e.target === modal2) {
-                modal2.remove();
-                if (_unlockResolve) {
-                  _unlockResolve(null);
-                  _unlockResolve = null;
-                }
-              }
-            });
-            const card = document.createElement("div");
-            card.style.cssText = "width:300px;border-radius:16px;padding:20px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);text-align:center;";
-            const titleEl = document.createElement("div");
-            titleEl.id = "fntv-unlock-title";
-            titleEl.style.cssText = "font-size:16px;font-weight:800;color:var(--fnos-ui-pill-text);margin-bottom:4px;";
-            card.appendChild(titleEl);
-            const subEl = document.createElement("div");
-            subEl.id = "fntv-unlock-subtitle";
-            subEl.style.cssText = "font-size:12px;line-height:1.6;color:var(--fnos-ui-text);opacity:.8;margin-bottom:14px;";
-            card.appendChild(subEl);
-            const errEl = document.createElement("div");
-            errEl.id = "fntv-unlock-err";
-            errEl.style.cssText = "display:none;font-size:11.5px;color:#ff7a7a;font-weight:600;margin:-6px 0 8px;";
-            card.appendChild(errEl);
-            const input = document.createElement("input");
-            input.type = "password";
-            input.placeholder = t("\u89E3\u9501\u7801");
-            input.id = "fntv-unlock-input";
-            input.style.cssText = "width:100%;box-sizing:border-box;padding:9px 12px;border-radius:9px;font-size:13px;background:var(--fnos-ui-input-bg);color:var(--fnos-ui-text);border:1px solid var(--fnos-ui-border);outline:none;";
-            card.appendChild(input);
-            const row2 = document.createElement("div");
-            row2.style.cssText = "display:flex;gap:8px;margin-top:16px;";
-            const cancelBtn = document.createElement("button");
-            cancelBtn.type = "button";
-            cancelBtn.textContent = t("\u53D6\u6D88");
-            cancelBtn.style.cssText = "flex:1;padding:9px 0;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;background:var(--fnos-ui-input-bg);color:var(--fnos-ui-btn-text);";
-            const okBtn = document.createElement("button");
-            okBtn.type = "button";
-            okBtn.textContent = t("\u786E\u5B9A");
-            okBtn.style.cssText = "flex:1;padding:9px 0;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#8a6dd6,#6b4ec8)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 4px 14px rgba(107,78,200,.38);";
-            row2.appendChild(cancelBtn);
-            row2.appendChild(okBtn);
-            card.appendChild(row2);
-            modal2.appendChild(card);
-            document.body.appendChild(modal2);
-            const doClose = (val) => {
-              modal2.remove();
-              if (_unlockResolve) {
-                _unlockResolve(val);
-                _unlockResolve = null;
-              }
-            };
-            const doSubmit = () => {
-              const code = (input.value || "").trim();
-              if (!code) {
-                errEl.style.display = "block";
-                errEl.textContent = t("\u8BF7\u8F93\u5165\u89E3\u9501\u7801");
-                return;
-              }
-              if (opts && opts.onVerify) {
-                opts.onVerify(code).then((ok) => {
-                  if (ok) {
-                    doClose(code);
-                  } else {
-                    errEl.style.display = "block";
-                    errEl.textContent = t("\u89E3\u9501\u4EE3\u7801\u9519\u8BEF\uFF0C\u8BF7\u91CD\u65B0\u8F93\u5165");
-                  }
-                }).catch(() => {
-                  errEl.style.display = "block";
-                  errEl.textContent = t("\u89E3\u9501\u7801\u9A8C\u8BC1\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5");
-                });
-              } else {
-                doClose(code);
-              }
-            };
-            cancelBtn.addEventListener("click", (e) => {
-              e.stopPropagation();
-              doClose(null);
-            });
-            okBtn.addEventListener("click", (e) => {
-              e.stopPropagation();
-              doSubmit();
-            });
-            input.addEventListener("keydown", (e) => {
-              e.stopPropagation();
-              if (e.key === "Enter") doSubmit();
-              else if (e.key === "Escape") doClose(null);
-            });
-          }
-          const tEl = modal2.querySelector("#fntv-unlock-title");
-          if (tEl) tEl.textContent = opts && opts.title || "\u{1F527} \u5F00\u53D1\u8005\u6D4B\u8BD5\u66F4\u65B0";
-          const sEl = modal2.querySelector("#fntv-unlock-subtitle");
-          if (sEl) sEl.textContent = opts && opts.subtitle || "\u8BF7\u8F93\u5165\u89E3\u9501\u7801\u4EE5\u83B7\u53D6 Gitee \u6D4B\u8BD5\u8865\u4E01";
-          const eEl = modal2.querySelector("#fntv-unlock-err");
-          if (eEl) {
-            eEl.style.display = "none";
-            eEl.textContent = "";
-          }
-          _unlockResolve = resolve2;
-          modal2.style.display = "flex";
-          const inp = modal2.querySelector("#fntv-unlock-input");
-          if (inp) {
-            inp.value = "";
-            setTimeout(() => inp.focus(), 50);
-          }
-        });
-      }
-      let _verSwitchModal = null;
-      function openVersionSwitchModal(code) {
-        let modal2 = document.getElementById("fntv-version-switch-modal");
-        if (!modal2) {
-          modal2 = document.createElement("div");
-          modal2.id = "fntv-version-switch-modal";
-          modal2.setAttribute("data-fnos-ui", "1");
-          modal2.style.cssText = "position:fixed;z-index:2147483711;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-          modal2.addEventListener("click", (e) => {
-            if (e.target === modal2) modal2.remove();
-          });
-          const card = document.createElement("div");
-          card.style.cssText = "width:300px;border-radius:16px;padding:20px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);text-align:center;";
-          card.innerHTML = '<div style="font-size:16px;font-weight:800;color:var(--fnos-ui-pill-text);margin-bottom:4px;">\u7248\u53F7\u5207\u6362</div><div style="font-size:12px;line-height:1.6;color:var(--fnos-ui-text);opacity:.8;margin-bottom:6px;">\u8F93\u5165\u81EA\u5B9A\u4E49\u7248\u672C\u53F7\uFF08\u5982 9.9.9\uFF09\u6A21\u62DF\u65B0\u65E7\u7248\u672C\uFF0C\u6D4B\u8BD5\u66F4\u65B0\u68C0\u6D4B / \u8986\u76D6\u5B89\u88C5</div><div style="font-size:11px;line-height:1.5;color:var(--fnos-ui-muted);opacity:.7;margin-bottom:12px;">\u7559\u7A7A\u5E76\u786E\u5B9A = \u6062\u590D\u5B89\u88C5\u5305\u771F\u5B9E\u7248\u672C</div>';
-          const input = document.createElement("input");
-          input.type = "text";
-          input.placeholder = t("\u4F8B\u5982 9.9.9");
-          input.id = "fntv-version-switch-input";
-          input.style.cssText = "width:100%;box-sizing:border-box;padding:9px 12px;border-radius:9px;font-size:13px;background:var(--fnos-ui-input-bg);color:var(--fnos-ui-text);border:1px solid var(--fnos-ui-border);outline:none;";
-          card.appendChild(input);
-          const row2 = document.createElement("div");
-          row2.style.cssText = "display:flex;gap:8px;margin-top:16px;";
-          const cancelBtn = document.createElement("button");
-          cancelBtn.type = "button";
-          cancelBtn.textContent = t("\u53D6\u6D88");
-          cancelBtn.style.cssText = "flex:1;padding:9px 0;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;background:var(--fnos-ui-input-bg);color:var(--fnos-ui-btn-text);";
-          const okBtn = document.createElement("button");
-          okBtn.type = "button";
-          okBtn.textContent = t("\u786E\u5B9A");
-          okBtn.style.cssText = "flex:1;padding:9px 0;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#8a6dd6,#6b4ec8)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 4px 14px rgba(107,78,200,.38);";
-          row2.appendChild(cancelBtn);
-          row2.appendChild(okBtn);
-          card.appendChild(row2);
-          modal2.appendChild(card);
-          document.body.appendChild(modal2);
-          const doClose = () => {
-            modal2.remove();
-          };
-          const doSubmit = () => {
-            const v = (input.value || "").trim();
-            okBtn.disabled = true;
-            okBtn.textContent = t("\u63D0\u4EA4\u4E2D\u2026");
-            ipcRenderer.invoke("settings:set-custom-version", code, v).then((r) => {
-              doClose();
-              if (r && r.ok) {
-                showPatchToast(`\u7248\u53F7\u5DF2\u5207\u6362\u4E3A ${r.displayVersion || "(\u9ED8\u8BA4)"}${v ? "\uFF08\u91CD\u542F\u540E\u7248\u672C\u663E\u793A\u540C\u6B65\uFF09" : ""}`);
-                ipcRenderer.send("get-version");
-              } else {
-                showPatchToast("\u7248\u53F7\u5207\u6362\u5931\u8D25\uFF1A" + (r && r.message || "\u672A\u77E5\u9519\u8BEF"));
-              }
-            }).catch(() => {
-              okBtn.disabled = false;
-              okBtn.textContent = t("\u786E\u5B9A");
-              showPatchToast("\u7248\u53F7\u5207\u6362\u5931\u8D25\uFF1A\u4E3B\u8FDB\u7A0B\u65E0\u54CD\u5E94");
-            });
-          };
-          cancelBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            doClose();
-          });
-          okBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            doSubmit();
-          });
-          input.addEventListener("keydown", (e) => {
-            e.stopPropagation();
-            if (e.key === "Enter") doSubmit();
-            else if (e.key === "Escape") doClose();
-          });
-        }
-        modal2.style.display = "flex";
-        const inp = modal2.querySelector("#fntv-version-switch-input");
-        if (inp) {
-          inp.value = "";
-          setTimeout(() => inp.focus(), 50);
-        }
-      }
-      let _testWizardModal = null;
-      let _testProgHandler = null;
-      let _lastTestCode = "";
-      let _testSelectedVersion = null;
-      function openTestPatchWizard(code) {
-        _lastTestCode = code;
-        if (!_testWizardModal) {
-          const modal2 = document.createElement("div");
-          modal2.id = "fntv-test-wizard";
-          modal2.setAttribute("data-fnos-ui", "1");
-          modal2.style.cssText = "position:fixed;z-index:2147483705;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-          modal2.addEventListener("click", (e) => {
-            if (e.target === modal2 && modal2.getAttribute("data-closable") === "1") closeTestPatchWizard();
-          });
-          const card = document.createElement("div");
-          card.style.cssText = "width:300px;border-radius:16px;padding:20px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);text-align:center;";
-          const body = document.createElement("div");
-          body.id = "fntv-test-body";
-          card.appendChild(body);
-          modal2.appendChild(card);
-          document.body.appendChild(modal2);
-          _testWizardModal = modal2;
-        }
-        _testWizardModal.style.display = "flex";
-        _testWizardModal.setAttribute("data-closable", "1");
-        renderTestState("listing", null);
-        ipcRenderer.invoke("settings:list-test-patches", code).then((res) => {
-          if (res && res.ok) {
-            const patches = (res.patches || []).filter((p) => p && p.hasAsset);
-            if (patches.length > 0) renderTestState("select", { patches });
-            else renderTestState("empty", { message: "Gitee \u6682\u65E0\u5E26\u8865\u4E01\u5305\u7684 -test \u6D4B\u8BD5\u7248" });
-          } else {
-            renderTestState("error", { message: res && res.message || "\u68C0\u6D4B\u5931\u8D25" });
-          }
-        }).catch((err) => {
-          renderTestState("error", { message: "\u68C0\u6D4B\u5931\u8D25: " + (err && err.message || err) });
-        });
-      }
-      function closeTestPatchWizard() {
-        if (_testWizardModal) {
-          _testWizardModal.remove();
-          _testWizardModal = null;
-        }
-        if (_testProgHandler) {
-          ipcRenderer.removeListener("settings:patch-progress", _testProgHandler);
-          _testProgHandler = null;
-        }
-      }
-      function renderTestState(state, info) {
-        const modal2 = _testWizardModal;
-        if (!modal2) return;
-        const body = modal2.querySelector("#fntv-test-body");
-        if (!body) return;
-        const closable = state === "listing" || state === "select" || state === "empty" || state === "error";
-        modal2.setAttribute("data-closable", closable ? "1" : "0");
-        body.innerHTML = "";
-        if (state === "listing") {
-          body.appendChild(spinnerEl());
-          body.appendChild(centerText("\u6B63\u5728\u68C0\u6D4B\u6D4B\u8BD5\u8865\u4E01\u5217\u8868\u2026", "14px", "var(--fnos-ui-text)", "margin-top:14px;font-weight:600;"));
-          return;
-        }
-        if (state === "empty") {
-          body.appendChild(centerText("\u{1F4ED}", "24px", "var(--fnos-ui-muted)", "margin-bottom:6px;"));
-          body.appendChild(centerText("\u6682\u65E0\u53EF\u7528\u6D4B\u8BD5\u8865\u4E01", "15px", "var(--fnos-ui-text)", "font-weight:700;margin-bottom:6px;"));
-          body.appendChild(centerText(info && info.message || "Gitee \u4E0A\u672A\u53D1\u5E03\u5E26\u8865\u4E01\u5305\u7684 -test \u7248\u672C", "11.5px", "var(--fnos-ui-muted)", "opacity:.8;margin-bottom:16px;"));
-          body.appendChild(actionRow([{ label: "\u5173\u95ED", primary: true, onClick: () => closeTestPatchWizard() }]));
-          return;
-        }
-        if (state === "error") {
-          body.appendChild(centerText("\u26A0", "24px", "#ff7a7a", "font-weight:800;margin-bottom:6px;"));
-          body.appendChild(centerText("\u51FA\u9519\u4E86", "15px", "var(--fnos-ui-text)", "font-weight:700;margin-bottom:8px;"));
-          body.appendChild(centerText(info && info.message || "\u672A\u77E5\u9519\u8BEF", "12px", "var(--fnos-ui-muted)", "opacity:.85;line-height:1.6;margin-bottom:16px;word-break:break-word;"));
-          body.appendChild(actionRow([
-            // [lc-642] 重试 = 同一 360px 弹窗内回 unlock(重新输入解锁码),
-            //   不再关弹窗跳 300px 解锁码小弹窗(用户反馈弹窗大小应一致)
-            { label: "\u91CD\u8BD5", primary: false, onClick: () => {
-              (async () => {
-                closeTestPatchWizard();
-                const code = await promptUnlockCode();
-                if (code !== null) openTestPatchWizard(code);
-              })();
-            } },
-            { label: "\u5173\u95ED", primary: true, onClick: () => closeTestPatchWizard() }
-          ]));
-          return;
-        }
-        if (state === "select") {
-          const patches = info && info.patches || [];
-          _testSelectedVersion = patches.length ? patches[0].version : null;
-          body.appendChild(centerText("\u{1F527} \u5F00\u53D1\u8005\u6D4B\u8BD5\u8865\u4E01", "16px", "var(--fnos-ui-pill-text)", "font-weight:800;margin-bottom:4px;"));
-          body.appendChild(centerText("\u9009\u62E9\u8981\u5E94\u7528\u7684\u6D4B\u8BD5\u7248\u672C", "11.5px", "var(--fnos-ui-muted)", "opacity:.8;margin-bottom:12px;"));
-          const list = document.createElement("div");
-          list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:14px;";
-          const btns = [];
-          patches.forEach((p, idx) => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.textContent = "v" + p.version;
-            item.style.cssText = "width:100%;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;" + (idx === 0 ? "background:var(--fnos-ui-pill-bg)!important;color:var(--fnos-ui-pill-text);border:1px solid var(--fnos-ui-pill-border);" : "background:var(--fnos-ui-input-bg);color:var(--fnos-ui-text);border:1px solid var(--fnos-ui-border);");
-            item.addEventListener("click", (e) => {
-              e.stopPropagation();
-              _testSelectedVersion = p.version;
-              btns.forEach((b, i) => {
-                const sel = i === idx;
-                b.style.background = sel ? "var(--fnos-ui-pill-bg)!important" : "var(--fnos-ui-input-bg)";
-                b.style.color = sel ? "var(--fnos-ui-pill-text)" : "var(--fnos-ui-text)";
-                b.style.border = sel ? "1px solid var(--fnos-ui-pill-border)" : "1px solid var(--fnos-ui-border)";
-              });
-            });
-            btns.push(item);
-            list.appendChild(item);
-          });
-          body.appendChild(list);
-          body.appendChild(actionRow([
-            { label: "\u53D6\u6D88", primary: false, onClick: () => closeTestPatchWizard() },
-            { label: "\u7ACB\u5373\u5E94\u7528", primary: true, onClick: () => startTestApply() }
-          ]));
-          return;
-        }
-        if (state === "downloading" || state === "applying" || state === "done") {
-          const pct = info && typeof info.percent === "number" ? info.percent : -1;
-          const track = document.createElement("div");
-          track.style.cssText = "height:8px;border-radius:6px;background:var(--fnos-ui-input-bg);overflow:hidden;margin:6px 0 8px;";
-          const fill = document.createElement("div");
-          const done = state === "done";
-          const indeterminate = pct < 0 && !done;
-          fill.style.cssText = "height:100%;border-radius:6px;transition:width .25s;background:var(--fnos-ui-pill-bg)!important;" + (done ? "width:100%;" : indeterminate ? "width:40%;animation:fnosPatchIndet 1.1s infinite ease-in-out;" : `width:${pct}%;`);
-          track.appendChild(fill);
-          body.appendChild(track);
-          const pctText = state === "downloading" ? pct >= 0 ? `\u6B63\u5728\u4E0B\u8F7D\u2026 ${pct}%` : "\u6B63\u5728\u4E0B\u8F7D\u2026" : state === "applying" ? "\u6B63\u5728\u5E94\u7528\u8865\u4E01\u2026" : "\u2713 \u6D4B\u8BD5\u8865\u4E01\u5DF2\u5E94\u7528";
-          body.appendChild(centerText(pctText, "13px", done ? "var(--fnos-ui-accent)" : "var(--fnos-ui-text)", "font-weight:600;margin-bottom:4px;"));
-          if (indeterminate || pct >= 0) {
-            const sub = document.createElement("div");
-            sub.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);opacity:.7;";
-            if (info && info.total && info.total > 0) {
-              const fmt2 = (n) => (n / 1024).toFixed(0) + " KB";
-              sub.textContent = `${fmt2(info.loaded || 0)} / ${fmt2(info.total)}`;
-            } else {
-              sub.textContent = done ? "\u5373\u5C06\u91CD\u542F\u5E94\u7528\u4F7F\u8865\u4E01\u751F\u6548" : "\u4E0B\u8F7D\u4E2D\uFF0C\u8BF7\u7A0D\u5019\u2026";
-            }
-            body.appendChild(sub);
-          }
-          if (done) {
-            body.appendChild(centerText("\u5E94\u7528\u5373\u5C06\u91CD\u542F / \u91CD\u8F7D\u2026", "11px", "var(--fnos-ui-muted)", "opacity:.7;margin-top:6px;"));
-          }
-          return;
-        }
-      }
-      function startTestApply() {
-        const code = _lastTestCode;
-        const version = _testSelectedVersion;
-        if (!version) {
-          renderTestState("error", { message: "\u672A\u9009\u62E9\u6D4B\u8BD5\u7248\u672C" });
-          return;
-        }
-        renderTestState("downloading", { percent: 0, message: "\u6B63\u5728\u4E0B\u8F7D\u2026" });
-        _testProgHandler = (_e, p) => {
-          if (!p) return;
-          if (p.phase === "downloading" || p.phase === "applying" || p.phase === "done") {
-            renderTestState(p.phase, p);
-          } else if (p.phase === "error") {
-            renderTestState("error", { message: p.message || "\u5E94\u7528\u5931\u8D25" });
-          }
-        };
-        ipcRenderer.on("settings:patch-progress", _testProgHandler);
-        ipcRenderer.invoke("settings:apply-test-patch", code, version).then((res) => {
-          if (_testProgHandler) {
-            ipcRenderer.removeListener("settings:patch-progress", _testProgHandler);
-            _testProgHandler = null;
-          }
-          if (res && res.ok) {
-            renderTestState("done", res);
-          } else {
-            renderTestState("error", { message: res && res.message || "\u5E94\u7528\u5931\u8D25" });
-          }
-        }).catch((err) => {
-          if (_testProgHandler) {
-            ipcRenderer.removeListener("settings:patch-progress", _testProgHandler);
-            _testProgHandler = null;
-          }
-          renderTestState("error", { message: "\u5E94\u7528\u5931\u8D25: " + (err && err.message || err) });
-        });
-      }
-      function centerText(text, size, color, extra = "") {
-        const d = document.createElement("div");
-        d.textContent = text;
-        d.style.cssText = `font-size:${size};color:${color};${extra}`;
-        return d;
-      }
-      function actionRow(actions) {
-        const row2 = document.createElement("div");
-        row2.style.cssText = "display:flex;gap:8px;";
-        for (const a of actions) {
-          const b = mkBtn(a.label, !a.primary);
-          b.style.flex = "1";
-          if (a.primary) {
-            b.style.cssText = "flex:1;padding:9px 0;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#8a6dd6,#6b4ec8)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 4px 14px rgba(107,78,200,.38);letter-spacing:.3px;";
-          } else {
-            b.style.padding = "9px 12px";
-          }
-          b.addEventListener("click", (e) => {
-            e.stopPropagation();
-            a.onClick();
-          });
-          row2.appendChild(b);
-        }
-        return row2;
-      }
-      function spinnerEl() {
-        const s = document.createElement("div");
-        s.style.cssText = "width:30px;height:30px;margin:2px auto 0;border-radius:50%;border:3px solid var(--fnos-ui-border);border-top-color:var(--fnos-ui-pill-bg);animation:fnosPatchSpin .8s linear infinite;";
-        return s;
-      }
-      if (!document.getElementById("fntv-patch-kf")) {
-        const st = document.createElement("style");
-        st.id = "fntv-patch-kf";
-        st.textContent = "@keyframes fnosPatchSpin{to{transform:rotate(360deg)}}@keyframes fnosPatchIndet{0%{margin-left:0}50%{margin-left:55%}100%{margin-left:0}}";
-        document.head.appendChild(st);
-      }
       const sec2 = section("\u64AD\u653E\u5668");
       const secBody2 = sec2.body;
       const playerCols = document.createElement("div");
@@ -13918,95 +12720,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           b.style.borderColor = on ? "var(--fnos-ui-accent)!important" : "var(--fnos-ui-border3)";
         });
       };
-      const sec3 = section("\u9000\u51FA\u884C\u4E3A");
-      const secBody3 = sec3.body;
-      secBody3.style.cssText = "padding:10px 12px;flex:1 1 auto;display:flex;flex-direction:column;";
-      const secLang = section("\u8BED\u8A00 / Language");
-      const langRow = document.createElement("div");
-      langRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:8px 6px;gap:10px;";
-      const langLabel = document.createElement("span");
-      langLabel.textContent = t("\u754C\u9762\u8BED\u8A00 / Interface language");
-      langLabel.style.cssText = "color:var(--fnos-ui-text);font-weight:500;white-space:nowrap;";
-      const langSeg = document.createElement("div");
-      langSeg.id = "fnos-ui-lang";
-      langSeg.setAttribute("role", "radiogroup");
-      langSeg.setAttribute("aria-label", t("\u754C\u9762\u8BED\u8A00 / Interface language"));
-      langSeg.style.cssText = "display:inline-flex;background:var(--fnos-ui-input-bg);border-radius:9px;padding:3px;gap:2px;flex-shrink:0;";
-      const langOpts = [["zh", "\u7B80\u4F53\u4E2D\u6587"], ["en", "English"]];
-      const langBtns = [];
-      langOpts.forEach(([v, label]) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = label;
-        b.dataset.lang = v;
-        b.style.cssText = "border:none;cursor:pointer;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:7px;background:transparent;color:var(--fnos-ui-btn-text);transition:all .15s;white-space:nowrap;";
-        b.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (v !== getLang()) {
-            setLang(v);
-            location.reload();
-          }
-        });
-        langSeg.appendChild(b);
-        langBtns.push(b);
-      });
-      const refreshLangSeg = () => {
-        const cur = getLang();
-        langBtns.forEach((b) => {
-          const on = b.dataset.lang === cur;
-          b.style.background = on ? "var(--fnos-ui-accent)" : "transparent";
-          b.style.color = on ? "#fff" : "var(--fnos-ui-btn-text)";
-        });
-      };
-      refreshLangSeg();
-      const langHint = document.createElement("div");
-      langHint.textContent = t("\u5207\u6362\u540E\u81EA\u52A8\u5237\u65B0\u9875\u9762\u751F\u6548\uFF08\u4EC5\u5F71\u54CD Fntv-Plus \u6CE8\u5165\u7684\u754C\u9762\u6587\u6848\uFF09");
-      langHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted2);line-height:1.5;padding:0 6px 6px;";
-      langRow.appendChild(langLabel);
-      langRow.appendChild(langSeg);
-      secLang.body.appendChild(langRow);
-      secLang.body.appendChild(langHint);
-      const exitModes = [["direct", "\u76F4\u63A5\u9000\u51FA"], ["minimize", "\u6700\u5C0F\u5316\u5230\u6258\u76D8"], ["ask", "\u6BCF\u6B21\u8BE2\u95EE"]];
-      const exitEls = [];
-      const exitGrid = document.createElement("div");
-      exitGrid.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:5px;";
-      exitModes.forEach(([mode, text]) => {
-        const b = mkBtn(text);
-        b.dataset.mode = mode;
-        b.addEventListener("click", (e) => {
-          e.stopPropagation();
-          overlay._exitMode = mode;
-          refreshExit();
-          ipcRenderer.invoke("settings:set-exit-mode", mode).catch((err) => log6("set-exit-mode failed", err));
-        });
-        exitGrid.appendChild(b);
-        exitEls.push(b);
-      });
-      secBody3.appendChild(exitGrid);
-      const loginBgWrap = document.createElement("div");
-      loginBgWrap.style.cssText = "margin-top:12px;padding-top:10px;border-top:1px solid var(--fnos-ui-border2);";
-      const loginBgLabel = document.createElement("div");
-      loginBgLabel.textContent = t("\u767B\u5F55\u9875\u80CC\u666F\u56FE");
-      loginBgLabel.style.cssText = "font-size:10.5px;font-weight:600;color:var(--fnos-ui-sec);margin-bottom:8px;";
-      loginBgWrap.appendChild(loginBgLabel);
-      const loginBgBtns = document.createElement("div");
-      loginBgBtns.style.cssText = "display:flex;gap:6px;";
-      const pickLoginBgBtn = mkBtn("\u81EA\u5B9A\u4E49\u767B\u5F55\u9875\u9762\u80CC\u666F\u56FE", true);
-      const clearLoginBgBtn = mkBtn("\u6E05\u7A7A", true);
-      loginBgBtns.appendChild(pickLoginBgBtn);
-      loginBgBtns.appendChild(clearLoginBgBtn);
-      loginBgWrap.appendChild(loginBgBtns);
-      pickLoginBgBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const p = await ipcRenderer.invoke("settings:pick-login-bg");
-        if (p) applyLoginBgVar(p);
-      });
-      clearLoginBgBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await ipcRenderer.invoke("settings:clear-login-bg");
-        applyLoginBgVar("");
-      });
-      secBody3.appendChild(loginBgWrap);
       const secBili = section("B\u7AD9\u5F39\u5E55");
       const secBodyBili = secBili.body;
       const biliStatus = document.createElement("div");
@@ -15105,121 +13818,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         e.stopPropagation();
         ipcRenderer.invoke("bili:open-danmaku-folder").catch((err) => log6("bili:open-danmaku-folder failed", err));
       });
-      const secInterp = section("\u63D2\u5E27\uFF08AI \u8865\u5E27\uFF09");
-      const interpBody = secInterp.body;
-      const interpEnabledToggle = addToggle("\u9ED8\u8BA4\u5F00\u542F\u63D2\u5E27\uFF08\u542F\u52A8\u5373\u751F\u6548\uFF09");
-      interpBody.appendChild(interpEnabledToggle.parentElement);
-      const engineLabel = document.createElement("div");
-      engineLabel.textContent = t("\u63D2\u5E27\u5F15\u64CE");
-      engineLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:10px 0 5px;";
-      interpBody.appendChild(engineLabel);
-      const engineSel = document.createElement("select");
-      engineSel.id = "fntv-interp-engine";
-      engineSel.style.cssText = "width:100%;font-size:12px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;cursor:pointer;";
-      [
-        ["auto", "\u81EA\u52A8\uFF08SVP \u2192 RIFE \u2192 \u5185\u7F6E\u5E73\u6ED1\u8FD0\u52A8\uFF09"],
-        ["builtin", "MPV \u5185\u7F6E\u5E73\u6ED1\u8FD0\u52A8\uFF08\u65E0\u9700\u989D\u5916\u5F15\u64CE\uFF09"],
-        ["svp", "SVP\uFF08\u9700\u672C\u673A\u5B89\u88C5\u5E76\u8FD0\u884C SmoothVideo Project\uFF09"],
-        ["rife", "RIFE AI \u8865\u5E27\uFF08\u9700 rife-ncnn-vulkan \u7B49\u8FD0\u884C\u65F6\uFF09"],
-        ["nvidia", "N \u5361 Smooth Motion\uFF08RTX50 \u9A71\u52A8\u7EA7\uFF0C\u9700\u5728 NVIDIA App \u5F00\u542F\uFF09"]
-      ].forEach(([k, label]) => {
-        const o = document.createElement("option");
-        o.value = k;
-        o.textContent = label;
-        engineSel.appendChild(o);
-      });
-      interpBody.appendChild(engineSel);
-      const pathLabel = document.createElement("div");
-      pathLabel.textContent = t("\u5F15\u64CE\u8DEF\u5F84\uFF08SVP \u76EE\u5F55 / RIFE \u53EF\u6267\u884C\u6587\u4EF6\uFF0C\u7559\u7A7A=\u81EA\u52A8\u63A2\u6D4B\uFF09");
-      pathLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:10px 0 5px;";
-      interpBody.appendChild(pathLabel);
-      const pathInput = document.createElement("input");
-      pathInput.type = "text";
-      pathInput.placeholder = "\u4F8B\u5982\uFF1AC:\\Program Files (x86)\\SVP 4";
-      pathInput.style.cssText = "width:100%;font-size:12px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;";
-      interpBody.appendChild(pathInput);
-      const interpHint = document.createElement("div");
-      interpHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sec);padding:8px 0 0;line-height:1.5;";
-      interpHint.textContent = t("\u64AD\u653E\u65F6\u53EF\u5728 MPV \u5E95\u90E8\u63A7\u5236\u680F\u70B9\u300C\u63D2\u5E27\u300D\u6309\u94AE\u5B9E\u65F6\u5F00\u5173\u3002\u9009 SVP/RIFE \u9700\u672C\u673A\u5DF2\u5B89\u88C5\u5BF9\u5E94\u5F15\u64CE\u5E76\u914D\u597D\uFF0C\u672A\u5B89\u88C5\u65F6\u81EA\u52A8\u56DE\u9000 MPV \u5185\u7F6E\u5E73\u6ED1\u8FD0\u52A8\uFF1B\u9009 N \u5361\u9700 RTX50+ \u5E76\u5728 NVIDIA App \u5F00\u542F\u300CSmooth Motion\uFF08\u89C6\u9891\uFF09\u300D\u3002");
-      interpBody.appendChild(interpHint);
-      const secRender = section("\u6E32\u67D3\u753B\u8D28");
-      const renderBody = secRender.body;
-      const renderLabel = document.createElement("div");
-      renderLabel.textContent = t("\u6E32\u67D3\u9884\u8BBE");
-      renderLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:4px 0 6px;";
-      renderBody.appendChild(renderLabel);
-      const renderSeg = document.createElement("div");
-      renderSeg.style.cssText = "display:flex;gap:6px;margin-bottom:10px;";
-      const renderBtns = {};
-      const RENDER_PRESETS = [
-        ["perf", "\u6027\u80FD\u4F18\u5148", "\u4F4E\u914D\u673A/\u6838\u663E \u6D41\u7545\u4F18\u5148\uFF08\u53CC\u7EBF\u6027\u7F29\u653E\uFF0C\u5173\u95ED\u53BB\u566A\u5E26\uFF09"],
-        ["balanced", "\u5747\u8861", "\u9ED8\u8BA4\u63A8\u8350\uFF08spline36 \u7F29\u653E + \u53BB\u566A\u5E26\uFF09"],
-        ["quality", "\u9AD8\u753B\u8D28", "gpu-next + EWA Lanczos \u9510\u5229\u7F29\u653E + \u5CF0\u503C\u68C0\u6D4B HDR \u6620\u5C04"]
-      ];
-      const paintRender = (cur) => {
-        for (const k of Object.keys(renderBtns)) {
-          const on = k === cur;
-          renderBtns[k].style.background = on ? "var(--fnos-ui-exit-on)" : "var(--fnos-ui-btn-bg2)";
-          renderBtns[k].style.color = on ? "#fff" : "var(--fnos-ui-btn-text)";
-          renderBtns[k].style.borderColor = on ? "transparent" : "var(--fnos-ui-border)";
-        }
-      };
-      for (const [k, label] of RENDER_PRESETS.map(([k2, l]) => [k2, l])) {
-        const b = document.createElement("button");
-        b.style.cssText = "flex:1;padding:8px 0;border:1px solid var(--fnos-ui-border);border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s ease;";
-        b.textContent = label;
-        renderBtns[k] = b;
-        renderSeg.appendChild(b);
-      }
-      renderBody.appendChild(renderSeg);
-      const renderDesc = document.createElement("div");
-      renderDesc.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sec);padding:6px 0 0;line-height:1.5;min-height:30px;";
-      renderBody.appendChild(renderDesc);
-      const renderHint = document.createElement("div");
-      renderHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sub);padding:6px 0 0;line-height:1.5;";
-      renderHint.textContent = t("\u6E32\u67D3\u7BA1\u7EBF(vo)\u53D8\u66F4\u9700\u91CD\u542F\u5E94\u7528\u540E\u751F\u6548\uFF1B\u753B\u8D28\u6863\u4F4D\u4EA6\u53EF\u88AB\u300C\u7740\u8272\u5668/ICC\u300D\u8BBE\u7F6E\u53E0\u52A0\u3002");
-      renderBody.appendChild(renderHint);
-      const DESCS = {};
-      for (const [k, , desc] of RENDER_PRESETS) DESCS[k] = desc;
-      const applyRender = (preset) => {
-        paintRender(preset);
-        renderDesc.textContent = DESCS[preset] || "";
-        ipcRenderer.invoke("mpv:set-render-preset", { preset }).then((r) => {
-          if (r && r.ok) renderDesc.textContent = (DESCS[preset] || "") + "\uFF08\u5DF2\u4FDD\u5B58\uFF0C\u91CD\u542F\u5E94\u7528\u540E\u5BF9\u6E32\u67D3\u7BA1\u7EBF\u751F\u6548\uFF09";
-        }).catch(() => {
-        });
-      };
-      for (const k of Object.keys(renderBtns)) {
-        renderBtns[k].addEventListener("click", (e) => {
-          e.stopPropagation();
-          applyRender(k);
-        });
-      }
-      ipcRenderer.invoke("mpv:get-render-preset").then((r) => {
-        const cur = r && r.preset || "balanced";
-        paintRender(cur);
-        const p = RENDER_PRESETS.find((x) => x[0] === cur);
-        renderDesc.textContent = p ? p[2] : "";
-      }).catch(() => {
-      });
-      secRender.el.id = "sec-render";
-      let _interpTimer = null;
-      const pushInterp = () => {
-        const payload = { enabled: interpEnabledToggle.checked, engine: engineSel.value, path: pathInput.value.trim() };
-        if (_interpTimer) clearTimeout(_interpTimer);
-        _interpTimer = setTimeout(() => {
-          ipcRenderer.invoke("settings:set-interp", payload).catch((err) => log6("set-interp failed", err));
-        }, 300);
-      };
-      interpEnabledToggle.addEventListener("change", pushInterp);
-      engineSel.addEventListener("change", pushInterp);
-      pathInput.addEventListener("input", pushInterp);
-      ipcRenderer.invoke("settings:get-interp").then((r) => {
-        if (!r) return;
-        interpEnabledToggle.checked = !!r.enabled;
-        engineSel.value = r.engine || "auto";
-        pathInput.value = r.path || "";
-      }).catch((err) => log6("get-interp failed", err));
       const secDiag = section("\u8BCA\u65AD\u4FE1\u606F");
       const diagBody = secDiag.body;
       const diagPre = document.createElement("pre");
@@ -15713,66 +14311,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       secBodyAppearance.style.cssText = "padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;";
       themeRow.style.cssText += "margin-bottom:6px;";
       secBodyAppearance.appendChild(themeRow);
-      const secSystem = section("\u7CFB\u7EDF\u684C\u9762");
-      const secBodySystem = secSystem.body;
-      secBodySystem.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
-      const sysDesc = document.createElement("div");
-      sysDesc.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;";
-      sysDesc.textContent = "\u300C\u5207\u6362\u7CFB\u7EDF\u9875\u9762\u300D\u4F1A\u8DF3\u5230\u98DE\u725B\u539F\u751F NAS \u7CFB\u7EDF\u684C\u9762\u3002\u6BCF\u4E2A\u4EBA\u7684\u7CFB\u7EDF Web \u7AEF\u53E3\u53EF\u80FD\u4E0D\u540C\uFF08\u9ED8\u8BA4 5666\uFF0C\u4F46\u90FD\u80FD\u6539\uFF09\uFF0C\u4E0D\u4E00\u5B9A\u548C\u5F71\u89C6\u5A92\u4F53\u7AEF\u53E3\u4E00\u81F4\u3002\u7559\u7A7A=\u81EA\u52A8\uFF08\u7528\u5F53\u524D\u5F71\u89C6\u8FDE\u63A5\u7684\u540C\u7AEF\u53E3\u6839\u8DEF\u5F84\uFF09\uFF1B\u82E5\u684C\u9762\u5728\u522B\u7684\u7AEF\u53E3\uFF0C\u8BF7\u586B\u5B8C\u6574\u5730\u5740\uFF0C\u5982 https://192.168.1.50:5666\u3002";
-      secBodySystem.appendChild(sysDesc);
-      const sysInput = document.createElement("input");
-      sysInput.type = "text";
-      sysInput.placeholder = "\u7559\u7A7A=\u81EA\u52A8\uFF1B\u6216\u586B\u7CFB\u7EDF\u684C\u9762\u5B8C\u6574\u5730\u5740\uFF0C\u5982 https://192.168.1.50:5666";
-      sysInput.style.cssText = "width:100%;height:32px;font-size:11px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;box-sizing:border-box;margin-bottom:8px;";
-      secBodySystem.appendChild(sysInput);
-      const sysBtns = document.createElement("div");
-      sysBtns.style.cssText = "display:flex;gap:6px;";
-      const sysSaveBtn = mkBtn("\u4FDD\u5B58", true);
-      const sysResetBtn = mkBtn("\u91CD\u7F6E\u4E3A\u81EA\u52A8", true);
-      sysBtns.appendChild(sysSaveBtn);
-      sysBtns.appendChild(sysResetBtn);
-      secBodySystem.appendChild(sysBtns);
-      const sysStatus = document.createElement("div");
-      sysStatus.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);margin-top:6px;min-height:14px;";
-      secBodySystem.appendChild(sysStatus);
-      sysSaveBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        try {
-          const val = sysInput.value.trim();
-          const r = await ipcRenderer.invoke("settings:set-system-page-url", val);
-          if (!r || r.ok !== false) {
-            sysStatus.textContent = val ? "\u5DF2\u4FDD\u5B58\uFF1A" + val : "\u5DF2\u8BBE\u4E3A\u81EA\u52A8\uFF08\u5F53\u524D\u5F71\u89C6\u8FDE\u63A5\u6839\u8DEF\u5F84\uFF09";
-            sysStatus.style.color = "var(--fnos-ui-ok)";
-          } else {
-            sysStatus.textContent = t("\u4FDD\u5B58\u5931\u8D25");
-            sysStatus.style.color = "var(--fnos-ui-warn)";
-          }
-        } catch {
-          sysStatus.textContent = t("\u4FDD\u5B58\u5931\u8D25");
-          sysStatus.style.color = "var(--fnos-ui-warn)";
-        }
-      });
-      sysResetBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        sysInput.value = "";
-        try {
-          const r = await ipcRenderer.invoke("settings:set-system-page-url", "");
-          if (!r || r.ok !== false) {
-            sysStatus.textContent = t("\u5DF2\u91CD\u7F6E\u4E3A\u81EA\u52A8\uFF08\u5F53\u524D\u5F71\u89C6\u8FDE\u63A5\u6839\u8DEF\u5F84\uFF09");
-            sysStatus.style.color = "var(--fnos-ui-ok)";
-          }
-        } catch {
-          sysStatus.textContent = t("\u91CD\u7F6E\u5931\u8D25");
-          sysStatus.style.color = "var(--fnos-ui-warn)";
-        }
-      });
-      (async () => {
-        try {
-          const g = await ipcRenderer.invoke("settings:get-system-page-url");
-          if (g && typeof g.url === "string") sysInput.value = g.url;
-        } catch {
-        }
-      })();
       const secCustomProxy = section("\u81EA\u5B9A\u4E49\u4EE3\u7406");
       const secBodyCustomProxy = secCustomProxy.body;
       secBodyCustomProxy.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
@@ -15926,30 +14464,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         } catch {
         }
       })();
-      const secCarousel = section("\u8F6E\u64AD\u56FE Logo");
-      const secBodyCarousel = secCarousel.body;
-      secBodyCarousel.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
-      const carouselLogoDesc = document.createElement("div");
-      carouselLogoDesc.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;";
-      carouselLogoDesc.textContent = t("\u5F00\u542F\u540E\uFF0C\u9996\u9875\u8F6E\u64AD\u56FE\u53F3\u4FA7\u7684\u6587\u5B57\u6807\u9898\u4F1A\u88AB\u66FF\u6362\u4E3A TMDB \u7684\u900F\u660E Logo \u56FE\uFF08\u4EC5\u5F53\u8BE5\u5267\u96C6\u5728 TMDB \u6709\u900F\u660E Logo \u65F6\uFF09\u3002\u5173\u95ED\u5219\u4FDD\u7559\u539F\u59CB\u6587\u5B57\u6807\u9898\u3002");
-      secBodyCarousel.appendChild(carouselLogoDesc);
-      const swLogo = document.createElement("input");
-      swLogo.type = "checkbox";
-      swLogo.style.cssText = "width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
-      const swLogoRow = document.createElement("label");
-      swLogoRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;cursor:pointer;border-radius:6px;";
-      const swLogoSpan = document.createElement("span");
-      swLogoSpan.textContent = t("\u8F6E\u64AD\u56FE\u6807\u9898\u66FF\u6362\u4E3A Logo");
-      swLogoSpan.style.cssText = "color:var(--fnos-ui-text);font-weight:500;";
-      swLogoRow.appendChild(swLogoSpan);
-      swLogoRow.appendChild(swLogo);
-      secBodyCarousel.appendChild(swLogoRow);
-      swLogo.checked = S.carouselLogoEnabled;
-      swLogo.addEventListener("change", () => {
-        S.carouselLogoEnabled = swLogo.checked;
-        ipcRenderer.invoke("settings:set-carousel-logo", swLogo.checked);
-        applyCarouselLogoNow();
-      });
       const cats = [
         { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secUX.el] },
         { id: "player", label: "\u64AD\u653E", els: [secSkip.el, secGamepad.el] },
@@ -16408,9 +14922,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           }
           swWheel.checked = !!s.wheelHScroll;
           S.wheelHScrollEnabled = !!s.wheelHScroll;
-          swLogo.checked = !!s.carouselLogoEnabled;
-          S.carouselLogoEnabled = !!s.carouselLogoEnabled;
-          log6("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked + " swLogo=" + swLogo.checked);
+          log6("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
         });
         seg2("players", () => {
           mpvPath.textContent = s.mpvPath || "\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09";
@@ -20893,188 +19405,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     window.setInterval(tick, 2e3);
     tick();
   });
-
-  // src/preload/plugins/titlebar.ts
-  init_electron();
-  var LOGO_DATA_URI = "";
-  try {
-    const logoBuf = readFileSync(resolve(__dirname, "../../../build/iconfntv.png"));
-    LOGO_DATA_URI = `data:image/png;base64,${logoBuf.toString("base64")}`;
-    registerDefaultLogo(LOGO_DATA_URI);
-    logger_default.info(`Logo loaded: ${Math.round(logoBuf.length / 1024)}KB`);
-  } catch (e) {
-    logger_default.error("Failed to load local logo file", String(e));
-  }
-  function injectTitleBar() {
-    var _a, _b, _c, _d, _e, _f;
-    logger_default.info("Injecting custom title bar...");
-    if (document.getElementById("custom-titlebar")) return;
-    const nativePage = !isFntvTvPage();
-    const minSvg = '<svg width="10" height="1.5" viewBox="0 0 10 1.5" fill="none"><rect width="10" height="1.5" rx="0.75" fill="currentColor"/></svg>';
-    const maxSvg = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1"/></svg>';
-    const closeSvg = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
-    if (nativePage) {
-      const floatBar = document.createElement("div");
-      floatBar.id = "custom-titlebar";
-      floatBar.style.cssText = "position:fixed;top:8px;right:8px;z-index:999999;display:flex;gap:2px;pointer-events:auto;-webkit-app-region:no-drag;app-region:no-drag;";
-      const dragRegion = document.createElement("div");
-      dragRegion.id = "fntv-native-drag";
-      dragRegion.style.cssText = "position:fixed;top:0;left:0;width:100%;height:36px;z-index:999998;-webkit-app-region:drag;app-region:drag;pointer-events:auto;";
-      document.body.appendChild(dragRegion);
-      const noCornerStyle = document.createElement("style");
-      noCornerStyle.id = "fntv-native-nocorner";
-      noCornerStyle.textContent = `
-      html:not(.fnos-tv-page){border-radius:0!important;clip-path:none!important;-webkit-clip-path:none!important;}
-      html:not(.fnos-tv-page) body{border-radius:0!important;}
-      /* [lc-377/lc-379] \u539F\u751F\u9875\u6D88\u9664 body \u767D\u8272\u4E9A\u514B\u529B\u80CC\u666F\u9732\u767D(\u9876\u90E8/\u5E95\u90E8\u767D\u8FB9\u540C\u4E00\u6839\u56E0):
-         \u4E3B\u8FDB\u7A0B ACRYLIC_CSS \u7ED9 body \u8BBE\u4E86 background:rgba(250,244,250,.68)+backdrop-filter \u505A TV \u9875\u4E9A\u514B\u529B,
-         \u4F46\u539F\u751F fnOS \u684C\u9762\u81EA\u5E26\u4E0D\u900F\u660E\u80CC\u666F; body \u767D\u5E95\u4F1A\u5728\u5185\u5BB9\u6CA1\u6491\u6EE1\u89C6\u53E3\u65F6\u4E8E\u9876/\u5E95\u95F4\u9699\u9732\u51FA\u767D\u8FB9\u3002
-         \u539F\u751F\u9875\u5C06 body \u80CC\u666F/\u6A21\u7CCA\u5168\u90E8\u900F\u660E\u5316, \u8BA9 fnOS \u684C\u9762\u81EA\u8EAB\u80CC\u666F\u900F\u51FA \u2192 \u4E0A\u4E0B\u767D\u8FB9\u4E00\u5E76\u6D88\u9664\u3002
-         [lc-1094] \u6539\u7528\u6837\u5F0F\u8868\u800C\u975E body \u884C\u5185 !important: \u884C\u5185\u4F18\u5148\u7EA7\u9AD8\u4E8E\u4E00\u5207\u4F5C\u8005\u6837\u5F0F\u8868, \u800C TV \u9875\u7684
-         \u73AF\u5883\u5149\u5E95\u5EA7(glassUI \u2460c)\u6B63\u662F\u753B\u5728 body \u80CC\u666F\u4E0A\u7684 !important \u89C4\u5219 \u2014\u2014 \u65E7\u5199\u6CD5\u5728 SPA \u8FDB /v \u540E
-         \u65E0\u4EBA\u6E05\u9664, \u76F4\u63A5\u628A\u5E95\u5EA7\u62B9\u6210\u900F\u660E \u2192 \u6574\u7A97\u900F\u51FA\u684C\u9762(\u7528\u6237\u62A5\u969C\u300C\u5F00\u673A\u5E95\u8272\u5168\u900F, \u624B\u52A8\u5F3A\u5237\u624D\u597D\u300D)\u3002
-         \u6587\u6863\u5185\u6837\u5F0F\u8868\u8DB3\u4EE5\u538B\u8FC7\u4E3B\u8FDB\u7A0B insertCSS \u6CE8\u5165\u7684 ACRYLIC(\u5B9E\u6D4B\u4F5C\u8005\u6837\u5F0F\u8868 > injected \u6837\u5F0F\u8868)\u3002 */
-      html:not(.fnos-tv-page) body{
-        padding-top:0!important;
-        background:transparent!important;
-        background-color:transparent!important;
-        backdrop-filter:none!important;
-        -webkit-backdrop-filter:none!important;
-      }
-    `;
-      document.head.appendChild(noCornerStyle);
-      const btnCss = "background:rgba(30,30,34,.72);border:1px solid rgba(255,255,255,.18);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#ddd;transition:background .15s,color .15s;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);";
-      const makeBtn2 = (id, svg, hoverBg) => {
-        const b = document.createElement("button");
-        b.id = id;
-        b.type = "button";
-        b.innerHTML = svg;
-        b.style.cssText = btnCss;
-        b.addEventListener("mouseenter", function() {
-          b.style.background = hoverBg;
-          b.style.color = "#fff";
-        });
-        b.addEventListener("mouseleave", function() {
-          b.style.background = "rgba(30,30,34,.72)";
-          b.style.color = "#ddd";
-        });
-        return b;
-      };
-      floatBar.appendChild(makeBtn2("min-btn", minSvg, "rgba(255,255,255,.18)"));
-      floatBar.appendChild(makeBtn2("max-btn", maxSvg, "rgba(255,255,255,.18)"));
-      floatBar.appendChild(makeBtn2("close-btn", closeSvg, "rgba(232,17,35,.82)"));
-      document.body.appendChild(floatBar);
-      (_a = document.getElementById("min-btn")) == null ? void 0 : _a.addEventListener("click", function() {
-        ipcRenderer.send("window-minimize");
-      });
-      (_b = document.getElementById("max-btn")) == null ? void 0 : _b.addEventListener("click", function() {
-        ipcRenderer.send("window-maximize");
-      });
-      (_c = document.getElementById("close-btn")) == null ? void 0 : _c.addEventListener("click", function() {
-        ipcRenderer.send("window-close");
-      });
-      logger_default.info("Native page: floating window controls injected");
-      return;
-    }
-    const bar2 = document.createElement("div");
-    bar2.id = "custom-titlebar";
-    bar2.dataset.fntvTb = "bar";
-    bar2.style.cssText = `height:32px;width:100%;position:fixed;top:0;left:0;z-index:99999;pointer-events:auto;
-    -webkit-app-region:drag;app-region:drag;
-    border-top-left-radius:16px;border-top-right-radius:16px;`;
-    const ctrls = document.createElement("div");
-    ctrls.style.cssText = "position:absolute;top:0;right:0;height:32px;display:flex;align-items:center;pointer-events:auto;-webkit-app-region:no-drag;app-region:no-drag;padding-right:4px;gap:2px";
-    const tvBtnIds = ["min-btn", "max-btn", "close-btn"];
-    const tvBtnSvgs = [minSvg, maxSvg, closeSvg];
-    tvBtnIds.forEach(function(id, i) {
-      const btn = document.createElement("button");
-      btn.id = id;
-      btn.type = "button";
-      btn.innerHTML = tvBtnSvgs[i];
-      ctrls.appendChild(btn);
-    });
-    bar2.appendChild(ctrls);
-    document.body.appendChild(bar2);
-    const tbStyle = document.createElement("style");
-    tbStyle.id = "fntv-titlebar-css";
-    tbStyle.textContent = `
-#custom-titlebar[data-fntv-tb] button{
-  background:transparent;border:none;width:46px;height:32px;padding:0;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;
-  transition:background-color .12s ease,color .12s ease;
-  color:var(--fnos-titlebar-icon,#444);
-}
-#custom-titlebar[data-fntv-tb] button:hover{
-  background:var(--fnos-titlebar-hover-minmax,rgba(0,0,0,.05));
-}
-#custom-titlebar[data-fntv-tb] #close-btn:hover{
-  background:var(--fnos-titlebar-hover-close-bg,rgba(232,17,35,.10));
-  color:var(--fnos-titlebar-hover-close-icon,#e81123);
-}
-`;
-    (document.head || document.documentElement).appendChild(tbStyle);
-    (_d = document.getElementById("min-btn")) == null ? void 0 : _d.addEventListener("click", function() {
-      ipcRenderer.send("window-minimize");
-    });
-    (_e = document.getElementById("max-btn")) == null ? void 0 : _e.addEventListener("click", function() {
-      ipcRenderer.send("window-maximize");
-    });
-    (_f = document.getElementById("close-btn")) == null ? void 0 : _f.addEventListener("click", function() {
-      ipcRenderer.send("window-close");
-    });
-    if (isFntvTvPage() && LOGO_DATA_URI && !document.getElementById("tb-logo")) {
-      const logoImg = document.createElement("img");
-      logoImg.id = "tb-logo";
-      logoImg.alt = "\u98DE\u725B\u5F71\u89C6";
-      logoImg.src = resolveLogoSrc() || LOGO_DATA_URI;
-      logoImg.draggable = false;
-      const pinLogo = function() {
-        logoImg.style.cssText = "height:30px;width:auto;object-fit:contain;display:block;position:fixed;top:72px;left:50%;transform:translate(-50%,-50%);z-index:99998;opacity:.96;pointer-events:none";
-      };
-      pinLogo();
-      document.body.appendChild(logoImg);
-      logger_default.info("Logo injected (pinned to body, fixed centered)");
-      const isHomePage2 = function() {
-        const href = location.href.toLowerCase();
-        const pt = (location.pathname || "/").toLowerCase();
-        if (/\/v\/(tv|movie|anime|cartoon|documentary|variety|show)/.test(href)) return false;
-        if (/\/play($|\/|#)/.test(href) || /\/watch($|\/|#)/.test(href)) return false;
-        if (/\/search/.test(href)) return false;
-        if (/\/(library|category|genre|channel|list|rank|ranking)/.test(href)) return false;
-        if (/\/(mine|my|user|account|setting|settings|favorite|favourite|history|collection|subscribe)/.test(href)) return false;
-        const segs = pt.split("/").filter(Boolean);
-        const home = segs.length <= 1;
-        return home;
-      };
-      const updateLogoVisibility = function() {
-        logoImg.style.visibility = isHomePage2() ? "visible" : "hidden";
-      };
-      updateLogoVisibility();
-      setInterval(function() {
-        if (!document.getElementById("tb-logo") && document.body) {
-          pinLogo();
-          document.body.appendChild(logoImg);
-        }
-        updateLogoVisibility();
-      }, 4e3);
-      try {
-        const _ps2 = history.pushState, _rs2 = history.replaceState;
-        history.pushState = function(...a) {
-          _ps2.apply(this, a);
-          updateLogoVisibility();
-        };
-        history.replaceState = function(...a) {
-          _rs2.apply(this, a);
-          updateLogoVisibility();
-        };
-        window.addEventListener("popstate", updateLogoVisibility);
-        window.addEventListener("hashchange", updateLogoVisibility);
-      } catch (e) {
-        logger_default.error("logo nav hook err", String(e).substring(0, 60));
-      }
-    }
-  }
-  registerHook("onReady" /* OnReady */, injectTitleBar);
 
   // src/preload/plugins/watchHistory.ts
   init_electron();

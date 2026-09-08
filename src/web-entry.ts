@@ -16,13 +16,14 @@ installDiag();
 
 // [v0.30.0] 全插件挂载：与桌面版 preload 对齐（桌面是动态 require plugins 目录全部插件）。
 //  新增插件文件后需在此同步补一行 import（esbuild 静态打包不支持目录扫描）。
+//  [v0.31.0] 例外：titlebar（Win11 窗口控制浮条）与 dialogUI（主进程对话框系统）为桌面专用，
+//  网页端无 IPC 支撑且会注入可见残留 → 不挂载。
 import './preload/plugins/a11y';
 import './preload/plugins/animeLib';
 import './preload/plugins/autoplayNext';
 import './preload/plugins/customLogo';
 import './preload/plugins/danmakuHeat';
 import './preload/plugins/danmakuWeb';
-import './preload/plugins/dialogUI';
 import './preload/plugins/embyWall';
 import './preload/plugins/gamepad';
 import './preload/plugins/gamepadFocus';
@@ -37,7 +38,6 @@ import './preload/plugins/playMaskButton';
 import './preload/plugins/playMemory';
 import './preload/plugins/previewThumb';
 import './preload/plugins/skipInject';
-import './preload/plugins/titlebar';
 import './preload/plugins/watchHistory';
 import './preload/plugins/watchReport';
 import './preload/plugins/watchedSync';
