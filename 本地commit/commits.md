@@ -36,3 +36,4 @@
 | lc-024 | 2026-09-08 | v0.14.0 实时日志「自动刷新」开关改胶囊样式（原生 checkbox 深色主题显示异常→track+knob 自绘，与面板开关统一） |
 | lc-025 | 2026-09-08 | v0.15.0 设置面板重排：8类→6类（外观=主题+界面交互；播放=片头片尾+手柄；弹幕；账号与网络合并；诊断与日志；关于），界面与浏览卡更名界面交互 |
 | lc-026 | 2026-09-08 | v0.16.0 账号与网络全面移植：internal/bridge 包（fnOS 签名桥/白名单外代理/TMDB 图+logo+详情/Trakt 凭证+设备授权+scrobble+sync/Bangumi 日历/豆瓣状态占位）；config Extra 平铺任意键（自定义 Marshal/Unmarshal）；settings API GetMap；shim 全通道映射（settings 服务端持久化+trakt 9 通道+tmdb 3 通道+bangumi/douban）。待续：豆瓣评分增强/Bangumi 同步核心/Trakt 搜索匹配细化 |
+| lc-027 | 2026-09-08 | v0.17.0 移植收尾：douban/watched（全库钻取进度分析，桌面同形状）、douban/enrich（TMDB 分类/评分+豆瓣评分尽力抓）、bangumi/sync-progress（搜条目→标集/条目）；修 douban/status 路由误删；shim 对应三通道映射 |
