@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,10 +22,11 @@ import (
 
 // Info 是状态/日志 API 所需的运行时信息（由 cmd 装配层注入）。
 type Info struct {
-	Version  string // 应用版本（与 manifest version 保持一致）
-	VarDir   string // TRIM_PKGVAR，运行时目录（fntvplus.log 所在）
-	Upstream string // 回环上游地址（如 http://127.0.0.1:5666）
-	Injector *inject.Injector
+	Version   string    // 应用版本（与 manifest version 保持一致）
+	VarDir    string    // TRIM_PKGVAR，运行时目录（fntvplus.log 所在）
+	Upstream  string    // 回环上游地址（如 http://127.0.0.1:5666）
+	Injector  *inject.Injector
+	StartTime time.Time // 进程启动时刻：日志 API 只显示该时刻之后的行（当前版本会话）
 }
 
 // SettingsAPI 处理 GET（读配置）/ POST（改配置）。
@@ -82,7 +84,8 @@ func StatusAPI(cfg *config.Config, info Info) http.HandlerFunc {
 }
 
 // LogsAPI 返回日志尾部（?lines=N，默认 300，最大 2000；?src=backend|web|all，默认 all）。
-// all = 后端日志 + 前端(client.log)日志，两段分别标注。
+// [v0.54.0] 后端日志只显示本次启动（当前版本）之后的行——按 Info.StartTime 过滤，
+// 历史版本启动段（跨版本追加的 fntvplus.log）不再出现。
 func LogsAPI(info Info) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		lines := 300
@@ -101,8 +104,10 @@ func LogsAPI(info Info) http.HandlerFunc {
 
 		var sb strings.Builder
 		if src == "backend" || src == "all" {
-			sb.WriteString("===== 后端日志 =====\n")
-			sb.WriteString(tailStr(filepath.Join(info.VarDir, "fntvplus.log"), lines))
+			if src == "all" {
+				sb.WriteString("===== 后端日志 =====\n")
+			}
+			sb.WriteString(tailStrSince(filepath.Join(info.VarDir, "fntvplus.log"), lines, info.StartTime))
 			sb.WriteString("\n")
 		}
 		if src == "web" || src == "all" {
@@ -130,6 +135,58 @@ func tailStr(path string, lines int) string {
 		all = all[len(all)-lines:]
 	}
 	return strings.Join(all, "\n")
+}
+
+// fntvplus.log 行首时间戳的两种写法：Go log 标准前缀（2026/09/08 00:45:23）与
+// cmd/main 启动脚本 date +"%F %T"（2026-09-08 00:58:57）。
+var (
+	reLogTS1 = regexp.MustCompile(`^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})`)
+	reLogTS2 = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})`)
+)
+
+// parseLogTS 解析行首时间戳（两种格式都试）；解析失败返回零值。
+func parseLogTS(line string) time.Time {
+	m := reLogTS1.FindStringSubmatch(line)
+	if m == nil {
+		m = reLogTS2.FindStringSubmatch(line)
+	}
+	if m == nil {
+		return time.Time{}
+	}
+	for _, layout := range []string{"2006/01/02 15:04:05", "2006-01-02 15:04:05"} {
+		if t, err := time.ParseInLocation(layout, m[1], time.Local); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
+// tailStrSince 读文件末尾 maxBytes，只保留「本次启动时刻之后」的日志行：
+// 有时间戳的行与 StartTime 比较切换归属；无时间戳的行（多行堆栈等）跟随前一行归属，
+// 在遇到首个达标时间戳之前的残留尾行（旧版本内容被 512KB 截断进来的）一律丢弃。
+func tailStrSince(path string, lines int, start time.Time) string {
+	data, err := tailFile(path, 512*1024)
+	if err != nil {
+		return "(暂无日志: " + err.Error() + ")"
+	}
+	all := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	kept := make([]string, 0, len(all))
+	inRange := start.IsZero() // 零值不过滤（兼容）
+	for _, ln := range all {
+		if ts := parseLogTS(ln); !ts.IsZero() {
+			inRange = !ts.Before(start)
+		}
+		if inRange {
+			kept = append(kept, ln)
+		}
+	}
+	if len(kept) > lines {
+		kept = kept[len(kept)-lines:]
+	}
+	if len(kept) == 0 {
+		return "(本次启动暂无日志)"
+	}
+	return strings.Join(kept, "\n")
 }
 
 // ClientLogAPI 接收 payload 回传的前端诊断日志（POST 纯文本，按行落 client.log）。
@@ -272,11 +329,14 @@ const adminHTML = `<!doctype html>
   <div class="card">
     <div class="row">
       <b style="font-size:14px">实时日志</b>
+      <button id="tabBackend" class="on">后端日志</button>
+      <button id="tabWeb">前端日志</button>
       <select id="lines"><option>100</option><option selected>300</option><option>1000</option></select>
       <label style="gap:4px"><input type="checkbox" id="auto" checked> 自动刷新</label>
       <button id="refresh">刷新</button>
-      <span style="font-size:12px;color:#888">含前端回传：轮播墙问题看 [EmbyWall][CAROUSEL] 与 [error] 行</span>
+      <button id="copy">复制</button>
     </div>
+    <div class="hint">仅显示本次启动（当前版本）的日志 · 每次刷新自动滚动到底部 · 后端=反代/桥接/同步，前端=payload console 回传（轮播墙问题看 [EmbyWall][CAROUSEL] 与 [error] 行）</div>
     <pre id="log">加载中…</pre>
   </div>
 
@@ -328,15 +388,42 @@ const adminHTML = `<!doctype html>
       setTimeout(() => { $('#ups').textContent = '保存'; }, 1500);
     });
 
+    let logSrc = 'backend';
     async function loadLogs() {
       try {
-        const t = await (await fetch(API + '/logs?lines=' + $('#lines').value)).text();
+        const t = await (await fetch(API + '/logs?lines=' + $('#lines').value + '&src=' + logSrc)).text();
         const pre = $('#log');
-        const stick = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
         pre.textContent = t;
-        if (stick) pre.scrollTop = pre.scrollHeight;
+        pre.scrollTop = pre.scrollHeight; // [v0.54.0] 每次刷新都自动滚动到底部
       } catch (e) { $('#log').textContent = '日志读取失败: ' + e; }
     }
+    function setLogTab(src) {
+      logSrc = src;
+      $('#tabBackend').classList.toggle('on', src === 'backend');
+      $('#tabWeb').classList.toggle('on', src === 'web');
+      loadLogs();
+    }
+    $('#tabBackend').addEventListener('click', () => setLogTab('backend'));
+    $('#tabWeb').addEventListener('click', () => setLogTab('web'));
+    $('#copy').addEventListener('click', async () => {
+      const btn = $('#copy');
+      const text = $('#log').textContent || '';
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '已复制 ✓';
+      } catch (e) {
+        // 非安全上下文（http://IP）下 clipboard API 不可用 → 选中文本走 execCommand 兜底
+        try {
+          const range = document.createRange();
+          range.selectNodeContents($('#log'));
+          const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+          const ok = document.execCommand('copy');
+          sel.removeAllRanges();
+          btn.textContent = ok ? '已复制 ✓' : '复制失败';
+        } catch (e2) { btn.textContent = '复制失败'; }
+      }
+      setTimeout(() => { btn.textContent = '复制'; }, 1500);
+    });
 
     $('#refresh').addEventListener('click', () => { loadStatus(); loadLogs(); });
     $('#lines').addEventListener('change', loadLogs);

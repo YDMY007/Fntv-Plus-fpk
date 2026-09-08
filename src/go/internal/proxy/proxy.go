@@ -59,10 +59,11 @@ func NewServer(d Deps) *Server {
 
 	// 2) 管理页 + 设置/状态/日志 API。
 	info := admin.Info{
-		Version:  d.Version,
-		VarDir:   d.VarDir,
-		Upstream: d.Upstream.String(),
-		Injector: d.Injector,
+		Version:   d.Version,
+		VarDir:    d.VarDir,
+		Upstream:  d.Upstream.String(),
+		Injector:  d.Injector,
+		StartTime: time.Now(), // 日志 API 只显示本次启动之后的行
 	}
 	s.mux.HandleFunc("/app/fntvplus/admin", admin.Page(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/admin/", admin.Page(d.Config))
