@@ -53,3 +53,4 @@
 | lc-042 | 2026-09-08 | v0.31.0 网页端用不到的全删：titlebar/dialogUI 插件不挂载；embyWall 删孤儿卡构建代码约 1150 行（更新/补丁/解锁/历史版本/播放器/退出/语言/插帧/渲染/系统桌面/轮播Logo/网络与代理）；shim 同步清理 |
 | lc-043 | 2026-09-08 | v0.32.0 shim 清理已死通道 no-op 分支（window-*/fnos-dialog 等无调用方） |
 | lc-044 | 2026-09-08 | v0.33.0 B站扫码登录+两测试移植：bili/qr-generate+qr-poll（cookie 持久化，状态码映射同桌面）+status/manual/clear+qr-lib 内嵌直出；danmu/test（试搜校验）；proxy/test（http 代理拉 bgm.tv，socks5 不支持提示）。E2E 真实拿到 B站 QR key/url |
+| lc-045 | 2026-09-08 | v0.34.0 修全插件挂载页面变原生：banner 挂 window.require/__dirname 兜底 + ipcRenderer.off 补全 + diag 最先自动装钩子（模块错误可定位）。本地冒烟全绿 |
