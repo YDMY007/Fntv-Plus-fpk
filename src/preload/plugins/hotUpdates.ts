@@ -459,7 +459,9 @@ function hydratePosters(root: HTMLElement): void {
       const timeout = new Promise<any>((resolve) => setTimeout(() => resolve(null), 8000));
       Promise.race([req, timeout]).then((r: any) => {
         if (r && r.ok && r.dataUrl) { _posterCache.set(url, r.dataUrl); el.src = r.dataUrl; }
-      }).catch(() => { /* 加载失败则留空 */ }).finally(worker);
+        // [v0.64.0] 代理失败降级直链：bgm.tv 国内可直连（无防盗链），TMDB 直链本就被墙、失败保持留空
+        else if (isDouban ? true : /bgm\.tv/i.test(url)) { el.src = url; }
+      }).catch(() => { if (/bgm\.tv/i.test(url)) el.src = url; }).finally(worker);
       return; // 本次 worker 仅发起一个请求, 由 finally 链式推进(并发上限=CONCURRENCY)
     }
   };

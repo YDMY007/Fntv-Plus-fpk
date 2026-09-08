@@ -287,8 +287,16 @@ func (b *Bridge) handleProxy(w http.ResponseWriter, r *http.Request) {
 func (b *Bridge) handleTMDBImage(w http.ResponseWriter, r *http.Request) {
 	raw := r.URL.Query().Get("url")
 	u, err := url.Parse(raw)
-	if err != nil || u.Hostname() != "image.tmdb.org" || !strings.HasPrefix(u.Path, "/t/p/") {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "仅支持 image.tmdb.org/t/p/ 路径"})
+	if err != nil || u.Host == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "缺少图片地址"})
+		return
+	}
+	// [v0.64.0] 放行为通用图片代理：image.tmdb.org（/t/p/ 路径）+ bgm.tv 系（每日放送
+	// Bangumi 源海报 lainpic.bgm.tv 也经此通道，此前被域名白名单 400 拒 → Bangumi 无图）。
+	host := u.Hostname()
+	allowed := host == "image.tmdb.org" || strings.HasSuffix(host, "bgm.tv")
+	if !allowed || (host == "image.tmdb.org" && !strings.HasPrefix(u.Path, "/t/p/")) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "仅支持 image.tmdb.org/t/p/ 与 bgm.tv 图片"})
 		return
 	}
 	// [v0.63.0] 多路尝试：自定义代理 → 免梯子直连 IP → 系统直连，任一成功即返回。
@@ -308,7 +316,9 @@ func (b *Bridge) handleTMDBImage(w http.ResponseWriter, r *http.Request) {
 	attempts = append(attempts, imgAttempt{b.client, "系统直连"})
 	var lastErr error
 	for _, a := range attempts {
-		resp, err := a.c.Get(raw)
+		req, _ := http.NewRequest(http.MethodGet, raw, nil)
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36")
+		resp, err := a.c.Do(req)
 		if err != nil {
 			lastErr = fmt.Errorf("%s：%v", a.via, err)
 			continue

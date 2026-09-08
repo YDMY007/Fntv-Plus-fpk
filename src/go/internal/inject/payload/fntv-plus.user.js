@@ -5078,8 +5078,11 @@ html.fnos-perf.dark{
           if (r && r.ok && r.dataUrl) {
             _posterCache.set(url, r.dataUrl);
             el.src = r.dataUrl;
+          } else if (isDouban ? true : /bgm\.tv/i.test(url)) {
+            el.src = url;
           }
         }).catch(() => {
+          if (/bgm\.tv/i.test(url)) el.src = url;
         }).finally(worker);
         return;
       }
