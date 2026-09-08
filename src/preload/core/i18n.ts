@@ -280,7 +280,7 @@ const EN: Record<string, string> = {
     '🔗 GitHub 项目地址': '🔗 GitHub project',
     '已重置为自动（当前影视连接根路径）': 'Reset to auto (current TV connection root)',
     '重置失败': 'Reset failed',
-    '为 Bangumi 每日放送、TMDB（影视发现/海报）等数据源指定代理入口。支持 HTTP / HTTPS / SOCKS5，可填账号密码鉴权。优先级低于环境变量 HTTPS_PROXY（已设环境变量则它先生效）。开启开关并填写地址后才生效。': 'Proxy endpoint for Bangumi daily / TMDB (discovery / posters) sources. HTTP / HTTPS / SOCKS5 with optional auth. Lower priority than the HTTPS_PROXY env var. Takes effect after enabling and filling the address.',
+    '为 Bangumi 每日放送、TMDB（影视发现/海报）等数据源指定代理入口。支持 HTTP / HTTPS，可填账号密码鉴权。优先级低于环境变量 HTTPS_PROXY（已设环境变量则它先生效）。开启开关并填写地址后才生效。': 'Proxy endpoint for Bangumi daily / TMDB (discovery / posters) sources. HTTP / HTTPS with optional auth. Lower priority than the HTTPS_PROXY env var. Takes effect after enabling and filling the address.',
     '主机:端口，如 127.0.0.1:7890': 'host:port, e.g. 127.0.0.1:7890',
     '账号（可选）': 'Username (optional)',
     '密码（可选）': 'Password (optional)',

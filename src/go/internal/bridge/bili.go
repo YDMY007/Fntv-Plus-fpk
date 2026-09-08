@@ -297,8 +297,10 @@ func (b *Bridge) danmuTest(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": fmt.Sprintf("连通正常（试搜「测试」返回 %d 条结果）", len(j.Animes))})
 }
 
-// proxyTest POST {proxyUrl} → 经代理拉 https://api.bgm.tv/calendar 测连通（桌面版同款目标）。
-// 仅支持 http(s) 代理（socks5 需第三方库，给出明确提示）。
+// proxyTest POST {proxyUrl} → 经代理访问真实数据源，验证代理是否可用。
+// 自定义代理主要用于 TMDB（影视发现/海报，国内常需翻墙）与 Bangumi 每日放送；
+// 依次尝试多个目标，任一能连通即视为代理有效，返回命中目标与目标延迟。
+// 仅支持 http(s) 代理（socks5 需第三方库，已在 UI 层移除该选项）。
 func (b *Bridge) proxyTest(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ProxyURL string `json:"proxyUrl"`
@@ -311,22 +313,39 @@ func (b *Bridge) proxyTest(w http.ResponseWriter, r *http.Request) {
 	}
 	pu, err := url.Parse(raw)
 	if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Host == "" {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "地址格式不合法（须 http(s):// 开头，且含主机:端口；socks5 暂不支持测试）"})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "地址格式不合法（须 http(s):// 开头，且含主机:端口）"})
 		return
 	}
-	client := &http.Client{
-		Timeout:   12 * time.Second,
-		Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
+	// 代理真正要服务的目标：TMDB（主，常需翻墙）+ Bangumi（次，国内可直连作基准）
+	targets := []struct {
+		name string
+		url  string
+	}{
+		{"TMDB", "https://api.themoviedb.org/3/trending/all/day"},
+		{"Bangumi", "https://api.bgm.tv/calendar"},
 	}
-	start := time.Now()
-	resp, err := client.Get("https://api.bgm.tv/calendar")
-	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "经代理访问失败：" + err.Error()})
+	tr := &http.Transport{Proxy: http.ProxyURL(pu)}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: tr}
+	for _, t := range targets {
+		start := time.Now()
+		resp, e := client.Get(t.url)
+		latency := time.Since(start).Milliseconds()
+		if e != nil {
+			continue // 该目标失败，尝试下一个
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode < 500 {
+			info := fmt.Sprintf("经代理访问 %s 成功（延迟 %dms，HTTP %d）", t.name, latency, resp.StatusCode)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"ok": true, "status": resp.StatusCode, "latencyMs": latency, "target": t.name, "info": info,
+			})
+			return
+		}
+		info := fmt.Sprintf("经代理可连通 %s，但返回 HTTP %d", t.name, resp.StatusCode)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": false, "status": resp.StatusCode, "latencyMs": latency, "target": t.name, "info": info,
+		})
 		return
 	}
-	defer resp.Body.Close()
-	latency := time.Since(start).Milliseconds()
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok": resp.StatusCode < 500, "status": resp.StatusCode, "latencyMs": latency,
-	})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "经代理访问 TMDB / Bangumi 均失败（检查代理地址、端口及可用性）"})
 }

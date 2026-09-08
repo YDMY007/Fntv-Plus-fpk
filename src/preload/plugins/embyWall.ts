@@ -2931,7 +2931,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
     const cpDesc = document.createElement('div');
     cpDesc.style.cssText = 'font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;';
-    cpDesc.textContent = t('为 Bangumi 每日放送、TMDB（影视发现/海报）等数据源指定代理入口。支持 HTTP / HTTPS / SOCKS5，可填账号密码鉴权。优先级低于环境变量 HTTPS_PROXY（已设环境变量则它先生效）。开启开关并填写地址后才生效。');
+    cpDesc.textContent = t('为 Bangumi 每日放送、TMDB（影视发现/海报）等数据源指定代理入口。支持 HTTP / HTTPS，可填账号密码鉴权。优先级低于环境变量 HTTPS_PROXY（已设环境变量则它先生效）。开启开关并填写地址后才生效。');
     secBodyCustomProxy.appendChild(cpDesc);
 
     // 开关行（整行可点）
@@ -2951,7 +2951,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     cpRow1.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;';
     const cpType = document.createElement('select');
     cpType.style.cssText = 'height:32px;font-size:11px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:4px 6px;box-sizing:border-box;';
-    const cpTypeOpts: [string, string][] = [['https', 'HTTPS'], ['http', 'HTTP'], ['socks5', 'SOCKS5']];
+    const cpTypeOpts: [string, string][] = [['https', 'HTTPS'], ['http', 'HTTP']];
     cpTypeOpts.forEach(([v, t]) => {
       const o = document.createElement('option');
       o.value = v; o.textContent = t;
@@ -2991,6 +2991,21 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       return type + '://' + auth + addr;
     }
 
+    // 本地预校验主机:端口（端口 1-65535），保存/测试前即时反馈，不必等后端往返
+    function validateCpAddr(): string | null {
+      const a = cpAddr.value.trim();
+      if (!a) return '请填写主机:端口';
+      const i = a.lastIndexOf(':');
+      if (i < 0) return '缺少端口（格式：主机:端口）';
+      const host = a.slice(0, i).trim();
+      const portStr = a.slice(i + 1).trim();
+      if (!host) return '主机不能为空';
+      if (!/^\d+$/.test(portStr)) return '端口须为数字';
+      const port = Number(portStr);
+      if (port < 1 || port > 65535) return '端口须为 1-65535';
+      return null;
+    }
+
     const cpBtns = document.createElement('div');
     cpBtns.style.cssText = 'display:flex;gap:6px;';
     const cpSaveBtn = mkBtn('保存', true);
@@ -3014,6 +3029,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       e.stopPropagation();
       try {
         const url = buildCpUrl();
+        const addrErr = validateCpAddr();
+        if (addrErr) { cpSetStatus(addrErr, false); return; }
         if (cpToggle.checked && !url) {
           cpSetStatus('已启用但未填写主机:端口（不生效）', false);
           return;
@@ -3027,6 +3044,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
     cpTestBtn.addEventListener('click', async (e: Event) => {
       e.stopPropagation();
+      const addrErr = validateCpAddr();
+      if (addrErr) { cpSetStatus(addrErr, false); return; }
       const url = buildCpUrl();
       if (!url) { cpSetStatus('请先填写主机:端口', false); return; }
       cpSetStatus('测试中…', null);
@@ -3069,7 +3088,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
             const m = rest.match(/^([a-zA-Z0-9]+):\/\/(.*)$/);
             if (m) {
               const scheme = m[1].toLowerCase();
-              cpType.value = scheme.indexOf('socks') === 0 ? 'socks5' : (scheme === 'http' ? 'http' : 'https');
+              cpType.value = scheme === 'http' ? 'http' : 'https';
               rest = m[2];
             }
             const am = rest.match(/^([^@]+)@(.+)$/);

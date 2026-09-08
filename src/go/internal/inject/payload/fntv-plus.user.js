@@ -934,7 +934,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     "\u{1F517} GitHub \u9879\u76EE\u5730\u5740": "\u{1F517} GitHub project",
     "\u5DF2\u91CD\u7F6E\u4E3A\u81EA\u52A8\uFF08\u5F53\u524D\u5F71\u89C6\u8FDE\u63A5\u6839\u8DEF\u5F84\uFF09": "Reset to auto (current TV connection root)",
     "\u91CD\u7F6E\u5931\u8D25": "Reset failed",
-    "\u4E3A Bangumi \u6BCF\u65E5\u653E\u9001\u3001TMDB\uFF08\u5F71\u89C6\u53D1\u73B0/\u6D77\u62A5\uFF09\u7B49\u6570\u636E\u6E90\u6307\u5B9A\u4EE3\u7406\u5165\u53E3\u3002\u652F\u6301 HTTP / HTTPS / SOCKS5\uFF0C\u53EF\u586B\u8D26\u53F7\u5BC6\u7801\u9274\u6743\u3002\u4F18\u5148\u7EA7\u4F4E\u4E8E\u73AF\u5883\u53D8\u91CF HTTPS_PROXY\uFF08\u5DF2\u8BBE\u73AF\u5883\u53D8\u91CF\u5219\u5B83\u5148\u751F\u6548\uFF09\u3002\u5F00\u542F\u5F00\u5173\u5E76\u586B\u5199\u5730\u5740\u540E\u624D\u751F\u6548\u3002": "Proxy endpoint for Bangumi daily / TMDB (discovery / posters) sources. HTTP / HTTPS / SOCKS5 with optional auth. Lower priority than the HTTPS_PROXY env var. Takes effect after enabling and filling the address.",
+    "\u4E3A Bangumi \u6BCF\u65E5\u653E\u9001\u3001TMDB\uFF08\u5F71\u89C6\u53D1\u73B0/\u6D77\u62A5\uFF09\u7B49\u6570\u636E\u6E90\u6307\u5B9A\u4EE3\u7406\u5165\u53E3\u3002\u652F\u6301 HTTP / HTTPS\uFF0C\u53EF\u586B\u8D26\u53F7\u5BC6\u7801\u9274\u6743\u3002\u4F18\u5148\u7EA7\u4F4E\u4E8E\u73AF\u5883\u53D8\u91CF HTTPS_PROXY\uFF08\u5DF2\u8BBE\u73AF\u5883\u53D8\u91CF\u5219\u5B83\u5148\u751F\u6548\uFF09\u3002\u5F00\u542F\u5F00\u5173\u5E76\u586B\u5199\u5730\u5740\u540E\u624D\u751F\u6548\u3002": "Proxy endpoint for Bangumi daily / TMDB (discovery / posters) sources. HTTP / HTTPS with optional auth. Lower priority than the HTTPS_PROXY env var. Takes effect after enabling and filling the address.",
     "\u4E3B\u673A:\u7AEF\u53E3\uFF0C\u5982 127.0.0.1:7890": "host:port, e.g. 127.0.0.1:7890",
     "\u8D26\u53F7\uFF08\u53EF\u9009\uFF09": "Username (optional)",
     "\u5BC6\u7801\uFF08\u53EF\u9009\uFF09": "Password (optional)",
@@ -14438,7 +14438,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       secBodyCustomProxy.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
       const cpDesc = document.createElement("div");
       cpDesc.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;";
-      cpDesc.textContent = t("\u4E3A Bangumi \u6BCF\u65E5\u653E\u9001\u3001TMDB\uFF08\u5F71\u89C6\u53D1\u73B0/\u6D77\u62A5\uFF09\u7B49\u6570\u636E\u6E90\u6307\u5B9A\u4EE3\u7406\u5165\u53E3\u3002\u652F\u6301 HTTP / HTTPS / SOCKS5\uFF0C\u53EF\u586B\u8D26\u53F7\u5BC6\u7801\u9274\u6743\u3002\u4F18\u5148\u7EA7\u4F4E\u4E8E\u73AF\u5883\u53D8\u91CF HTTPS_PROXY\uFF08\u5DF2\u8BBE\u73AF\u5883\u53D8\u91CF\u5219\u5B83\u5148\u751F\u6548\uFF09\u3002\u5F00\u542F\u5F00\u5173\u5E76\u586B\u5199\u5730\u5740\u540E\u624D\u751F\u6548\u3002");
+      cpDesc.textContent = t("\u4E3A Bangumi \u6BCF\u65E5\u653E\u9001\u3001TMDB\uFF08\u5F71\u89C6\u53D1\u73B0/\u6D77\u62A5\uFF09\u7B49\u6570\u636E\u6E90\u6307\u5B9A\u4EE3\u7406\u5165\u53E3\u3002\u652F\u6301 HTTP / HTTPS\uFF0C\u53EF\u586B\u8D26\u53F7\u5BC6\u7801\u9274\u6743\u3002\u4F18\u5148\u7EA7\u4F4E\u4E8E\u73AF\u5883\u53D8\u91CF HTTPS_PROXY\uFF08\u5DF2\u8BBE\u73AF\u5883\u53D8\u91CF\u5219\u5B83\u5148\u751F\u6548\uFF09\u3002\u5F00\u542F\u5F00\u5173\u5E76\u586B\u5199\u5730\u5740\u540E\u624D\u751F\u6548\u3002");
       secBodyCustomProxy.appendChild(cpDesc);
       const cpToggleRow = document.createElement("label");
       cpToggleRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;cursor:pointer;border-radius:6px;margin-bottom:8px;";
@@ -14455,7 +14455,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       cpRow1.style.cssText = "display:flex;gap:6px;margin-bottom:8px;";
       const cpType = document.createElement("select");
       cpType.style.cssText = "height:32px;font-size:11px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:4px 6px;box-sizing:border-box;";
-      const cpTypeOpts = [["https", "HTTPS"], ["http", "HTTP"], ["socks5", "SOCKS5"]];
+      const cpTypeOpts = [["https", "HTTPS"], ["http", "HTTP"]];
       cpTypeOpts.forEach(([v, t2]) => {
         const o = document.createElement("option");
         o.value = v;
@@ -14491,6 +14491,19 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         const auth = user || pass ? encodeURIComponent(user) + ":" + encodeURIComponent(pass) + "@" : "";
         return type + "://" + auth + addr;
       }
+      function validateCpAddr() {
+        const a = cpAddr.value.trim();
+        if (!a) return "\u8BF7\u586B\u5199\u4E3B\u673A:\u7AEF\u53E3";
+        const i = a.lastIndexOf(":");
+        if (i < 0) return "\u7F3A\u5C11\u7AEF\u53E3\uFF08\u683C\u5F0F\uFF1A\u4E3B\u673A:\u7AEF\u53E3\uFF09";
+        const host = a.slice(0, i).trim();
+        const portStr = a.slice(i + 1).trim();
+        if (!host) return "\u4E3B\u673A\u4E0D\u80FD\u4E3A\u7A7A";
+        if (!/^\d+$/.test(portStr)) return "\u7AEF\u53E3\u987B\u4E3A\u6570\u5B57";
+        const port = Number(portStr);
+        if (port < 1 || port > 65535) return "\u7AEF\u53E3\u987B\u4E3A 1-65535";
+        return null;
+      }
       const cpBtns = document.createElement("div");
       cpBtns.style.cssText = "display:flex;gap:6px;";
       const cpSaveBtn = mkBtn("\u4FDD\u5B58", true);
@@ -14511,6 +14524,11 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         e.stopPropagation();
         try {
           const url = buildCpUrl();
+          const addrErr = validateCpAddr();
+          if (addrErr) {
+            cpSetStatus(addrErr, false);
+            return;
+          }
           if (cpToggle.checked && !url) {
             cpSetStatus("\u5DF2\u542F\u7528\u4F46\u672A\u586B\u5199\u4E3B\u673A:\u7AEF\u53E3\uFF08\u4E0D\u751F\u6548\uFF09", false);
             return;
@@ -14523,6 +14541,11 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       });
       cpTestBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
+        const addrErr = validateCpAddr();
+        if (addrErr) {
+          cpSetStatus(addrErr, false);
+          return;
+        }
         const url = buildCpUrl();
         if (!url) {
           cpSetStatus("\u8BF7\u5148\u586B\u5199\u4E3B\u673A:\u7AEF\u53E3", false);
@@ -14565,7 +14588,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
               const m = rest.match(/^([a-zA-Z0-9]+):\/\/(.*)$/);
               if (m) {
                 const scheme = m[1].toLowerCase();
-                cpType.value = scheme.indexOf("socks") === 0 ? "socks5" : scheme === "http" ? "http" : "https";
+                cpType.value = scheme === "http" ? "http" : "https";
                 rest = m[2];
               }
               const am = rest.match(/^([^@]+)@(.+)$/);
