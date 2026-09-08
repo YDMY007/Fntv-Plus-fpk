@@ -45,3 +45,4 @@
 | lc-034 | 2026-09-08 | v0.23.0 图标统一为冰块图（应用中心+双入口全部用户指定冰块图） |
 | lc-035 | 2026-09-08 | v0.24.0 图标更新：用户重制 jpeg 两张——主入口/应用中心用主图，设置入口独立图标（64/256 双档），原图归档 docs/ |
 | lc-036 | 2026-09-08 | v0.25.0 修 TMDB search 401：TMDB 双格式鉴权（v3 api_key / v4 Bearer JWT 双支持，与桌面一致），非 200 附 Key 格式诊断 |
+| lc-037 | 2026-09-08 | v0.26.0 修免梯子直连保存后显示未开启：set-tmdb-direct 复合对象拆 tmdbDirectConnect/tmdbDirectIp 两字段（与桌面 config 对齐），Go 读键同步修正；连带修 dandanplay-credentials 双参数拆分 |
