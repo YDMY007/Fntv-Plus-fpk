@@ -533,8 +533,10 @@
           if (channel === "settings:diagnostics") {
             return apiGet("/app/fntvplus/api/settings").then((s) => ({ ok: true, settings: s, ua: navigator.userAgent }));
           }
-          if (channel === "settings:test-custom-proxy") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D\u4EE3\u7406\u6D4B\u8BD5\uFF0C\u8BF7\u4EE5\u5B9E\u9645\u4F7F\u7528\u6548\u679C\u4E3A\u51C6" });
-          if (channel === "settings:test-danmu-api") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D\u5F39\u5E55\u63A5\u53E3\u6D4B\u8BD5\uFF0C\u8BF7\u4EE5\u5B9E\u9645\u4F7F\u7528\u6548\u679C\u4E3A\u51C6" });
+          if (channel === "settings:test-custom-proxy") {
+            return apiPost("/app/fntvplus/api/bridge/proxy/test", { proxyUrl: args[1] });
+          }
+          if (channel === "settings:test-danmu-api") return apiPost("/app/fntvplus/api/bridge/danmu/test", { base: args[0] });
           if (channel === "play-movie" || channel === "external-play" || channel === "pause" || channel === "media:control") {
             return Promise.resolve(void 0);
           }
@@ -543,16 +545,16 @@
           }
           if (channel === "mpv:get-render-preset") return apiGet("/app/fntvplus/api/settings").then((s) => s.mpvRenderPreset);
           if (channel === "mpv:set-render-preset") return apiPost("/app/fntvplus/api/settings", { mpvRenderPreset: args[0] });
-          if (channel === "bili:cookie-status") return Promise.resolve({ loggedIn: false });
-          if (channel === "bili:qr-generate" || channel === "bili:qr-poll") {
-            return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u4E0D\u652F\u6301 B \u7AD9\u626B\u7801\u767B\u5F55\uFF08\u8BF7\u7528\u684C\u9762\u7248\uFF09" });
+          if (channel === "bili:qr-generate") return apiPost("/app/fntvplus/api/bridge/bili/qr-generate", {});
+          if (channel === "bili:qr-poll") return apiPost("/app/fntvplus/api/bridge/bili/qr-poll", { key: args[0] });
+          if (channel === "bili:cookie-status") return apiGet("/app/fntvplus/api/bridge/bili/status");
+          if (channel === "bili:qr-lib") {
+            return fetch("/app/fntvplus/api/bridge/bili/qr-lib").then((r) => r.text());
           }
-          if (channel === "bili:manual-cookie") {
-            const p = apiPost("/app/fntvplus/api/settings", { biliCookie: String(args[0] || "") });
-            return p.then(() => ({ ok: true }));
-          }
-          if (channel === "bili:clear") return apiPost("/app/fntvplus/api/settings", { biliCookie: "" }).then(() => ({ ok: true }));
+          if (channel === "bili:manual-cookie") return apiPost("/app/fntvplus/api/bridge/bili/manual", { raw: args[0] });
+          if (channel === "bili:clear") return apiPost("/app/fntvplus/api/bridge/bili/clear", {});
           if (channel === "bili:open-danmaku-folder") return Promise.resolve(void 0);
+          if (channel === "danmaku:prepare") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D" });
           if (channel === "person:tmdb-brief" || channel === "person:tmdb-credits") return Promise.resolve(null);
           if (channel === "settings:open-external") {
             try {
@@ -563,9 +565,6 @@
           }
           if (channel === "trakt:clear-credentials") {
             return apiPost("/app/fntvplus/api/bridge/trakt/disconnect", {});
-          }
-          if (channel === "bili:qr-lib" || channel === "danmaku:prepare") {
-            return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D" });
           }
           if (channel === "fnos-gen-authx") {
             return Promise.resolve(genAuthx(String(args[0] || ""), args[1]));

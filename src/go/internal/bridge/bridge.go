@@ -82,6 +82,14 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/watched", b.doubanWatched)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/enrich", b.doubanEnrich)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/status", b.doubanStatus)
+	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-generate", b.biliQrGenerate)
+	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-poll", b.biliQrPoll)
+	mux.HandleFunc("/app/fntvplus/api/bridge/bili/status", b.biliStatusHandler())
+	mux.HandleFunc("/app/fntvplus/api/bridge/bili/manual", b.biliManualCookie)
+	mux.HandleFunc("/app/fntvplus/api/bridge/bili/clear", b.biliClear)
+	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-lib", b.biliQrLib)
+	mux.HandleFunc("/app/fntvplus/api/bridge/danmu/test", b.danmuTest)
+	mux.HandleFunc("/app/fntvplus/api/bridge/proxy/test", b.proxyTest)
 }
 
 /* ========== 通用工具 ========== */
