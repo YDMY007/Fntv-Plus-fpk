@@ -4,12 +4,16 @@
 package bridge
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -695,6 +699,53 @@ func normalizeSeason(s map[string]any, seasonNumber int64) any {
 
 /* ===== Handler：tmdb:show 完整聚合 ===== */
 
+/* ===== 磁盘持久化缓存 [v0.62.0] =====
+ * 对齐桌面版 lc-926：详情/分集首次拉取后落盘（config 同目录 tmdb-cache/），之后一律读缓存；
+ * 只有请求带 force=true（卡片「刷新」按钮）才重拉。TMDB 内容基本静态 → 缓存永久有效
+ * （桌面版 TTL 10 年等效）。失败结果不落盘。缓存键含媒体类型/ID(或标题哈希)/季号。 */
+
+const tmdbCacheVer = "v1"
+
+func (b *Bridge) tmdbCachePath(kind string, keyParts ...string) string {
+	base := b.cfg.Dir()
+	if base == "" {
+		return ""
+	}
+	sum := md5.Sum([]byte(strings.Join(keyParts, "|")))
+	dir := filepath.Join(base, "tmdb-cache")
+	_ = os.MkdirAll(dir, 0o755)
+	return filepath.Join(dir, kind+"_"+tmdbCacheVer+"_"+hex.EncodeToString(sum[:10])+".json")
+}
+
+func tmdbCacheRead(path string) (map[string]any, bool) {
+	if path == "" {
+		return nil, false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) < 8 {
+		return nil, false
+	}
+	var out map[string]any
+	if json.Unmarshal(data, &out) != nil || out["data"] == nil {
+		return nil, false
+	}
+	return out, true
+}
+
+func tmdbCacheWrite(path string, payload map[string]any) {
+	if path == "" {
+		return
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	tmp := path + ".tmp"
+	if os.WriteFile(tmp, data, 0o644) == nil {
+		_ = os.Rename(tmp, path)
+	}
+}
+
 // tmdbShow 完整详情（append_to_response 聚合 + include_image_language + 季摘要）。
 func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 	if b.tmdbAPIKey() == "" {
@@ -721,6 +772,27 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 	}
 	logf("[tmdb] show req: tmdbId=%d title=%q year=%q mt=%s season=%v",
 		req.TmdbID.Int64(), req.Title, req.Year, mt, req.SeasonNumber != nil)
+	// [v0.62.0] 磁盘缓存：key = mt + id(或标题/年份哈希) + 季号；force 绕过
+	seasonPart := "s-1"
+	if req.SeasonNumber != nil {
+		seasonPart = "s" + strconv.FormatInt(req.SeasonNumber.Int64(), 10)
+	}
+	var keyParts []string
+	keyParts = append(keyParts, mt)
+	if idv := req.TmdbID.Int64(); idv > 0 {
+		keyParts = append(keyParts, "id", strconv.FormatInt(idv, 10))
+	} else {
+		keyParts = append(keyParts, "t", strings.TrimSpace(req.Title), strings.TrimSpace(req.Year))
+	}
+	cachePath := b.tmdbCachePath("show", append(keyParts, seasonPart)...)
+	if !req.Force {
+		if cached, ok := tmdbCacheRead(cachePath); ok {
+			cached["fromCache"] = true
+			writeJSON(w, http.StatusOK, cached)
+			logf("[tmdb] show 缓存命中 (%s)", seasonPart)
+			return
+		}
+	}
 	client := b.tmdbClient()
 	bearer, queryKey := authForKey(b.tmdbAPIKey())
 	id, err := b.resolveShowID(mt, req.TmdbID.Int64(), req.Title, req.Year)
@@ -786,10 +858,12 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"ok": true, "data": normalizeShow(d, mt, id, season),
 		"fetchedAt": time.Now().UnixMilli(),
-	})
+	}
+	tmdbCacheWrite(cachePath, out) // [v0.62.0] 成功结果落盘
+	writeJSON(w, http.StatusOK, out)
 }
 
 /* ===== Handler：tmdb:season-episodes 双语分集 ===== */
@@ -816,6 +890,22 @@ func (b *Bridge) tmdbSeasonEpisodes(w http.ResponseWriter, r *http.Request) {
 	}
 	mt := "tv"
 	sn := req.SeasonNumber.Int64()
+	// [v0.62.0] 磁盘缓存：key = 标题/ID + 季号；force 绕过
+	var keyParts []string
+	if idv := req.TmdbID.Int64(); idv > 0 {
+		keyParts = append(keyParts, "id", strconv.FormatInt(idv, 10))
+	} else {
+		keyParts = append(keyParts, "t", strings.TrimSpace(req.Title))
+	}
+	cachePath := b.tmdbCachePath("season", append(keyParts, "s"+strconv.FormatInt(sn, 10))...)
+	if !req.Force {
+		if cached, ok := tmdbCacheRead(cachePath); ok {
+			cached["fromCache"] = true
+			writeJSON(w, http.StatusOK, cached)
+			logf("[tmdb] season-episodes 缓存命中 (s%d)", sn)
+			return
+		}
+	}
 	id, err := b.resolveShowID(mt, req.TmdbID.Int64(), req.Title, "")
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
@@ -871,11 +961,13 @@ func (b *Bridge) tmdbSeasonEpisodes(w http.ResponseWriter, r *http.Request) {
 			"overviewEn":    overviewEn,
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"ok": true,
 		"data": map[string]any{
 			"showTmdbId": id, "seasonNumber": sn, "episodes": episodes,
 		},
 		"fetchedAt": time.Now().UnixMilli(),
-	})
+	}
+	tmdbCacheWrite(cachePath, out) // [v0.62.0] 成功结果落盘
+	writeJSON(w, http.StatusOK, out)
 }

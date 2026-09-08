@@ -148,6 +148,17 @@ func (c *Config) save() error {
 	return os.Rename(tmp, c.path)
 }
 
+// Dir 返回配置文件所在目录（即 TRIM_PKGETC），供派生持久化子目录（如 TMDB 详情缓存）；
+// 配置路径未知时返回空串。
+func (c *Config) Dir() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.path == "" {
+		return ""
+	}
+	return filepath.Dir(c.path)
+}
+
 // Get 返回配置快照（线程安全）。
 func (c *Config) Get() Config {
 	c.mu.RLock()
