@@ -9879,33 +9879,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     }
     let _beautifyToggle = null;
     let _beautifyPaint = null;
-    function buildAppearanceControls() {
-      const storedAlpha = parseFloat(localStorage.getItem("fnos-glass-alpha") || "0.68");
-      const storedBlur = parseInt(localStorage.getItem("fnos-glass-blur") || "30", 10);
-      const alphaPct = Math.max(0, Math.min(100, Math.round((0.95 - storedAlpha) / 0.9 * 100)));
-      const wrap = document.createElement("div");
-      wrap.id = "fnos-appearance-ctrl";
-      wrap.style.cssText = "display:flex;flex-direction:column;gap:2px;";
-      wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:600;letter-spacing:.5px;">\u4E9A\u514B\u529B\u900F\u660E\u5EA6</span><span id="fnos-alpha-val" style="opacity:.85;">' + alphaPct + '%</span></div><input id="fnos-alpha" type="range" min="0" max="100" value="' + alphaPct + '" style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;"><div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;"><span style="font-weight:600;letter-spacing:.5px;">\u80CC\u666F\u6A21\u7CCA</span><span id="fnos-blur-val" style="opacity:.85;">' + storedBlur + 'px</span></div><input id="fnos-blur" type="range" min="0" max="100" value="' + storedBlur + '" style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;">';
-      const alphaInput = wrap.querySelector("#fnos-alpha");
-      const alphaVal = wrap.querySelector("#fnos-alpha-val");
-      const blurInput = wrap.querySelector("#fnos-blur");
-      const blurVal = wrap.querySelector("#fnos-blur-val");
-      alphaInput.addEventListener("input", () => {
-        const pct = parseInt(alphaInput.value, 10);
-        const a = (0.05 + (100 - pct) / 100 * 0.9).toFixed(3);
-        document.documentElement.style.setProperty("--fnos-alpha", a);
-        if (alphaVal) alphaVal.textContent = pct + "%";
-        localStorage.setItem("fnos-glass-alpha", a);
-      });
-      blurInput.addEventListener("input", () => {
-        const px = parseInt(blurInput.value, 10);
-        document.documentElement.style.setProperty("--fnos-blur", px + "px");
-        if (blurVal) blurVal.textContent = px + "px";
-        localStorage.setItem("fnos-glass-blur", String(px));
-      });
-      return wrap;
-    }
     function injectSettingsUI(panel) {
       let ctrl = panel.querySelector("#fnos-glass-ctrl");
       if (!ctrl) ctrl = panel.querySelector("#fnos-sidebar-actions");
@@ -12925,7 +12898,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       secBodyAppearance.style.cssText = "padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;";
       themeRow.style.cssText += "margin-bottom:6px;";
       secBodyAppearance.appendChild(themeRow);
-      secBodyAppearance.appendChild(buildAppearanceControls());
       const secSystem = section("\u7CFB\u7EDF\u684C\u9762");
       const secBodySystem = secSystem.body;
       secBodySystem.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";

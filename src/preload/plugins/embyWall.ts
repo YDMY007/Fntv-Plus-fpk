@@ -553,53 +553,6 @@ function handle(): void {
   let _beautifyToggle: HTMLInputElement | null = null;
   let _beautifyPaint: (() => void) | null = null;
 
-  function buildAppearanceControls(): HTMLElement {
-    // [lc-119] 首次登录(无 localStorage)默认: 透明度滑块=30%(对应 alpha 0.68), 背景模糊滑块=30px
-    const storedAlpha = parseFloat(localStorage.getItem('fnos-glass-alpha') || '0.68');
-    const storedBlur = parseInt(localStorage.getItem('fnos-glass-blur') || '30', 10);
-    // 滑块 value=透明度%(0→浓度最高不透明0.95, 100→最透0.05); 与 alpha 反相关
-    const alphaPct = Math.max(0, Math.min(100, Math.round((0.95 - storedAlpha) / 0.9 * 100)));
-    const wrap = document.createElement('div');
-    wrap.id = 'fnos-appearance-ctrl';
-    wrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
-    wrap.innerHTML = ''
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-      +   '<span style="font-weight:600;letter-spacing:.5px;">亚克力透明度</span>'
-      +   '<span id="fnos-alpha-val" style="opacity:.85;">' + alphaPct + '%</span></div>'
-      + '<input id="fnos-alpha" type="range" min="0" max="100" value="' + alphaPct + '" '
-      +   'style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;">'
-      +   '<span style="font-weight:600;letter-spacing:.5px;">背景模糊</span>'
-      +   '<span id="fnos-blur-val" style="opacity:.85;">' + storedBlur + 'px</span></div>'
-      + '<input id="fnos-blur" type="range" min="0" max="100" value="' + storedBlur + '" '
-      +   'style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;">';
-    // [飞牛影视特化 v0.6.0] 外观只保留「亚克力透明度/背景模糊」两滑块——
-    // 每日放送开关/性能模式/硬件加速/轮播样式切换/剧集详情页美化开关已按需移除（功能默认态不变）。
-
-    const alphaInput = wrap.querySelector('#fnos-alpha') as HTMLInputElement;
-    const alphaVal = wrap.querySelector('#fnos-alpha-val') as HTMLElement;
-    const blurInput = wrap.querySelector('#fnos-blur') as HTMLInputElement;
-    const blurVal = wrap.querySelector('#fnos-blur-val') as HTMLElement;
-
-    alphaInput.addEventListener('input', () => {
-      const pct = parseInt(alphaInput.value, 10);
-      const a = (0.05 + (100 - pct) / 100 * 0.9).toFixed(3); // 0→0.95, 100→0.05
-      document.documentElement.style.setProperty('--fnos-alpha', a);
-      if (alphaVal) alphaVal.textContent = pct + '%';
-      localStorage.setItem('fnos-glass-alpha', a);
-    });
-    blurInput.addEventListener('input', () => {
-      const px = parseInt(blurInput.value, 10);
-      document.documentElement.style.setProperty('--fnos-blur', px + 'px');
-      if (blurVal) blurVal.textContent = px + 'px';
-      localStorage.setItem('fnos-glass-blur', String(px));
-    });
-    // [飞牛影视特化 v0.6.0] 已移除：每日放送开关、性能模式、硬件加速、轮播样式切换、剧集详情页美化开关的
-    // 面板 UI 与事件（功能本体保留默认行为）；_beautifyToggle 保持 null，回填处有 null 守卫。
-
-    return wrap;
-  }
-
   /** [新] 侧栏底部追加"设置"按钮; 点击打开设置面板
    *  注意: 按钮必须 append 到 sticky 底部容器内部(而非 panel 直子),
    *  否则飞牛侧栏面板的 overflow/height 会把按钮裁到可视区域外.
@@ -3897,13 +3850,12 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     secBodyAbout.appendChild(aboutLink);
 
     // ===== 分组: 外观（独立标签页；原侧栏"亚克力透明度/背景模糊"滑块迁入设置面板）=====
-    // [飞牛影视特化 v0.6.0] 卡内：主题模式三选一（用户要求保留）+ 亚克力透明度/背景模糊两滑块
+    // [飞牛影视特化 v0.12.0] 卡内只留主题模式三选一（亚克力透明度/背景模糊两滑块已按需移除，CSS 变量走启动默认值）
     const secAppearance = section('外观');
     const secBodyAppearance = secAppearance.body;
     secBodyAppearance.style.cssText = 'padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;';
     themeRow.style.cssText += 'margin-bottom:6px;';
     secBodyAppearance.appendChild(themeRow);
-    secBodyAppearance.appendChild(buildAppearanceControls());
 
     // ===== 分组: 系统桌面（切换系统页面目标地址，每人 NAS 端口各异）=====
     const secSystem = section('系统桌面');
