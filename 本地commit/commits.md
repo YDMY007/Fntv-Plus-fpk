@@ -23,3 +23,4 @@
 | lc-011 | 2026-09-08 | 日志入口三件套：payload 诊断回传（web/diag.ts 拦 [EmbyWall]/[fntv] console + 全局错误 → POST /api/client-log）；后端落 client.log（5MB 轮转）+ logs 接口合并后端/前端两路；注入页左下角半透明「日志」按钮 → 设置页。轮播墙失败原因从此可在实时日志看到 |
 | lc-012 | 2026-09-08 | 修海报墙全挂：根因=网页端无 fnos-gen-authx 签名器（undefined 头被序列化发出去全拒）。diag 钩 XHR/fetch 捕获页面自身 Authx 供 shim 回放；fetch 剥离坏 Authx 头（sys/img cookie 直取）；shim 默认开 embyWall 日志总开关（[DIAG] fetchImg 带状态码可见）。用户日志证据：item/list invalid sign code=5000 → DOM 兜底选出 18 项 → lc-768 全部海报无法加载 |
 | lc-013 | 2026-09-08 | 版本 0.4.0。新约定：每次更新打包版本号 +0.1（manifest 与 src/go/cmd/fntvplus/main.go 的 appVersion 两处同步改） |
+| lc-014 | 2026-09-08 | v0.5.0 彻底修签名：从桌面版 fnosAuth.js 提取 Authx 算法（KEY+SECRET+md5 拼接），shim 本地 genAuthx 真签名（md5.ts 移植 uuid 包实现，5/5 向量过）；不再依赖捕获回放，item/{guid} 等任意接口可签 |
