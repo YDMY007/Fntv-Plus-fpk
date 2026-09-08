@@ -371,6 +371,21 @@
           if (channel === "fnos-gen-authx") {
             return Promise.resolve(genAuthx(String(args[0] || ""), args[1]));
           }
+          if (channel === "app:open-external") {
+            try {
+              window.open(String(args[0] || ""), "_blank", "noopener");
+            } catch {
+            }
+            return Promise.resolve();
+          }
+          if (channel === "app:qr-image") {
+            return fetch("/app/fntvplus/qrcode.png").then((r) => r.ok ? r.blob() : Promise.reject(new Error("http " + r.status))).then((blob) => new Promise((resolve) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve({ ok: true, dataUri: fr.result });
+              fr.onerror = () => resolve({ ok: false });
+              fr.readAsDataURL(blob);
+            })).catch(() => Promise.resolve({ ok: false }));
+          }
           return Promise.resolve(void 0);
         },
         send() {

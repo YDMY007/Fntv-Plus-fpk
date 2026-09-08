@@ -51,6 +51,8 @@ func NewServer(d Deps) *Server {
 
 	// 1) payload 端点：返回嵌入的前端脚本（带哈希版本，长缓存）。
 	s.mux.Handle("/app/fntvplus/__payload__/", d.Injector.Handler())
+	// 1b) 反馈弹窗二维码（桌面版由主进程读本地文件，网页端由后端内嵌直出）。
+	s.mux.Handle("/app/fntvplus/qrcode.png", inject.QRHandler())
 
 	// 2) 管理页 + 设置/状态/日志 API。
 	info := admin.Info{

@@ -53,6 +53,24 @@ const ipcRenderer = {
       // 本地真签名（与桌面版主进程同算法），不再依赖页面捕获回放；getCapturedAuthx 仅留作诊断对照
       return Promise.resolve(genAuthx(String(args[0] || ''), args[1]));
     }
+    if (channel === 'app:open-external') {
+      // 网页端：新标签页打开外链（桌面端由主进程 shell.openExternal）
+      try { window.open(String(args[0] || ''), '_blank', 'noopener'); } catch { /* ignore */ }
+      return Promise.resolve();
+    }
+    if (channel === 'app:qr-image') {
+      // 网页端：二维码由后端内嵌直出（桌面端由主进程读 build/qrcode.png 返回 base64），
+      // 这里 fetch 同源 PNG 转 dataUri，形状对齐桌面版 { ok, dataUri }
+      return fetch('/app/fntvplus/qrcode.png')
+        .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('http ' + r.status))))
+        .then((blob) => new Promise((resolve) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve({ ok: true, dataUri: fr.result });
+          fr.onerror = () => resolve({ ok: false });
+          fr.readAsDataURL(blob);
+        }))
+        .catch(() => Promise.resolve({ ok: false }));
+    }
     // 其它一律安全 no-op
     return Promise.resolve(undefined);
   },

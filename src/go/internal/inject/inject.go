@@ -25,6 +25,9 @@ import (
 //go:embed payload/fntv-plus.user.js
 var payloadFS embed.FS
 
+//go:embed payload/qrcode.png
+var qrPNG []byte
+
 const payloadFileName = "payload/fntv-plus.user.js"
 
 // 注入标记：插在 <script> 前后，用于幂等判断。
@@ -95,6 +98,17 @@ func (i *Injector) Handler() http.Handler {
 		w.Header().Set("X-Fntv-Plus", "payload/"+i.hash)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(i.js)
+	})
+}
+
+// QRHandler 返回用于 `/app/fntvplus/qrcode.png` 的 http.Handler：
+// 反馈弹窗二维码（桌面版由主进程读 build/qrcode.png，网页端由后端内嵌直出）。
+func QRHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(qrPNG)
 	})
 }
 
