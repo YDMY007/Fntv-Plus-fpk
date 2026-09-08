@@ -39,3 +39,4 @@
 | lc-027 | 2026-09-08 | v0.17.0 移植收尾：douban/watched（全库钻取进度分析，桌面同形状）、douban/enrich（TMDB 分类/评分+豆瓣评分尽力抓）、bangumi/sync-progress（搜条目→标集/条目）；修 douban/status 路由误删；shim 对应三通道映射 |
 | lc-028 | 2026-09-08 | v0.18.0 免梯子直连移植：tmdb/update-ip（CheckTMDB hosts→api/image IP 持久化，force 语义与桌面一致）；tmdbClient IP 直连（DialTLS 连 IP+SNI 用域名）；配自定义代理可走代理拉取。被墙时错误文案与桌面一致 |
 | lc-029 | 2026-09-08 | v0.19.0 日志治理：后端启动清零 client.log（日志=本次运行会话）；diag 时间戳带日期。用户看到的 [lc-925] 刷屏是旧会话历史条目（payload 已无此日志，repo/dist/embed 三处 0 命中已验证） |
+| lc-030 | 2026-09-08 | v0.20.0 实时日志「自动刷新」开关移除——始终自动刷新（5s），保留手动刷新按钮 |
