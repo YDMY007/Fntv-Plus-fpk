@@ -331,6 +331,28 @@ async function loadShowMeta(): Promise<{ guid: string; title: string; year: stri
         const sn = data.index_number ?? data.IndexNumber ?? data.index ?? data.season_number;
         if (typeof sn === 'number' && !isNaN(sn)) _seasonNumberCache = sn;
       }
+      // [v0.63] 季条目常缺 tmdb_id、标题还是「第 1 季」这类系统命名（被过滤）→
+      // 向上查父级（剧）条目补全：剧标题（真名）+ 剧的 TMDB 编号，与已有 seasonNumber 组合即可精确请求。
+      if ((!title || !tmdbId) && data) {
+        const pg = String((data as any).parent_guid || (data as any).parentGuid || '');
+        if (pg && pg !== page.guid) {
+          try {
+            const pd = await fnosGetEditDetail(location.origin, pg);
+            if (pd) {
+              if (!title) {
+                const pt = String(pd.title || pd.name || '').trim();
+                if (pt && !_isSysTitle(pt)) title = pt;
+              }
+              if (!tmdbId) tmdbId = extractTmdbId(pd) || '';
+              if (!year) {
+                const pyRaw = pd.year || pd.production_year || pd.first_aired || pd.premiere_date || '';
+                const pym = String(pyRaw).match(/(\d{4})/);
+                if (pym) year = pym[1];
+              }
+            }
+          } catch (_) { /* 父级查询失败不致命 */ }
+        }
+      }
     }
   } catch (e) {
     dlog('[lc-980] getEditDetail 失败, 退回页面解析: ' + String(e).substring(0, 60));
