@@ -11941,123 +11941,6 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     }
   }
 
-  // src/preload/plugins/embyWall/carousel/bootCover.ts
-  var STYLE_ID4 = "fntv-boot-style";
-  var HIDE_ID = "fntv-boot-hide";
-  var COVER_ID = "fntv-boot-cover";
-  var POLL_MS = 150;
-  var HARD_LIFT_MS = 12e3;
-  var FADE_MS2 = 260;
-  var _armed = false;
-  var _poll = 0;
-  var isHome = () => {
-    const p = location.pathname;
-    return p === "/v" || p === "/v/";
-  };
-  function ensureStyle() {
-    if (document.getElementById(STYLE_ID4)) return;
-    const st = document.createElement("style");
-    st.id = STYLE_ID4;
-    st.textContent = `
-@keyframes fntv-boot-shimmer{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
-#${COVER_ID}{position:fixed;inset:0;z-index:9000;pointer-events:none;opacity:1;transition:opacity ${FADE_MS2}ms ease}
-#${COVER_ID} .bc-skel{position:relative;overflow:hidden;background:rgba(148,156,178,.14);border-radius:10px}
-#${COVER_ID} .bc-skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);transform:translateX(-120%);animation:fntv-boot-shimmer 1.5s infinite}
-html.dark #${COVER_ID} .bc-skel{background:rgba(255,255,255,.10)}
-html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
-#${COVER_ID} .bc-wrap{position:absolute;inset:0;padding:76px 44px 40px;display:flex;flex-direction:column;gap:22px;box-sizing:border-box}
-#${COVER_ID} .bc-nav{flex:0 0 auto;display:flex;align-items:center;gap:14px;height:40px}
-#${COVER_ID} .bc-nav .bc-burger{width:26px;height:26px;border-radius:8px}
-#${COVER_ID} .bc-nav .bc-title{width:64px;height:18px;border-radius:9px}
-#${COVER_ID} .bc-nav .bc-spacer{flex:1}
-#${COVER_ID} .bc-nav .bc-ico{width:36px;height:36px;border-radius:50%}
-#${COVER_ID} .bc-hero{flex:0 0 auto;width:100%;aspect-ratio:16/9;max-height:calc(100vh - 380px);border-radius:24px}
-#${COVER_ID} .bc-row{flex:0 0 auto;display:flex;gap:16px}
-#${COVER_ID} .bc-row .bc-card{flex:1;height:132px;border-radius:14px}
-`;
-    (document.head || document.documentElement).appendChild(st);
-  }
-  function buildCover() {
-    const cover = document.createElement("div");
-    cover.id = COVER_ID;
-    const wrap = document.createElement("div");
-    wrap.className = "bc-wrap";
-    const nav = document.createElement("div");
-    nav.className = "bc-nav";
-    ["bc-burger", "bc-title"].forEach((c) => {
-      const d = document.createElement("div");
-      d.className = "bc-skel " + c;
-      nav.appendChild(d);
-    });
-    const spacer = document.createElement("div");
-    spacer.className = "bc-spacer";
-    nav.appendChild(spacer);
-    for (let i = 0; i < 3; i++) {
-      const d = document.createElement("div");
-      d.className = "bc-skel bc-ico";
-      nav.appendChild(d);
-    }
-    wrap.appendChild(nav);
-    const hero = document.createElement("div");
-    hero.className = "bc-skel bc-hero";
-    wrap.appendChild(hero);
-    const row2 = document.createElement("div");
-    row2.className = "bc-row";
-    for (let i = 0; i < 6; i++) {
-      const d = document.createElement("div");
-      d.className = "bc-skel bc-card";
-      row2.appendChild(d);
-    }
-    wrap.appendChild(row2);
-    cover.appendChild(wrap);
-    return cover;
-  }
-  function lift(reason) {
-    if (!_armed) return;
-    _armed = false;
-    clearInterval(_poll);
-    const hide = document.getElementById(HIDE_ID);
-    if (hide && hide.parentNode) hide.parentNode.removeChild(hide);
-    const c = document.getElementById(COVER_ID);
-    if (c) {
-      c.style.opacity = "0";
-      window.setTimeout(() => {
-        if (c.parentNode) c.parentNode.removeChild(c);
-      }, FADE_MS2 + 80);
-    }
-    clog("[lc-1084] boot cover lifted:", reason);
-  }
-  function armBootCover() {
-    if (_armed || !isHome()) return;
-    _armed = true;
-    ensureStyle();
-    const hide = document.createElement("style");
-    hide.id = HIDE_ID;
-    hide.textContent = "body>#root{visibility:hidden}";
-    (document.head || document.documentElement).appendChild(hide);
-    (document.body || document.documentElement).appendChild(buildCover());
-    const t0 = Date.now();
-    _poll = window.setInterval(() => {
-      if (!isHome()) {
-        lift("left-home");
-        return;
-      }
-      if (S.carouselInited) {
-        lift("carousel-inited");
-        return;
-      }
-      if (S.carouselLoadedButNone) {
-        lift("loaded-but-none");
-        return;
-      }
-      if (Date.now() - t0 > HARD_LIFT_MS) {
-        lift("hard-timeout");
-        return;
-      }
-    }, POLL_MS);
-    clog("[lc-1084] boot cover armed (hide #root + skeleton overlay)");
-  }
-
   // src/preload/plugins/embyWall.ts
   init_electron();
   setOnShowsReady(injectCarousel);
@@ -15751,7 +15634,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }, 200);
     });
     _detailObs.observe(document.body, { childList: true, subtree: true });
-    armBootCover();
     injectCarousel();
     fetchShowsViaIPC(base).then(() => {
       if (S.apiShows.length === 0) {
@@ -17269,7 +17151,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
 
   // src/preload/plugins/personWorks.ts
   init_electron();
-  var STYLE_ID5 = "fnos-person-works-style";
+  var STYLE_ID4 = "fnos-person-works-style";
   var PANEL_ID2 = "fnos-person-works";
   var POSTER_BASE = "https://image.tmdb.org/t/p/w342";
   var esc2 = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -17334,10 +17216,10 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
   var _cache = /* @__PURE__ */ new Map();
   var _inflight = /* @__PURE__ */ new Set();
   var _currentGuid = "";
-  function ensureStyle2() {
+  function ensureStyle() {
     if (_styleInjected) return;
     const st = document.createElement("style");
-    st.id = STYLE_ID5;
+    st.id = STYLE_ID4;
     st.textContent = PANEL_CSS;
     (document.head || document.documentElement).appendChild(st);
     _styleInjected = true;
@@ -17364,7 +17246,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       box.innerHTML = "";
       box.dataset.guid = _currentGuid;
     }
-    ensureStyle2();
+    ensureStyle();
     const items2 = data.items || [];
     const ownedCount = Number(data.ownedCount || 0);
     const list = _onlyMissing ? items2.filter((m) => !m.owned) : items2;
@@ -17402,7 +17284,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     });
   }
   function renderMsg(container, msg) {
-    ensureStyle2();
+    ensureStyle();
     let box = container.querySelector("#" + PANEL_ID2);
     if (!box) {
       box = document.createElement("div");
@@ -17413,7 +17295,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     box.innerHTML = `<div class="fpw-head"><span class="fpw-h-title">TMDB \u5B8C\u6574\u4F5C\u54C1</span></div><div class="fpw-msg">${esc2(msg)}</div>`;
   }
   function renderCollapsed(container) {
-    ensureStyle2();
+    ensureStyle();
     let box = container.querySelector("#" + PANEL_ID2);
     if (!box) {
       box = document.createElement("div");
