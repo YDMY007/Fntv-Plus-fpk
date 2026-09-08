@@ -12560,28 +12560,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       logFooter.appendChild(logDivider);
       const logRow = document.createElement("div");
       logRow.style.cssText = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;";
-      const liveAutoLabel = document.createElement("label");
-      liveAutoLabel.style.cssText = "display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--fnos-ui-text);font-size:12px;font-weight:500;";
-      const liveAuto = document.createElement("input");
-      liveAuto.type = "checkbox";
-      liveAuto.checked = true;
-      liveAuto.style.cssText = "position:absolute;opacity:0;width:0;height:0;";
-      const liveTrack = document.createElement("span");
-      liveTrack.style.cssText = "position:relative;display:inline-block;width:42px;height:23px;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;flex-shrink:0;";
-      const liveKnob = document.createElement("span");
-      liveKnob.style.cssText = "position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);";
-      liveAutoLabel.appendChild(liveAuto);
-      liveAutoLabel.appendChild(liveTrack);
-      liveAutoLabel.appendChild(liveKnob);
-      liveAutoLabel.appendChild(document.createTextNode(t("\u81EA\u52A8\u5237\u65B0\uFF085 \u79D2\uFF09")));
-      const paintLiveAuto = () => {
-        liveTrack.style.background = liveAuto.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
-        liveKnob.style.left = liveAuto.checked ? "21.5px" : "2.5px";
-      };
-      paintLiveAuto();
-      liveAuto.addEventListener("change", paintLiveAuto);
       const liveBtn = mkBtn("\u5237\u65B0", true);
-      logRow.appendChild(liveAutoLabel);
       logRow.appendChild(liveBtn);
       logFooter.appendChild(logRow);
       const livePre = document.createElement("pre");
@@ -12606,7 +12585,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       try {
         if (window.__fntvLiveLogTimer) clearInterval(window.__fntvLiveLogTimer);
         window.__fntvLiveLogTimer = window.setInterval(() => {
-          if (liveAuto.checked) fetchLiveLog();
+          fetchLiveLog();
         }, 5e3);
       } catch (_) {
       }
