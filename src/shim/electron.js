@@ -435,7 +435,48 @@ const ipcRenderer = {
     if (channel === 'bili:manual-cookie') return apiPost('/app/fntvplus/api/bridge/bili/manual', { raw: args[0] });
     if (channel === 'bili:clear') return apiPost('/app/fntvplus/api/bridge/bili/clear', {});
     if (channel === 'bili:open-danmaku-folder') return Promise.resolve(undefined);
-    if (channel === 'danmaku:prepare') return Promise.resolve({ ok: false, message: '网页端暂未适配' });
+    if (channel === 'danmaku:prepare') {
+      // [v0.64.1] 网页端弹幕数据链：前端直连 play/info 解析条目元数据（title/ep/season/type，
+      // 同 playSync 的已验证直连路径），B站搜索+弹幕拉取由后端完成（带可选 bili_cookie）。
+      const guid = String((args[0] && args[0].guid) || '');
+      if (!guid) return Promise.resolve({ ok: false, error: '缺少 guid' });
+      return (async () => {
+        try {
+          const infoPath = '/v/api/v1/play/info';
+          const payload = { item_guid: guid };
+          const authx = await genAuthx(infoPath, payload);
+          const resp = await fetch(location.origin + infoPath, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Authx': authx, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) return { ok: false, error: '获取播放信息失败: HTTP ' + resp.status };
+          const j = await resp.json();
+          const item = j && j.data && j.data.item;
+          if (!item) return { ok: false, error: '获取播放信息失败' };
+          const type = String((j.data.type || item.type || '')).toLowerCase();
+          const isMovie = type === 'movie';
+          const title = String(item.tv_title || item.title || '').trim();
+          const ep = isMovie ? 0 : (Number(item.episode_number) || 0);
+          const season = isMovie ? 0 : (Number(item.season_number) || 0);
+          if (!title) return { ok: false, error: '无法解析标题（tv_title 为空）' };
+          const r = await apiPost('/app/fntvplus/api/bridge/danmaku/prepare', {
+            title, ep, season, isMovie, biliSearch: true,
+          });
+          // danmakuWeb 期望顶层形状（含 maxScreen）
+          return Object.assign({ maxScreen: 0 }, r);
+        } catch (e) {
+          return { ok: false, error: String((e && e.message) || e) };
+        }
+      })();
+    }
+    if (channel === 'danmaku:candidates') {
+      return apiPost('/app/fntvplus/api/bridge/danmaku/candidates', args[0] || {});
+    }
+    if (channel === 'danmaku:pick') {
+      return apiPost('/app/fntvplus/api/bridge/danmaku/pick', args[0] || {});
+    }
 
     /* ── 人物页 TMDB 增强（fnOS person API → TMDB 链路待接）── */
     if (channel === 'person:tmdb-brief' || channel === 'person:tmdb-credits') {

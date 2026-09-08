@@ -720,7 +720,49 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (channel === "bili:manual-cookie") return apiPost("/app/fntvplus/api/bridge/bili/manual", { raw: args[0] });
           if (channel === "bili:clear") return apiPost("/app/fntvplus/api/bridge/bili/clear", {});
           if (channel === "bili:open-danmaku-folder") return Promise.resolve(void 0);
-          if (channel === "danmaku:prepare") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D" });
+          if (channel === "danmaku:prepare") {
+            const guid = String(args[0] && args[0].guid || "");
+            if (!guid) return Promise.resolve({ ok: false, error: "\u7F3A\u5C11 guid" });
+            return (async () => {
+              try {
+                const infoPath = "/v/api/v1/play/info";
+                const payload = { item_guid: guid };
+                const authx = await genAuthx(infoPath, payload);
+                const resp = await fetch(location.origin + infoPath, {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Authx": authx, "Content-Type": "application/json" },
+                  body: JSON.stringify(payload)
+                });
+                if (!resp.ok) return { ok: false, error: "\u83B7\u53D6\u64AD\u653E\u4FE1\u606F\u5931\u8D25: HTTP " + resp.status };
+                const j = await resp.json();
+                const item = j && j.data && j.data.item;
+                if (!item) return { ok: false, error: "\u83B7\u53D6\u64AD\u653E\u4FE1\u606F\u5931\u8D25" };
+                const type = String(j.data.type || item.type || "").toLowerCase();
+                const isMovie = type === "movie";
+                const title = String(item.tv_title || item.title || "").trim();
+                const ep = isMovie ? 0 : Number(item.episode_number) || 0;
+                const season = isMovie ? 0 : Number(item.season_number) || 0;
+                if (!title) return { ok: false, error: "\u65E0\u6CD5\u89E3\u6790\u6807\u9898\uFF08tv_title \u4E3A\u7A7A\uFF09" };
+                const r = await apiPost("/app/fntvplus/api/bridge/danmaku/prepare", {
+                  title,
+                  ep,
+                  season,
+                  isMovie,
+                  biliSearch: true
+                });
+                return Object.assign({ maxScreen: 0 }, r);
+              } catch (e) {
+                return { ok: false, error: String(e && e.message || e) };
+              }
+            })();
+          }
+          if (channel === "danmaku:candidates") {
+            return apiPost("/app/fntvplus/api/bridge/danmaku/candidates", args[0] || {});
+          }
+          if (channel === "danmaku:pick") {
+            return apiPost("/app/fntvplus/api/bridge/danmaku/pick", args[0] || {});
+          }
           if (channel === "person:tmdb-brief" || channel === "person:tmdb-credits") {
             const ep = channel === "person:tmdb-brief" ? "brief" : "credits";
             return apiPost("/app/fntvplus/api/bridge/person/" + ep, { guid: args[0], cookie: document.cookie });
