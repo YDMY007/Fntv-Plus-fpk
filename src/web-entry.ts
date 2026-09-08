@@ -14,8 +14,8 @@ import './preload/plugins/customLogo';
 import './preload/plugins/danmakuHeat';
 import './preload/plugins/danmakuWeb';
 import './preload/plugins/embyWall';
-import './preload/plugins/gamepad';
-import './preload/plugins/gamepadFocus';
+// gamepad / gamepadFocus 不挂载（[v0.43.0]）：播放控制依赖 IPC media:control（主进程控 mpv），
+// 网页端 shim 是 no-op，功能半残 → 整体移除，设置面板「手柄设置」卡同步删除。
 import './preload/plugins/glassUI';
 import './preload/plugins/hotUpdates';
 import './preload/plugins/listLayout';

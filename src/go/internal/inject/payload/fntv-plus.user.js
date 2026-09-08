@@ -1308,8 +1308,8 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   function extractCurrentGuid() {
     return extractGuidFromUrl() || extractGuidFromDom();
   }
-  function setExternalPlayActive(active3) {
-    externalPlayActive = active3;
+  function setExternalPlayActive(active2) {
+    externalPlayActive = active2;
   }
   function getInterceptedGuid() {
     return interceptedGuid;
@@ -4947,19 +4947,19 @@ html.fnos-perf.dark{
           }
         });
       };
-      const poll2 = () => {
+      const poll = () => {
         var _a;
         attempts++;
         try {
           const doc = iframe.contentDocument || ((_a = iframe.contentWindow) == null ? void 0 : _a.document);
           if (!doc) {
-            if (attempts < 30) setTimeout(poll2, 400);
+            if (attempts < 30) setTimeout(poll, 400);
             else finish();
             return;
           }
           const links = doc.querySelectorAll('a[href*="/v/tv/"],a[href*="/v/movie/"]');
           if (links.length < 5 && attempts < 30) {
-            setTimeout(poll2, 400);
+            setTimeout(poll, 400);
             return;
           }
           links.forEach((a) => {
@@ -5002,13 +5002,13 @@ html.fnos-perf.dark{
             lastCount = nowCount;
           }
           if (stableRounds >= STABLE_ROUNDS || attempts >= MAX_ROUNDS) finish();
-          else setTimeout(poll2, 400);
+          else setTimeout(poll, 400);
         } catch (e) {
-          if (attempts < 30) setTimeout(poll2, 400);
+          if (attempts < 30) setTimeout(poll, 400);
           else finish();
         }
       };
-      iframe.onload = () => setTimeout(poll2, 500);
+      iframe.onload = () => setTimeout(poll, 500);
       iframe.onerror = () => {
         try {
           iframe.remove();
@@ -8130,11 +8130,11 @@ html.fnos-perf.dark{
         ipcRenderer2.send("get-config");
         ipcRenderer2.once("config-data", (_e, data) => {
           try {
-            const config2 = data && data.config || {};
+            const config = data && data.config || {};
             const history2 = data && data.history || [];
-            let username = config2.account || "";
+            let username = config.account || "";
             let password = "";
-            const domain = config2.domain || "";
+            const domain = config.domain || "";
             for (const h of history2) {
               if (h.domain === domain && h.account === username && h.password) {
                 password = h.password;
@@ -11916,8 +11916,8 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     if (!_armed) return;
     _armed = false;
     clearInterval(_poll);
-    const hide2 = document.getElementById(HIDE_ID);
-    if (hide2 && hide2.parentNode) hide2.parentNode.removeChild(hide2);
+    const hide = document.getElementById(HIDE_ID);
+    if (hide && hide.parentNode) hide.parentNode.removeChild(hide);
     const c = document.getElementById(COVER_ID);
     if (c) {
       c.style.opacity = "0";
@@ -11931,10 +11931,10 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     if (_armed || !isHome()) return;
     _armed = true;
     ensureStyle();
-    const hide2 = document.createElement("style");
-    hide2.id = HIDE_ID;
-    hide2.textContent = "body>#root{visibility:hidden}";
-    (document.head || document.documentElement).appendChild(hide2);
+    const hide = document.createElement("style");
+    hide.id = HIDE_ID;
+    hide.textContent = "body>#root{visibility:hidden}";
+    (document.head || document.documentElement).appendChild(hide);
     (document.body || document.documentElement).appendChild(buildCover());
     const t0 = Date.now();
     _poll = window.setInterval(() => {
@@ -14055,249 +14055,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }).catch(() => {
         swSkip.checked = false;
       });
-      const secGamepad = section("\u624B\u67C4\u8BBE\u7F6E");
-      const secBodyGamepad = secGamepad.body;
-      secBodyGamepad.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
-      const gpDesc = document.createElement("div");
-      gpDesc.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;";
-      gpDesc.textContent = t("\u652F\u6301\u4F7F\u7528\u624B\u67C4\uFF08Xbox/PS/\u901A\u7528\uFF09\u9065\u63A7\uFF1A\u64AD\u653E\u4E2D\u63A7\u5236\u64AD\u653E\u5668\uFF08\u64AD\u653E\u6682\u505C/\u5FEB\u9000\u5FEB\u8FDB/\u500D\u901F/\u4E0B\u4E00\u96C6\uFF09\uFF0C\u672A\u64AD\u653E\u65F6\u5728\u5F71\u89C6\u754C\u9762\u5BFC\u822A\uFF08\u65B9\u5411\u952E/\u786E\u8BA4/\u8FD4\u56DE\uFF09\u3002\u53EF\u81EA\u5B9A\u4E49\u5404\u529F\u80FD\u5BF9\u5E94\u7684\u6309\u952E\u3002");
-      secBodyGamepad.appendChild(gpDesc);
-      const gpConnRow = document.createElement("div");
-      gpConnRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:7px 8px;border-radius:8px;background:var(--fnos-ui-input-bg)!important;border:1px solid var(--fnos-ui-border3);";
-      const gpConnDot = document.createElement("span");
-      gpConnDot.style.cssText = "width:9px;height:9px;border-radius:50%;background:var(--fnos-ui-warn);flex-shrink:0;";
-      const gpConnText = document.createElement("span");
-      gpConnText.style.cssText = "font-size:11px;color:var(--fnos-ui-text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-      gpConnText.textContent = t("\u672A\u68C0\u6D4B\u5230\u624B\u67C4\uFF08\u5148\u6309\u4E00\u4E0B\u624B\u67C4\u4EFB\u610F\u952E\u6FC0\u6D3B\uFF09");
-      const gpDetectBtn = mkBtn("\u68C0\u6D4B", true);
-      gpDetectBtn.style.cssText = (gpDetectBtn.style.cssText || "") + ";flex-shrink:0;";
-      gpConnRow.appendChild(gpConnDot);
-      gpConnRow.appendChild(gpConnText);
-      gpConnRow.appendChild(gpDetectBtn);
-      secBodyGamepad.appendChild(gpConnRow);
-      const gpUpdateConn = () => {
-        try {
-          const gpApi2 = window.fntvGamepad;
-          const r = gpApi2 && gpApi2.detectGamepad ? gpApi2.detectGamepad() : null;
-          if (r && r.connected) {
-            gpConnDot.style.background = "var(--fnos-ui-ok)";
-            gpConnText.textContent = "\u5DF2\u8FDE\u63A5\uFF1A" + String(r.id || "\u624B\u67C4").slice(0, 60);
-          } else {
-            gpConnDot.style.background = "var(--fnos-ui-warn)";
-            gpConnText.textContent = t("\u672A\u68C0\u6D4B\u5230\u624B\u67C4\uFF08\u5148\u6309\u4E00\u4E0B\u624B\u67C4\u4EFB\u610F\u952E\u6FC0\u6D3B\uFF09");
-          }
-        } catch {
-        }
-      };
-      gpDetectBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        gpUpdateConn();
-      });
-      gpUpdateConn();
-      const gpToggleRow = document.createElement("label");
-      gpToggleRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;cursor:pointer;border-radius:6px;margin-bottom:8px;";
-      const gpToggleSpan = document.createElement("span");
-      gpToggleSpan.textContent = t("\u542F\u7528\u624B\u67C4\u63A7\u5236");
-      gpToggleSpan.style.cssText = "color:var(--fnos-ui-text);font-weight:500;";
-      const gpToggle = document.createElement("input");
-      gpToggle.type = "checkbox";
-      gpToggle.style.cssText = "width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
-      gpToggleRow.appendChild(gpToggleSpan);
-      gpToggleRow.appendChild(gpToggle);
-      secBodyGamepad.appendChild(gpToggleRow);
-      const gpDirNote = document.createElement("div");
-      gpDirNote.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sub);line-height:1.6;margin:2px 6px 6px;padding:6px 8px;border-left:3px solid var(--fnos-ui-accent);background:var(--fnos-ui-input-bg)!important;border-radius:4px;";
-      gpDirNote.innerHTML = '\u56FA\u5B9A\u63A7\u5236\uFF1A<b style="color:var(--fnos-ui-text)">\u5341\u5B57\u952E / \u5DE6\u6447\u6746</b> = \u754C\u9762\u65B9\u5411\u79FB\u52A8\uFF08\u64AD\u653E\u4E2D\u5DE6\u53F3 = \u5FEB\u9000/\u5FEB\u8FDB 5s\uFF09\uFF0C<b style="color:var(--fnos-ui-text)">A</b> = \u786E\u8BA4/\u64AD\u653E\u6682\u505C\uFF0C<b style="color:var(--fnos-ui-text)">B</b> = \u8FD4\u56DE\u3002\u4EE5\u4E0B\u6309\u952E\u6620\u5C04\u53EF\u81EA\u5B9A\u4E49\uFF1A';
-      secBodyGamepad.appendChild(gpDirNote);
-      const gpRows = [];
-      const gpBtnOptions = [
-        { value: "A", label: "A" },
-        { value: "B", label: "B" },
-        { value: "X", label: "X" },
-        { value: "Y", label: "Y" },
-        { value: "LB", label: "LB\uFF08\u5DE6\u80A9\u952E\uFF09" },
-        { value: "RB", label: "RB\uFF08\u53F3\u80A9\u952E\uFF09" },
-        { value: "LT", label: "LT\uFF08\u5DE6\u6273\u673A\uFF09" },
-        { value: "RT", label: "RT\uFF08\u53F3\u6273\u673A\uFF09" },
-        { value: "START", label: "Start" },
-        { value: "BACK", label: "Back / Select" }
-      ];
-      const gpBuildRow = (label, funcId, select, defaultBtn) => {
-        const row2 = document.createElement("div");
-        row2.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:7px 6px;border-radius:6px;";
-        const span = document.createElement("span");
-        const zhRowLabel = defaultBtn ? label + `\uFF08\u9ED8\u8BA4 ${defaultBtn}\uFF09` : label;
-        span.textContent = t(zhRowLabel);
-        span.style.cssText = "color:var(--fnos-ui-text);font-size:12.5px;";
-        select.style.cssText = "width:150px;height:28px;font-size:11.5px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:6px;padding:2px 6px;box-sizing:border-box;";
-        row2.appendChild(span);
-        row2.appendChild(select);
-        secBodyGamepad.appendChild(row2);
-        gpRows.push({ id: funcId, select });
-      };
-      const gpPlayTitle = document.createElement("div");
-      gpPlayTitle.style.cssText = "font-size:11px;font-weight:700;color:var(--fnos-ui-accent);margin:10px 0 4px;";
-      gpPlayTitle.textContent = t("\u64AD\u653E\u63A7\u5236\uFF08\u64AD\u653E\u4E2D\u751F\u6548\uFF09");
-      secBodyGamepad.appendChild(gpPlayTitle);
-      const gpSelect = () => {
-        const s = document.createElement("select");
-        for (const o of gpBtnOptions) {
-          const op = document.createElement("option");
-          op.value = o.value;
-          op.textContent = t(o.label);
-          s.appendChild(op);
-        }
-        return s;
-      };
-      const gpPlayPauseSel = gpSelect();
-      gpBuildRow("\u64AD\u653E / \u6682\u505C", "playPause", gpPlayPauseSel, "A");
-      const gpSeekBackSel = gpSelect();
-      gpBuildRow("\u5FEB\u9000 (5s)", "seekBack", gpSeekBackSel, "LB");
-      const gpSeekFwdSel = gpSelect();
-      gpBuildRow("\u5FEB\u8FDB (5s)", "seekFwd", gpSeekFwdSel, "RB");
-      const gpSpeedDownSel = gpSelect();
-      gpBuildRow("\u500D\u901F -", "speedDown", gpSpeedDownSel, "LT");
-      const gpSpeedUpSel = gpSelect();
-      gpBuildRow("\u500D\u901F +", "speedUp", gpSpeedUpSel, "RT");
-      const gpNextSel = gpSelect();
-      gpBuildRow("\u4E0B\u4E00\u96C6", "next", gpNextSel, "Y");
-      const gpNavTitle = document.createElement("div");
-      gpNavTitle.style.cssText = "font-size:11px;font-weight:700;color:var(--fnos-ui-accent);margin:10px 0 4px;";
-      gpNavTitle.textContent = t("\u754C\u9762\u5BFC\u822A\uFF08\u672A\u64AD\u653E\u65F6\u751F\u6548\uFF09");
-      secBodyGamepad.appendChild(gpNavTitle);
-      const gpBackSel = gpSelect();
-      gpBuildRow("\u8FD4\u56DE / \u5173\u95ED", "navBack", gpBackSel, "B");
-      const gpSelectSel = gpSelect();
-      gpBuildRow("\u52FE\u9009 / \u5F00\u5173", "navSelect", gpSelectSel, "X");
-      const gpAdvParams = [
-        { key: "stickDeadzone", label: "\u6447\u6746\u6B7B\u533A\uFF08\u5F52\u96F6\u9608\u503C\uFF09", min: 0.1, max: 0.5, step: 0.05, fmt: (v) => v.toFixed(2) },
-        { key: "directionThreshold", label: "\u65B9\u5411\u89E6\u53D1\u9608\u503C", min: 0.2, max: 0.8, step: 0.05, fmt: (v) => v.toFixed(2) },
-        { key: "repeatDelay", label: "\u957F\u6309\u8FDE\u8DF3\u5EF6\u8FDF (ms)", min: 100, max: 800, step: 20, fmt: (v) => String(Math.round(v)) },
-        { key: "repeatInterval", label: "\u8FDE\u8DF3\u95F4\u9694 (ms)", min: 50, max: 400, step: 10, fmt: (v) => String(Math.round(v)) }
-      ];
-      const gpAdvTitle = document.createElement("div");
-      gpAdvTitle.style.cssText = "font-size:11px;font-weight:700;color:var(--fnos-ui-accent);margin:10px 0 4px;cursor:pointer;user-select:none;";
-      gpAdvTitle.textContent = t("\u25B6 \u9AD8\u7EA7\u8BBE\u7F6E\uFF08\u7075\u654F\u5EA6 / \u8FDE\u8DF3\uFF09");
-      const gpAdvBody = document.createElement("div");
-      gpAdvBody.style.cssText = "display:none;";
-      gpAdvTitle.addEventListener("click", () => {
-        const show = gpAdvBody.style.display !== "block";
-        gpAdvBody.style.display = show ? "block" : "none";
-        gpAdvTitle.textContent = (show ? "\u25BC " : "\u25B6 ") + t("\u9AD8\u7EA7\u8BBE\u7F6E\uFF08\u7075\u654F\u5EA6 / \u8FDE\u8DF3\uFF09");
-      });
-      secBodyGamepad.appendChild(gpAdvTitle);
-      secBodyGamepad.appendChild(gpAdvBody);
-      const gpAdvRanges = {};
-      const gpAdvVals = {};
-      for (const it of gpAdvParams) {
-        const row2 = document.createElement("div");
-        row2.style.cssText = "display:flex;align-items:center;gap:8px;padding:5px 6px;";
-        const span = document.createElement("span");
-        span.textContent = t(it.label);
-        span.style.cssText = "color:var(--fnos-ui-text);font-size:11.5px;flex:1;min-width:0;";
-        const val = document.createElement("span");
-        val.style.cssText = "color:var(--fnos-ui-sec);font-size:11px;min-width:36px;text-align:right;";
-        const range = document.createElement("input");
-        range.type = "range";
-        range.min = String(it.min);
-        range.max = String(it.max);
-        range.step = String(it.step);
-        range.style.cssText = "width:110px;accent-color:var(--fnos-ui-accent);";
-        range.addEventListener("input", () => {
-          val.textContent = it.fmt(parseFloat(range.value));
-        });
-        row2.appendChild(span);
-        row2.appendChild(range);
-        row2.appendChild(val);
-        gpAdvBody.appendChild(row2);
-        gpAdvRanges[it.key] = range;
-        gpAdvVals[it.key] = val;
-      }
-      const gpAdvHint = document.createElement("div");
-      gpAdvHint.style.cssText = "font-size:10px;color:var(--fnos-ui-sub);margin:2px 6px 0;line-height:1.5;";
-      gpAdvHint.textContent = t("\u6B7B\u533A\u8D8A\u5927\u6447\u6746\u9700\u63A8\u8D8A\u5927\u529B\u624D\u54CD\u5E94\uFF1B\u65B9\u5411\u9608\u503C\u540C\u7406\u3002\u957F\u6309\u5EF6\u8FDF/\u8FDE\u8DF3\u95F4\u9694\u63A7\u5236\u767D\u6846\u8FDE\u7EED\u79FB\u52A8\u8282\u594F\uFF08\u4EC5\u7126\u70B9\u5BFC\u822A\u65F6\uFF09\u3002\u4FDD\u5B58\u540E\u7ACB\u5373\u751F\u6548\u3002");
-      gpAdvBody.appendChild(gpAdvHint);
-      const gpBtns = document.createElement("div");
-      gpBtns.style.cssText = "display:flex;gap:6px;margin-top:12px;";
-      const gpSaveBtn = mkBtn("\u4FDD\u5B58", true);
-      const gpResetBtn = mkBtn("\u6062\u590D\u9ED8\u8BA4", true);
-      gpBtns.appendChild(gpSaveBtn);
-      gpBtns.appendChild(gpResetBtn);
-      secBodyGamepad.appendChild(gpBtns);
-      const gpStatus = document.createElement("div");
-      gpStatus.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);margin-top:6px;min-height:14px;";
-      secBodyGamepad.appendChild(gpStatus);
-      const gpApplyConfig = (cfg) => {
-        if (!cfg) return;
-        gpToggle.checked = !!cfg.enabled;
-        const bind = cfg.bindings || {};
-        for (const r of gpRows) {
-          const val = bind[r.id] || "";
-          if (gpBtnOptions.some((o) => o.value === val)) r.select.value = val;
-          else r.select.selectedIndex = 0;
-        }
-        for (const it of gpAdvParams) {
-          const v = cfg[it.key];
-          const def = gpApi && gpApi.advDefaults ? gpApi.advDefaults[it.key] : void 0;
-          const val = typeof v === "number" && Number.isFinite(v) ? v : typeof def === "number" ? def : (it.min + it.max) / 2;
-          const clamped = Math.min(it.max, Math.max(it.min, val));
-          gpAdvRanges[it.key].value = String(clamped);
-          gpAdvVals[it.key].textContent = it.fmt(clamped);
-        }
-      };
-      window.fntvGamepad = window.fntvGamepad || {};
-      const gpApi = window.fntvGamepad;
-      if (gpApi && gpApi.getConfig) gpApplyConfig(gpApi.getConfig());
-      gpSaveBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        try {
-          const cfg = gpApi && gpApi.getConfig ? gpApi.getConfig() : { enabled: true, bindings: {} };
-          const bindings = { ...cfg.bindings || {} };
-          for (const r of gpRows) bindings[r.id] = r.select.value;
-          const byBtn = {};
-          for (const [id, btn] of Object.entries(bindings)) {
-            (byBtn[btn] = byBtn[btn] || []).push(id);
-          }
-          const conflicts = Object.entries(byBtn).filter(([, ids]) => ids.length > 1);
-          if (conflicts.length) {
-            const names = window.fntvGamepad && window.fntvGamepad.funcs ? window.fntvGamepad.funcs : [];
-            const desc = conflicts.map(([btn, ids]) => {
-              const labels = ids.map((id) => (names.find((f) => f.id === id) || {}).label || id);
-              return `\u3010${btn}\u3011${labels.join(" / ")}`;
-            }).join("\uFF1B");
-            gpStatus.textContent = "\u26A0 \u6309\u952E\u51B2\u7A81\uFF1A" + desc + "\u3002\u8BF7\u6539\u7ED1\u540E\u518D\u4FDD\u5B58\u3002";
-            gpStatus.style.color = "var(--fnos-ui-warn)";
-            return;
-          }
-          const adv = {};
-          for (const it of gpAdvParams) adv[it.key] = parseFloat(gpAdvRanges[it.key].value);
-          const next = { enabled: gpToggle.checked, bindings, ...adv };
-          if (gpApi && gpApi.saveConfig) {
-            gpApi.saveConfig(next);
-            gpStatus.textContent = t("\u5DF2\u4FDD\u5B58 \u2713 \u7ACB\u5373\u751F\u6548");
-            gpStatus.style.color = "var(--fnos-ui-ok)";
-            gpUpdateConn();
-          } else {
-            gpStatus.textContent = t("\u4FDD\u5B58\u5931\u8D25\uFF1A\u624B\u67C4\u63D2\u4EF6\u672A\u5C31\u7EEA");
-            gpStatus.style.color = "var(--fnos-ui-warn)";
-          }
-        } catch (err) {
-          gpStatus.textContent = "\u4FDD\u5B58\u5931\u8D25\uFF1A" + String((err == null ? void 0 : err.message) || err);
-          gpStatus.style.color = "var(--fnos-ui-warn)";
-        }
-      });
-      gpResetBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        try {
-          if (gpApi && gpApi.resetConfig) gpApi.resetConfig();
-          if (gpApi && gpApi.getConfig) gpApplyConfig(gpApi.getConfig());
-          gpStatus.textContent = t("\u5DF2\u6062\u590D\u9ED8\u8BA4 \u2713");
-          gpStatus.style.color = "var(--fnos-ui-ok)";
-        } catch (err) {
-          gpStatus.textContent = "\u91CD\u7F6E\u5931\u8D25\uFF1A" + String((err == null ? void 0 : err.message) || err);
-          gpStatus.style.color = "var(--fnos-ui-warn)";
-        }
-      });
       const secAbout = section();
       const secBodyAbout = secAbout.body;
       secBodyAbout.style.cssText = "padding:18px 16px;flex:1 1 auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;";
@@ -14372,8 +14129,8 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         b.type = "button";
         b.dataset.style = String(idx + 1);
         b.textContent = t(lab);
-        const active3 = idx + 1 === getCs();
-        b.style.cssText = "flex:1 1 0;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;box-sizing:border-box;border:1px solid " + (active3 ? "var(--fnos-ui-accent)" : "var(--fnos-ui-border)") + ";background:" + (active3 ? "var(--fnos-ui-accent)" : "var(--fnos-ui-input-bg)") + ";color:" + (active3 ? "#fff" : "var(--fnos-ui-text)") + ";transition:.15s;";
+        const active2 = idx + 1 === getCs();
+        b.style.cssText = "flex:1 1 0;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;box-sizing:border-box;border:1px solid " + (active2 ? "var(--fnos-ui-accent)" : "var(--fnos-ui-border)") + ";background:" + (active2 ? "var(--fnos-ui-accent)" : "var(--fnos-ui-input-bg)") + ";color:" + (active2 ? "#fff" : "var(--fnos-ui-text)") + ";transition:.15s;";
         csSeg.appendChild(b);
       });
       csWrap.appendChild(csSeg);
@@ -14632,7 +14389,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       })();
       const cats = [
         { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secUX.el] },
-        { id: "player", label: "\u64AD\u653E", els: [secSkip.el, secGamepad.el] },
+        { id: "player", label: "\u64AD\u653E", els: [secSkip.el] },
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
         { id: "account", label: "\u8D26\u53F7\u4E0E\u7F51\u7EDC", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secCustomProxy.el, secTmdbDirect.el] },
@@ -16034,774 +15791,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
   }
   registerHook("onReady" /* OnReady */, handle3);
 
-  // src/preload/plugins/gamepad.ts
-  init_electron();
-
-  // src/preload/plugins/gamepadFocus.ts
-  var log7 = logger_default;
-  var CANDIDATE_SELECTORS = [
-    "a[href]",
-    "button",
-    "[role=button]",
-    ".library-card-root",
-    ".continue-card-root",
-    ".card-root",
-    '[class*="poster"]',
-    '[class*="swiper-slide"]',
-    '[class*="card-root"]',
-    // [lc-670] 用户自加/强制显示的入口：
-    //  - a.fnos-play = embyWall 注入的 hero「开始观看」主按钮(SPA 导航到详情)
-    //  - [lc-674] 汉堡键容器不再整体选(之前 🏠 与 ≡ 合并成一个候选框)，
-    //    改为容器内可点击元素各自独立聚焦：
-    //      · 🏠 首页链接 = 通用 a[href] 选择器已命中(容器内 isVisible 放行小尺寸)
-    //      · ≡ 菜单 = svg.cursor-pointer(纯SVG非a/button, 需显式选择器)
-    //    select() 点击时: 🏠 冒泡到容器, embyWall hook 判定 closest('a') 放行→回首页导航;
-    //    ≡ svg 冒泡到容器, embyWall capture hook 拦截→开合抽屉。
-    "a.fnos-play",
-    '[class*="lg:!hidden"]:not([class*="inset-0"]) svg.cursor-pointer',
-    // [lc-685] 设置面板/原生表单控件纳入焦点候选:
-    //  - label:has(input) 整行开关(点击整行即切换内部 checkbox/radio)
-    //  - 裸 input[checkbox/radio] / select 自身(作为兜底; 含在 label 内时由去重保留外层 label)
-    //  复选框(38x21)低于 isVisible 24px 下限, 故不单独聚焦裸 checkbox, 改聚焦整行 label。
-    "label",
-    'input[type="checkbox"]',
-    'input[type="radio"]',
-    "select"
-  ];
-  var frameEl = null;
-  var focusedEl = null;
-  var active2 = false;
-  var hintEl = null;
-  var lastMoveTime = 0;
-  function ensureFrame() {
-    if (frameEl && frameEl.isConnected) return frameEl;
-    if (!document.getElementById("fntv-focus-style")) {
-      const style2 = document.createElement("style");
-      style2.id = "fntv-focus-style";
-      style2.textContent = "@keyframes fntv-focus-pulse{0%,100%{box-shadow:0 0 0 1.5px rgba(0,0,0,.55),0 0 12px rgba(255,255,255,.55),inset 0 0 8px rgba(255,255,255,.16)}50%{box-shadow:0 0 0 1.5px rgba(0,0,0,.55),0 0 26px rgba(255,255,255,.95),inset 0 0 14px rgba(255,255,255,.32)}}";
-      (document.head || document.documentElement).appendChild(style2);
-    }
-    frameEl = document.createElement("div");
-    frameEl.id = "fntv-focus-frame";
-    frameEl.style.cssText = [
-      "position:fixed",
-      "left:0",
-      "top:0",
-      "pointer-events:none",
-      // [lc-683] z-index 提到最高(2147483647)：设置面板 z=2147483600、二级弹窗遮罩
-      //   (embyWall 里 2147483700+, 浏览器 clamp 到 2147483647) 都高于旧值 2147483000,
-      //   导致白框被画在面板/遮罩背后→看不见也控制不到。
-      "z-index:2147483647",
-      "border:3px solid #fff",
-      "border-radius:12px",
-      // [lc-668] 更优雅：220ms easeOutCubic 缓动 + 呼吸光晕
-      "transition:left .22s cubic-bezier(.22,.61,.36,1), top .22s cubic-bezier(.22,.61,.36,1), width .22s cubic-bezier(.22,.61,.36,1), height .22s cubic-bezier(.22,.61,.36,1)",
-      "animation:fntv-focus-pulse 1.8s ease-in-out infinite",
-      "will-change:left,top,width,height",
-      "display:none"
-    ].join(";");
-    document.body.appendChild(frameEl);
-    return frameEl;
-  }
-  function showHint() {
-    if (hintEl && hintEl.isConnected) {
-      hintEl.remove();
-      hintEl = null;
-    }
-    hintEl = document.createElement("div");
-    hintEl.textContent = t("\u624B\u67C4\u5BFC\u822A\uFF1A\u6447\u6746/\u65B9\u5411\u952E\u79FB\u52A8 \xB7 A \u786E\u8BA4 \xB7 B \u8FD4\u56DE");
-    hintEl.style.cssText = [
-      "position:fixed",
-      "left:50%",
-      "bottom:36px",
-      "transform:translateX(-50%)",
-      // [lc-683] 同提到最高层级, 弹窗打开时提示条也可见
-      "z-index:2147483647",
-      "background:rgba(0,0,0,.78)",
-      "color:#fff",
-      "padding:8px 18px",
-      "border-radius:10px",
-      "font-size:14px",
-      "letter-spacing:.5px",
-      "border:1px solid rgba(255,255,255,.35)",
-      "pointer-events:none",
-      "transition:opacity .6s ease"
-    ].join(";");
-    document.body.appendChild(hintEl);
-    setTimeout(() => {
-      if (hintEl) hintEl.style.opacity = "0";
-    }, 2600);
-    setTimeout(() => {
-      if (hintEl) {
-        hintEl.remove();
-        hintEl = null;
-      }
-    }, 3300);
-  }
-  function isInOurUI(el) {
-    return !!el.closest("[data-fnos-ui]");
-  }
-  function findActiveOverlay() {
-    const sel = '[data-fnos-ui], .semi-modal, .semi-modal-content, [role="dialog"], #fnos-dialog-overlay';
-    const els = document.querySelectorAll(sel);
-    let best = null;
-    let bestZ = -Infinity;
-    for (let i = 0; i < els.length; i++) {
-      const el = els[i];
-      if (el.id === "fnos-native-return") continue;
-      const st = getComputedStyle(el);
-      if (st.display === "none" || st.visibility === "hidden" || parseFloat(st.opacity) === 0) continue;
-      const pos = st.position;
-      if (pos !== "fixed" && pos !== "absolute") continue;
-      const r = el.getBoundingClientRect();
-      const isContainer = el.hasAttribute("data-fnos-ui") || el.matches('.semi-modal, [role="dialog"], #fnos-dialog-overlay');
-      if (!isContainer && (r.width < 120 || r.height < 60)) continue;
-      const z = parseInt(st.zIndex, 10);
-      if (Number.isFinite(z) && z > bestZ) {
-        bestZ = z;
-        best = el;
-      }
-    }
-    return best;
-  }
-  function isAuxElement(el) {
-    if (el.closest("#fnos-refresh-btn")) return false;
-    if (el.closest(".play-mask__btn--play")) return true;
-    const r = el.getBoundingClientRect();
-    if (r.width === 90 && r.height === 90 && el.classList.contains("cursor-pointer")) return true;
-    return false;
-  }
-  function hasOpenModal() {
-    const els = document.querySelectorAll('.semi-modal-content, .semi-modal, [role="dialog"]');
-    for (let i = 0; i < els.length; i++) {
-      const el = els[i];
-      const st = getComputedStyle(el);
-      if (st.display === "none" || st.visibility === "hidden" || parseFloat(st.opacity) === 0) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width < 5 || r.height < 5) continue;
-      return true;
-    }
-    return false;
-  }
-  function isVisible(el) {
-    const r = el.getBoundingClientRect();
-    const isBurger = !!el.closest('[class*="lg:!hidden"]') && !el.closest('[class*="inset-0"]');
-    const minSize = isBurger ? 10 : 24;
-    if (r.width < minSize || r.height < minSize) return false;
-    const st = getComputedStyle(el);
-    if (st.display === "none" || st.visibility === "hidden") return false;
-    if (st.opacity === "0") return false;
-    return true;
-  }
-  function collectCandidates(overlayArg) {
-    const overlayEl = overlayArg !== void 0 ? overlayArg : findActiveOverlay();
-    const drawerEl = document.querySelector('.fixed.inset-0[class*="lg:!hidden"]');
-    const drawerOpen = !!drawerEl && drawerEl.classList.contains("drawer-open");
-    const scope = overlayEl ? overlayEl : drawerOpen ? drawerEl : document;
-    const inScopedOverlay = scope !== document;
-    const map = /* @__PURE__ */ new Map();
-    for (const sel of CANDIDATE_SELECTORS) {
-      let nodes = null;
-      try {
-        nodes = scope.querySelectorAll(sel);
-      } catch {
-        continue;
-      }
-      nodes.forEach((n) => {
-        const el = n;
-        if (!el || isInOurUI(el) && !inScopedOverlay || !isVisible(el)) return;
-        if (isAuxElement(el)) return;
-        if (el.tagName === "LABEL" && !el.querySelector("input,select,textarea")) return;
-        map.set(el, true);
-      });
-    }
-    const list = Array.from(map.keys());
-    const dropped = /* @__PURE__ */ new Set();
-    for (const c of list) {
-      if (dropped.has(c)) continue;
-      for (const a of list) {
-        if (a === c) continue;
-        if (a.contains(c) && !c.contains(a)) {
-          const ra = a.getBoundingClientRect();
-          const rc = c.getBoundingClientRect();
-          const cover = ra.left - 2 <= rc.left && ra.top - 2 <= rc.top && ra.right + 2 >= rc.right && ra.bottom + 2 >= rc.bottom;
-          if (cover) {
-            dropped.add(c);
-            break;
-          }
-        }
-      }
-    }
-    return list.filter((el) => !dropped.has(el));
-  }
-  function isPlayingInPage() {
-    const v = document.querySelector("video");
-    return !!(v && !v.paused && v.currentTime > 0);
-  }
-  function focusEl(el) {
-    focusedEl = el;
-    active2 = true;
-    const f = ensureFrame();
-    if (f.parentNode === document.body) document.body.appendChild(f);
-    try {
-      el.scrollIntoView({ block: "nearest", inline: "nearest" });
-    } catch {
-    }
-    const r = el.getBoundingClientRect();
-    f.style.left = r.left + "px";
-    f.style.top = r.top + "px";
-    f.style.width = r.width + "px";
-    f.style.height = r.height + "px";
-    f.style.display = "block";
-  }
-  function hide() {
-    active2 = false;
-    focusedEl = null;
-    if (frameEl) frameEl.style.display = "none";
-  }
-  var focusNav = {
-    isActive() {
-      return active2;
-    },
-    getFocused() {
-      return focusedEl;
-    },
-    activate() {
-      if (active2) return;
-      if (isPlayingInPage()) return;
-      const overlay = findActiveOverlay();
-      if (!overlay && hasOpenModal()) return;
-      const cands = collectCandidates(overlay);
-      if (!cands.length) return;
-      const isRoot = location.pathname === "/" || /^\/v\/?$/i.test(location.pathname);
-      if (isRoot) {
-        const refreshBtn = cands.find((el) => el.id === "fnos-refresh-btn" || !!el.closest("#fnos-refresh-btn"));
-        if (refreshBtn) {
-          focusEl(refreshBtn);
-          showHint();
-          return;
-        }
-      }
-      const startWatch = cands.find((el) => el.classList.contains("fnos-play"));
-      if (startWatch) {
-        focusEl(startWatch);
-        showHint();
-        return;
-      }
-      const vcx = window.innerWidth / 2;
-      const vcy = window.innerHeight / 2;
-      let best = null;
-      let bestD = Infinity;
-      for (const el of cands) {
-        const r = el.getBoundingClientRect();
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        const d = Math.abs(cx - vcx) + Math.abs(cy - vcy);
-        if (d < bestD) {
-          bestD = d;
-          best = el;
-        }
-      }
-      if (best) {
-        focusEl(best);
-        showHint();
-      }
-    },
-    move(dir) {
-      if (!active2) {
-        this.activate();
-        if (!active2) return;
-      }
-      const cands = collectCandidates();
-      if (!cands.length) return;
-      const cur = focusedEl;
-      const cr = cur ? cur.getBoundingClientRect() : { left: window.innerWidth / 2 - 5, top: window.innerHeight / 2 - 5, width: 10, height: 10, bottom: window.innerHeight / 2 + 5, right: window.innerWidth / 2 + 5 };
-      const curTop = cr.top;
-      const curBottom = cr.bottom;
-      const curLeft = cr.left;
-      const curRight = cr.right;
-      const curCx = cr.left + cr.width / 2;
-      const curCy = cr.top + cr.height / 2;
-      let best = null;
-      let bestScore = Infinity;
-      for (const el of cands) {
-        if (cur && el === cur) continue;
-        const r = el.getBoundingClientRect();
-        if (dir === "left" || dir === "right") {
-          const inDir = dir === "right" ? r.left > curRight + 2 : r.right < curLeft - 2;
-          if (!inDir) continue;
-          const sameRow = r.top < curBottom && curTop < r.bottom;
-          const gap = dir === "right" ? r.left - curRight : curLeft - r.right;
-          const dyCenter = Math.abs((r.top + r.bottom) / 2 - curCy);
-          const score = sameRow ? gap : dyCenter * 20 + gap;
-          if (score < bestScore) {
-            bestScore = score;
-            best = el;
-          }
-        } else {
-          const inDir = dir === "down" ? r.top > curBottom + 2 : r.bottom < curTop - 2;
-          if (!inDir) continue;
-          const sameCol = r.left < curRight && curLeft < r.right;
-          const gap = dir === "down" ? r.top - curBottom : curTop - r.bottom;
-          const dxCenter = Math.abs((r.left + r.right) / 2 - curCx);
-          const score = sameCol ? gap : dxCenter * 20 + gap;
-          if (score < bestScore) {
-            bestScore = score;
-            best = el;
-          }
-        }
-      }
-      if (best) focusEl(best);
-      lastMoveTime = Date.now();
-    },
-    select() {
-      if (!active2 || !focusedEl) return false;
-      const el = focusedEl;
-      const link = el.querySelector("a[href]");
-      const target = link || el;
-      try {
-        target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-        log7.info("[gamepadFocus] \u786E\u8BA4\u70B9\u51FB:", (target.getAttribute("href") || target.className || target.tagName).slice(0, 60));
-      } catch (e) {
-        log7.warn("[gamepadFocus] \u6A21\u62DF\u70B9\u51FB\u5931\u8D25:", (e == null ? void 0 : e.message) || e);
-      }
-      lastMoveTime = Date.now();
-      return true;
-    },
-    back() {
-      if (!active2) return false;
-      hide();
-      return true;
-    },
-    dismiss() {
-      if (active2) hide();
-    }
-  };
-  try {
-    window.fntvFocusNav = focusNav;
-  } catch {
-  }
-  try {
-    window.addEventListener("mousemove", () => {
-      if (active2) hide();
-    }, { passive: true });
-    window.addEventListener("mousedown", () => {
-      if (active2) hide();
-    }, { passive: true });
-    let scrollTimer = 0;
-    window.addEventListener("scroll", () => {
-      if (!active2 || !focusedEl) return;
-      clearTimeout(scrollTimer);
-      scrollTimer = window.setTimeout(() => {
-        if (active2 && focusedEl && focusedEl.isConnected) {
-          const r = focusedEl.getBoundingClientRect();
-          const f = ensureFrame();
-          f.style.left = r.left + "px";
-          f.style.top = r.top + "px";
-          f.style.width = r.width + "px";
-          f.style.height = r.height + "px";
-        }
-      }, 80);
-    }, { passive: true, capture: true });
-    window.addEventListener("resize", () => {
-      if (active2 && focusedEl && focusedEl.isConnected) focusEl(focusedEl);
-    });
-  } catch {
-  }
-
-  // src/preload/plugins/gamepad.ts
-  var log8 = logger_default;
-  var PAD_BTN = {
-    A: 0,
-    B: 1,
-    X: 2,
-    Y: 3,
-    LB: 4,
-    RB: 5,
-    LT: 6,
-    RT: 7,
-    BACK: 8,
-    START: 9
-  };
-  var GAMEPAD_FUNCS = [
-    { id: "playPause", label: "\u64AD\u653E / \u6682\u505C", defaultBtn: "A", playAction: "playpause", navKey: "Enter", navCode: "Enter" },
-    { id: "seekBack", label: "\u5FEB\u9000 (5s)", defaultBtn: "LB", playAction: "seek-back", navKey: "PageUp", navCode: "PageUp" },
-    { id: "seekFwd", label: "\u5FEB\u8FDB (5s)", defaultBtn: "RB", playAction: "seek-fwd", navKey: "PageDown", navCode: "PageDown" },
-    { id: "speedDown", label: "\u500D\u901F -", defaultBtn: "LT", playAction: "speed-down", navKey: null, navCode: null },
-    { id: "speedUp", label: "\u500D\u901F +", defaultBtn: "RT", playAction: "speed-up", navKey: null, navCode: null },
-    { id: "next", label: "\u4E0B\u4E00\u96C6", defaultBtn: "Y", playAction: "next", navKey: null, navCode: null },
-    { id: "navBack", label: "\u8FD4\u56DE / \u5173\u95ED", defaultBtn: "B", playAction: null, navKey: "Escape", navCode: "Escape" },
-    { id: "navSelect", label: "\u52FE\u9009 / \u5F00\u5173", defaultBtn: "X", playAction: null, navKey: " ", navCode: "Space" }
-  ];
-  var CONFIG_KEY = "fntvGamepad.config";
-  var CONFIG_EVT = "fntv-gamepad-config-changed";
-  var GAMEPAD_ADV_DEFAULTS = {
-    stickDeadzone: 0.3,
-    directionThreshold: 0.4,
-    repeatDelay: 320,
-    repeatInterval: 130
-  };
-  var ADV_RANGE = {
-    stickDeadzone: { min: 0.1, max: 0.5 },
-    directionThreshold: { min: 0.2, max: 0.8 },
-    repeatDelay: { min: 100, max: 800 },
-    repeatInterval: { min: 50, max: 400 }
-  };
-  function clampAdv(key, v) {
-    const r = ADV_RANGE[key];
-    if (!r) return v;
-    return Math.min(r.max, Math.max(r.min, v));
-  }
-  function defaultConfig() {
-    const bindings = {};
-    for (const f of GAMEPAD_FUNCS) bindings[f.id] = f.defaultBtn;
-    return {
-      enabled: true,
-      bindings,
-      stickDeadzone: GAMEPAD_ADV_DEFAULTS.stickDeadzone,
-      directionThreshold: GAMEPAD_ADV_DEFAULTS.directionThreshold,
-      repeatDelay: GAMEPAD_ADV_DEFAULTS.repeatDelay,
-      repeatInterval: GAMEPAD_ADV_DEFAULTS.repeatInterval
-    };
-  }
-  function loadConfig() {
-    try {
-      const raw = localStorage.getItem(CONFIG_KEY);
-      if (!raw) return defaultConfig();
-      const parsed = JSON.parse(raw);
-      const cfg = defaultConfig();
-      if (typeof parsed.enabled === "boolean") cfg.enabled = parsed.enabled;
-      if (parsed.bindings && typeof parsed.bindings === "object") {
-        for (const id of GAMEPAD_FUNCS.map((f) => f.id)) {
-          const b = parsed.bindings[id];
-          if (b && typeof PAD_BTN[b] === "number") cfg.bindings[id] = b;
-        }
-      }
-      for (const key of Object.keys(GAMEPAD_ADV_DEFAULTS)) {
-        const v = parsed[key];
-        if (typeof v === "number" && Number.isFinite(v)) cfg[key] = clampAdv(key, v);
-      }
-      return cfg;
-    } catch {
-      return defaultConfig();
-    }
-  }
-  var config = loadConfig();
-  function getConfig() {
-    return config;
-  }
-  function saveConfig(next) {
-    try {
-      const cur = loadConfig();
-      const merged = { ...cur, ...next, bindings: { ...cur.bindings, ...next.bindings || {} } };
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(merged));
-    } catch {
-    }
-    window.dispatchEvent(new CustomEvent(CONFIG_EVT));
-    config = loadConfig();
-    funcIndex = buildIndex2(config);
-  }
-  function resetConfig() {
-    try {
-      localStorage.removeItem(CONFIG_KEY);
-    } catch {
-    }
-    window.dispatchEvent(new CustomEvent(CONFIG_EVT));
-    config = loadConfig();
-    funcIndex = buildIndex2(config);
-  }
-  function detectGamepad() {
-    try {
-      const pads = getGamepads();
-      const pad = pads.find((p) => p && p.connected);
-      if (pad) return { connected: true, id: String(pad.id) };
-    } catch {
-    }
-    return { connected: false, id: null };
-  }
-  try {
-    window.fntvGamepad = {
-      funcs: GAMEPAD_FUNCS,
-      advDefaults: GAMEPAD_ADV_DEFAULTS,
-      getConfig: () => getConfig(),
-      saveConfig,
-      resetConfig,
-      detectGamepad
-    };
-  } catch {
-  }
-  function buildIndex2(cfg) {
-    const idx = /* @__PURE__ */ new Map();
-    for (const f of GAMEPAD_FUNCS) {
-      const btn = cfg.bindings[f.id] || f.defaultBtn;
-      const hit = { playAction: f.playAction, navKey: f.navKey, navCode: f.navCode };
-      const arr = idx.get(btn) || [];
-      arr.push(hit);
-      idx.set(btn, arr);
-    }
-    return idx;
-  }
-  var funcIndex = buildIndex2(config);
-  var prevButtons = [];
-  var prevAxes = [];
-  var polling = false;
-  var heldDir = null;
-  var dirFirstAt = 0;
-  var dirLastRepeat = 0;
-  var padLogged = false;
-  function getGamepads() {
-    try {
-      const nav = navigator;
-      if (typeof nav.getGamepads === "function") return nav.getGamepads();
-    } catch {
-    }
-    return [];
-  }
-  function dispatchKey(code, key, repeat = false) {
-    const target = document.activeElement;
-    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
-      return;
-    }
-    const opts = {
-      key,
-      code,
-      bubbles: true,
-      cancelable: true,
-      repeat
-    };
-    document.dispatchEvent(new KeyboardEvent("keydown", opts));
-    setTimeout(() => document.dispatchEvent(new KeyboardEvent("keyup", opts)), 30);
-  }
-  async function playerControl(action) {
-    if (controlXgPlayer(action)) return true;
-    try {
-      const r = await ipcRenderer.invoke("media:control", action);
-      return !!(r && r.ok && r.handled);
-    } catch (e) {
-      log8.warn("[gamepad] media:control \u5931\u8D25:", (e == null ? void 0 : e.message) || e);
-      return false;
-    }
-  }
-  var _xgPlayer = null;
-  function getXgPlayer() {
-    if (_xgPlayer) return _xgPlayer;
-    try {
-      const root = document.querySelector("[class*=xgplayer]");
-      if (!root) return null;
-      const key = Object.keys(root).find((k) => k.startsWith("__reactFiber$"));
-      if (!key) return null;
-      let node = root[key];
-      let depth = 0;
-      while (node && depth < 15) {
-        const p = node.memoizedProps && node.memoizedProps.player;
-        if (p) {
-          _xgPlayer = p;
-          return p;
-        }
-        node = node.return;
-        depth++;
-      }
-    } catch {
-    }
-    return null;
-  }
-  function controlXgPlayer(action) {
-    const p = getXgPlayer();
-    if (!p) return false;
-    try {
-      switch (action) {
-        case "playpause": {
-          const v = document.querySelector("video");
-          const paused = typeof p.paused === "boolean" ? p.paused : !!(v && v.paused);
-          if (paused) p.play();
-          else p.pause();
-          break;
-        }
-        case "seek-back":
-          p.seek(Math.max(0, (p.currentTime || 0) - 5));
-          break;
-        case "seek-fwd":
-          p.seek((p.currentTime || 0) + 5);
-          break;
-        case "speed-up":
-          p.playbackRate = Math.min(2, (p.playbackRate || 1) + 0.25);
-          break;
-        case "speed-down":
-          p.playbackRate = Math.max(0.5, (p.playbackRate || 1) - 0.25);
-          break;
-        default:
-          return false;
-      }
-      if (p.controls && typeof p.controls.show === "function") p.controls.show();
-      log8.info("[gamepad] xgplayer \u63A7\u5236:", action);
-      return true;
-    } catch (e) {
-      _xgPlayer = null;
-      log8.warn("[gamepad] xgplayer \u63A7\u5236\u5931\u8D25:", (e == null ? void 0 : e.message) || e);
-      return false;
-    }
-  }
-  var handling = false;
-  async function handleFuncHit(hit) {
-    if (handling) return;
-    handling = true;
-    try {
-      if (hit.playAction) {
-        const handled = await playerControl(hit.playAction);
-        if (!handled && hit.navKey) {
-          if (tryFocusAction(hit.navKey)) return;
-          dispatchKey(hit.navCode || hit.navKey, hit.navKey);
-        }
-      } else if (hit.navKey) {
-        if (tryFocusAction(hit.navKey)) return;
-        dispatchKey(hit.navCode || hit.navKey, hit.navKey);
-      }
-    } finally {
-      handling = false;
-    }
-  }
-  function tryFocusAction(navKey) {
-    if (navKey === "Enter") return focusNav.select();
-    if (navKey === "Escape") {
-      focusNav.back();
-      const drawer = document.querySelector('.fixed.inset-0[class*="lg:!hidden"]');
-      if (drawer && drawer.classList.contains("drawer-open")) {
-        const backdrop = drawer.querySelector(".absolute.inset-0");
-        const target = backdrop || drawer;
-        target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-        return true;
-      }
-      dispatchKey("Escape", "Escape");
-      return true;
-    }
-    return false;
-  }
-  function poll() {
-    var _a, _b, _c;
-    if (!config.enabled) return;
-    const pads = getGamepads();
-    const pad = pads.find((p) => p && p.connected);
-    if (!pad) {
-      prevButtons = [];
-      prevAxes = [];
-      heldDir = null;
-      return;
-    }
-    if (!padLogged) {
-      padLogged = true;
-      log8.info(`[gamepad] \u68C0\u6D4B\u5230\u624B\u67C4: ${pad.id} buttons=${(pad.buttons || []).length} axes=${(pad.axes || []).length}`);
-    }
-    const btnStates = (pad.buttons || []).map((b) => typeof b === "boolean" ? b : !!(b && b.pressed));
-    const axes = (pad.axes || []).map((a) => {
-      var _a2;
-      const v = typeof a === "number" ? a : a && a.value || 0;
-      return Math.abs(v) < ((_a2 = config.stickDeadzone) != null ? _a2 : GAMEPAD_ADV_DEFAULTS.stickDeadzone) ? 0 : v;
-    });
-    const joyDead = (_a = config.directionThreshold) != null ? _a : GAMEPAD_ADV_DEFAULTS.directionThreshold;
-    const joyUp = axes[1] !== void 0 && axes[1] < -joyDead;
-    const joyDown = axes[1] !== void 0 && axes[1] > joyDead;
-    const joyLeft = axes[0] !== void 0 && axes[0] < -joyDead;
-    const joyRight = axes[0] !== void 0 && axes[0] > joyDead;
-    for (const [name, idx] of Object.entries(PAD_BTN)) {
-      const pressed = btnStates[idx];
-      const prev = prevButtons[idx];
-      if (pressed && !prev) {
-        const hits = funcIndex.get(name);
-        if (hits) for (const h of hits) handleFuncHit(h);
-      }
-    }
-    const isDpadDown = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
-    const dpadUp = isDpadDown(12), dpadDown = isDpadDown(13), dpadLeft = isDpadDown(14), dpadRight = isDpadDown(15);
-    const edgeDir = dpadUp && !prevButtons[12] || joyUp && prevAxes[1] === 0 ? "up" : dpadDown && !prevButtons[13] || joyDown && prevAxes[1] === 0 ? "down" : dpadLeft && !prevButtons[14] || joyLeft && prevAxes[0] === 0 ? "left" : dpadRight && !prevButtons[15] || joyRight && prevAxes[0] === 0 ? "right" : null;
-    if (edgeDir) dirInput(edgeDir);
-    const activeDir = joyUp || dpadUp ? "up" : joyDown || dpadDown ? "down" : joyLeft || dpadLeft ? "left" : joyRight || dpadRight ? "right" : null;
-    if (activeDir) {
-      const now = Date.now();
-      if (heldDir !== activeDir) {
-        heldDir = activeDir;
-        dirFirstAt = now;
-        dirLastRepeat = 0;
-      }
-      const repDelay = (_b = config.repeatDelay) != null ? _b : GAMEPAD_ADV_DEFAULTS.repeatDelay;
-      const repInt = (_c = config.repeatInterval) != null ? _c : GAMEPAD_ADV_DEFAULTS.repeatInterval;
-      if (focusNav.isActive() && now - dirFirstAt > repDelay && now - dirLastRepeat > repInt) {
-        dirLastRepeat = now;
-        focusNav.move(activeDir);
-      }
-    } else {
-      heldDir = null;
-    }
-    prevButtons = btnStates;
-    prevAxes = axes;
-  }
-  function wakeXgControls() {
-    try {
-      const p = getXgPlayer();
-      if (p && p.controls && typeof p.controls.show === "function") p.controls.show();
-    } catch {
-    }
-  }
-  function dirInput(dir) {
-    wakeXgControls();
-    if (focusNav.isActive()) {
-      focusNav.move(dir);
-      return;
-    }
-    if (dir === "left" || dir === "right") {
-      playerControl(dir === "left" ? "seek-back" : "seek-fwd").then((handled) => {
-        if (!handled) focusNav.move(dir);
-      });
-      return;
-    }
-    focusNav.move(dir);
-  }
-  function startGamepad() {
-    var _a, _b;
-    if (polling) return;
-    try {
-      const nav = navigator;
-      if (typeof nav.getGamepads !== "function") {
-        log8.warn("[gamepad] \u5F53\u524D\u73AF\u5883\u4E0D\u652F\u6301 Gamepad API\uFF0C\u624B\u67C4\u529F\u80FD\u4E0D\u53EF\u7528");
-        return;
-      }
-      polling = true;
-      (_a = nav.addEventListener) == null ? void 0 : _a.call(nav, "gamepadconnected", (e) => {
-        var _a2;
-        log8.info("[gamepad] \u624B\u67C4\u5DF2\u8FDE\u63A5:", ((_a2 = e.gamepad) == null ? void 0 : _a2.id) || "(unknown)");
-      });
-      (_b = nav.addEventListener) == null ? void 0 : _b.call(nav, "gamepaddisconnected", () => {
-        log8.info("[gamepad] \u624B\u67C4\u5DF2\u65AD\u5F00");
-      });
-      window.addEventListener(CONFIG_EVT, () => {
-        config = loadConfig();
-        funcIndex = buildIndex2(config);
-        log8.info("[gamepad] \u914D\u7F6E\u5DF2\u5237\u65B0:", config.enabled ? "\u542F\u7528" : "\u505C\u7528");
-      });
-      setInterval(poll, 50);
-      log8.info("[gamepad] \u624B\u67C4\u8F6E\u8BE2\u5DF2\u542F\u52A8\uFF08\u6BCF 50ms\uFF09");
-    } catch (e) {
-      log8.warn("[gamepad] \u542F\u52A8\u624B\u67C4\u8F6E\u8BE2\u5931\u8D25:", (e == null ? void 0 : e.message) || e);
-    }
-  }
-  try {
-    registerHook("onReady" /* OnReady */, () => {
-      try {
-        startGamepad();
-      } catch (e) {
-        log8.warn("[gamepad] \u521D\u59CB\u5316\u5931\u8D25:", (e == null ? void 0 : e.message) || e);
-      }
-    });
-  } catch (e) {
-    const boot2 = () => {
-      try {
-        startGamepad();
-      } catch {
-      }
-    };
-    if (document.readyState !== "loading") boot2();
-    else document.addEventListener("DOMContentLoaded", boot2);
-  }
-
   // src/preload/plugins/glassUI.ts
   var LOG = "[GlassUI]";
   var K = {
@@ -17849,17 +16838,17 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     });
     return false;
   }
-  var polling2 = false;
+  var polling = false;
   function startPolling() {
-    if (polling2) return;
-    polling2 = true;
+    if (polling) return;
+    polling = true;
     let tries = 0;
     const id = window.setInterval(() => {
       tries++;
       const done = applyFix();
       if (done || tries > 40) {
         window.clearInterval(id);
-        polling2 = false;
+        polling = false;
       }
     }, 400);
   }
@@ -18533,7 +17522,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }, 2e3);
     });
   }
-  function createPlayModal(originalButton, config2, playExternal) {
+  function createPlayModal(originalButton, config, playExternal) {
     const existingModal = document.getElementById("play-choice-modal");
     if (existingModal) {
       existingModal.remove();
@@ -18602,7 +17591,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         min-width: 100px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     `;
-    const externalPlayer = config2.defaultPlayer;
+    const externalPlayer = config.defaultPlayer;
     const extPlayBtn = document.createElement("button");
     extPlayBtn.textContent = externalPlayer === "potplayer" ? "PotPlayer" : t("MPV\u64AD\u653E");
     extPlayBtn.style.cssText = externalPlayer === "potplayer" ? `
@@ -18739,7 +17728,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }
     };
     document.addEventListener("keydown", escHandler);
-    if (!config2.hideOriginalPlayButton) {
+    if (!config.hideOriginalPlayButton) {
       buttonContainer.appendChild(nativePlayBtn);
     }
     buttonContainer.appendChild(extPlayBtn);
@@ -18836,7 +17825,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           } catch {
           }
           const pollStart = Date.now();
-          const poll2 = () => {
+          const poll = () => {
             if (done) return;
             const cur = getInterceptedGuid();
             if (cur && cur !== before) {
@@ -18850,9 +17839,9 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
               resolve2(null);
               return;
             }
-            setTimeout(poll2, 150);
+            setTimeout(poll, 150);
           };
-          setTimeout(poll2, 200);
+          setTimeout(poll, 200);
         }, 50);
       } catch (error) {
         setExternalPlayActive(false);
@@ -18986,9 +17975,9 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       logger_default.error("playEpisodeByGuid: \u7F3A\u5C11 guid \u6216 token");
       return;
     }
-    const config2 = await getPlayButtonConfig();
-    const playData = { id: guid, token, sourceIndex: 0, player: config2.defaultPlayer };
-    logger_default.info("[\u9009\u96C6/\u4E0B\u4E00\u96C6] \u8DEF\u7531\u5230\u5916\u90E8\u64AD\u653E\u5668:", guid, config2.defaultPlayer);
+    const config = await getPlayButtonConfig();
+    const playData = { id: guid, token, sourceIndex: 0, player: config.defaultPlayer };
+    logger_default.info("[\u9009\u96C6/\u4E0B\u4E00\u96C6] \u8DEF\u7531\u5230\u5916\u90E8\u64AD\u653E\u5668:", guid, config.defaultPlayer);
     ipcRenderer.send("play-movie", playData);
   }
   function findNextEpisodeGuid() {
@@ -19054,13 +18043,13 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
   function handleMaskPlay(mask) {
     (async () => {
       try {
-        const config2 = await getPlayButtonConfig();
-        if (config2.hideOriginalPlayButton) {
-          logger_default.info(`Mask button click intercepted, directly playing with ${config2.defaultPlayer}`);
-          await playWithPlayer(mask, config2.defaultPlayer);
+        const config = await getPlayButtonConfig();
+        if (config.hideOriginalPlayButton) {
+          logger_default.info(`Mask button click intercepted, directly playing with ${config.defaultPlayer}`);
+          await playWithPlayer(mask, config.defaultPlayer);
         } else {
           logger_default.info("Original play button NOT hidden, showing player choice modal");
-          await createPlayModal(mask, { ...config2, hideOriginalPlayButton: false }, (p) => playWithPlayer(mask, p));
+          await createPlayModal(mask, { ...config, hideOriginalPlayButton: false }, (p) => playWithPlayer(mask, p));
         }
       } catch (err) {
         logger_default.error("Error in handleMaskPlay:", err);
@@ -19127,9 +18116,9 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       } else if (hit.kind === "card") {
         hit.el.setAttribute("data-home-intercepted", "true");
         (async () => {
-          const config2 = await getPlayButtonConfig();
-          logger_default.info("Home card play icon intercepted, playing with", config2.defaultPlayer);
-          await playWithPlayer(hit.el, config2.defaultPlayer);
+          const config = await getPlayButtonConfig();
+          logger_default.info("Home card play icon intercepted, playing with", config.defaultPlayer);
+          await playWithPlayer(hit.el, config.defaultPlayer);
         })();
       } else if (hit.kind === "ep" || hit.kind === "next") {
         (async () => {
@@ -19258,13 +18247,13 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     referenceButton.addEventListener("click", clickHandler, true);
   }
   async function injectCustomPlayBtn() {
-    const config2 = await getPlayButtonConfig();
-    if (config2.hideOriginalPlayButton) {
-      interceptOriginalButton(config2.defaultPlayer);
+    const config = await getPlayButtonConfig();
+    if (config.hideOriginalPlayButton) {
+      interceptOriginalButton(config.defaultPlayer);
     } else {
-      const label = config2.defaultPlayer === "potplayer" ? "PotPlayer" : "MPV\u64AD\u653E";
+      const label = config.defaultPlayer === "potplayer" ? "PotPlayer" : "MPV\u64AD\u653E";
       clonePlayBtnAndInject(async (button) => {
-        const id = sendPlayEventToMain2(button, config2.defaultPlayer);
+        const id = sendPlayEventToMain2(button, config.defaultPlayer);
         if (id) return;
         const itemGuid = await tryGetItemGuidFromOriginalLogic(button);
         if (!itemGuid) {
@@ -19276,7 +18265,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           logger_default.error("[lc-614] \u65E0 token");
           return;
         }
-        const playData = { id: itemGuid, token, sourceIndex: 0, player: config2.defaultPlayer };
+        const playData = { id: itemGuid, token, sourceIndex: 0, player: config.defaultPlayer };
         ipcRenderer.send("play-movie", playData);
       }, label);
     }
@@ -19541,9 +18530,9 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     if (!b) return;
     wired = true;
     wireBar(b, v);
-    log9("\u8FDB\u5EA6\u6761\u5DF2\u5B9A\u4F4D\u5E76\u63A5\u7EBF: " + (b.className || b.tagName).toString().slice(0, 80));
+    log7("\u8FDB\u5EA6\u6761\u5DF2\u5B9A\u4F4D\u5E76\u63A5\u7EBF: " + (b.className || b.tagName).toString().slice(0, 80));
   }
-  function log9(msg) {
+  function log7(msg) {
     try {
       console.info("[previewThumb]", msg);
     } catch {
