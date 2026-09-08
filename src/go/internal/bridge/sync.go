@@ -338,10 +338,15 @@ func isAllDigits(s string) bool {
 	return true
 }
 
-// fetchDoubanRating 抓 movie.douban.com 条目页正则取评分/人数（无 cookie 尽力而为，失败静默 0）。
+// fetchDoubanRating 抓 movie.douban.com 条目页正则取评分/人数。豆瓣对无 cookie 请求
+// 常拒（418/登录页），[v0.51.0] 起带设置面板粘贴的 doubanCookie（有则大幅提升成功率），失败静默 0。
 func (b *Bridge) fetchDoubanRating(doubanID string) (float64, int64) {
 	req, _ := http.NewRequest(http.MethodGet, "https://movie.douban.com/subject/"+doubanID+"/", nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	req.Header.Set("Referer", "https://movie.douban.com/")
+	if ck := strings.TrimSpace(getSetting(b.cfg, "doubanCookie")); ck != "" {
+		req.Header.Set("Cookie", ck)
+	}
 	resp, err := b.client.Do(req)
 	if err != nil {
 		return 0, 0

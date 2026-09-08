@@ -634,6 +634,17 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             });
           }
           if (channel === "douban:enrich-one") return Promise.resolve(null);
+          if (channel === "douban:manual-cookie") {
+            const ck = String(args[0] || "").trim();
+            if (!ck) return Promise.resolve({ ok: false, msg: "cookie \u4E3A\u7A7A" });
+            return apiPost("/app/fntvplus/api/settings", { doubanCookie: ck }).then(() => ({ ok: true }));
+          }
+          if (channel === "douban:logout") {
+            return apiPost("/app/fntvplus/api/settings", { doubanCookie: "" }).then(() => ({ ok: true }));
+          }
+          if (channel === "douban:open-login") {
+            return Promise.resolve({ ok: false, msg: "\u7F51\u9875\u7AEF\u4E0D\u652F\u6301\u626B\u7801\u767B\u5F55\uFF0C\u8BF7\u4F7F\u7528\u4E0B\u65B9\u300C\u624B\u52A8\u7C98\u8D34 Cookie\u300D" });
+          }
           if (channel === "douban:scan-watched-manual") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u8C46\u74E3\u626B\u63CF\u672A\u9002\u914D" });
           if (typeof channel === "string" && channel.startsWith("douban:")) return Promise.resolve(void 0);
           if (channel === "settings:list-changelogs") return Promise.resolve([]);
@@ -774,6 +785,10 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       shimExports.shell = shell;
       try {
         if (typeof window !== "undefined") window.__fntvShim = shimExports;
+      } catch {
+      }
+      try {
+        if (typeof window !== "undefined") window.__FNTV_WEB__ = true;
       } catch {
       }
     }
@@ -13347,6 +13362,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       doubanBtns.appendChild(logoutDoubanBtn);
       doubanBtns.appendChild(manualBtn);
       colLogin.appendChild(doubanBtns);
+      if (window.__FNTV_WEB__) scanDoubanBtn.style.display = "none";
       scanDoubanBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         doubanStatus.textContent = t("\u8BF7\u5728\u5F39\u51FA\u7684\u7A97\u53E3\u4E2D\u7528\u8C46\u74E3 App \u626B\u7801\u2026");
@@ -13369,6 +13385,10 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       manualLabel.textContent = t("\u624B\u52A8\u7C98\u8D34 Cookie\uFF08\u8C46\u74E3\u98CE\u63A7/\u626B\u7801\u5931\u6548\u65F6\u7528\uFF09");
       manualLabel.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);margin-bottom:4px;";
       manualWrap.appendChild(manualLabel);
+      const manualHelp = document.createElement("div");
+      manualHelp.style.cssText = "font-size:10px;color:var(--fnos-ui-sub);line-height:1.55;margin-bottom:5px;background:var(--fnos-ui-input-bg);border:1px dashed var(--fnos-ui-border3);border-radius:7px;padding:6px 8px;";
+      manualHelp.innerHTML = t("\u83B7\u53D6\u65B9\u6CD5\uFF1A\u7535\u8111\u6D4F\u89C8\u5668\u767B\u5F55\u8C46\u74E3 \u2192 \u6309 F12 \u6253\u5F00\u5F00\u53D1\u8005\u5DE5\u5177 \u2192 \u7F51\u7EDC(Network)\u91CC\u4EFB\u9009\u4E00\u4E2A movie.douban.com \u8BF7\u6C42 \u2192 \u8BF7\u6C42\u5934\u91CC\u590D\u5236\u5B8C\u6574\u7684 Cookie \u503C\u7C98\u8D34\u5230\u4E0B\u9762\uFF08\u987B\u542B dbcl2 \u4E0E ck\uFF09\u3002\u624B\u673A\u7AEF\u53EF\u5148\u5728\u6D4F\u89C8\u5668\u767B\u5F55\u8C46\u74E3\u540E\u5207\u6362\u300C\u7535\u8111\u7248\u7F51\u9875\u300D\u518D\u53D6\u3002");
+      manualWrap.appendChild(manualHelp);
       const manualTa = document.createElement("input");
       manualTa.type = "text";
       manualTa.placeholder = t("\u7C98\u8D34\u6D4F\u89C8\u5668\u91CC\u8C46\u74E3\u7684 Cookie \u5B57\u7B26\u4E32\uFF08\u542B dbcl2 \u7B49\uFF09");
@@ -14757,7 +14777,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
             doubanStatus.textContent = t("\u5DF2\u767B\u5F55\u8C46\u74E3 \u2713");
             doubanStatus.style.color = "var(--fnos-ui-ok)";
           } else {
-            doubanStatus.textContent = t('\u672A\u767B\u5F55\u8C46\u74E3\uFF08\u70B9"\u626B\u7801\u767B\u5F55"\uFF09');
+            doubanStatus.textContent = st && st.note ? st.note : t('\u672A\u767B\u5F55\u8C46\u74E3\uFF08\u70B9"\u626B\u7801\u767B\u5F55"\uFF09');
             doubanStatus.style.color = "var(--fnos-ui-warn)";
           }
           swDouban.checked = !!(st && st.enabled);

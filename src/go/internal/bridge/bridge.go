@@ -892,11 +892,18 @@ func (b *Bridge) tmdbLogo(w http.ResponseWriter, r *http.Request) {
 // bangumiCalendar 代理 api.bgm.tv/calendar（bgm.tv 要求自定义 UA）。
 // bangumiCalendar 已迁移至 hot.go（[lc-051] 重写为桌面版 fetchCalendar 同款 {ok, items} 形状）。
 
-// doubanStatus 网页端豆瓣登录暂未适配（桌面版依赖内嵌浏览器会话），如实告知。
+// doubanStatus 登录状态：[v0.51.0] 改按设置面板粘贴的 doubanCookie 判定（网页端无内嵌
+// 浏览器登录途径，桌面版扫码/内嵌会话在网页端不可用）。enabled 同步回传供面板开关回填。
 func (b *Bridge) doubanStatus(w http.ResponseWriter, r *http.Request) {
+	loggedIn := strings.TrimSpace(getSetting(b.cfg, "doubanCookie")) != ""
+	note := "未配置豆瓣 Cookie（在设置面板「手动粘贴 Cookie」）"
+	if loggedIn {
+		note = "已配置豆瓣 Cookie（网页端手动粘贴）"
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok": true, "loggedIn": false,
-		"note": "网页端暂不支持豆瓣登录（需浏览器 cookie，后续版本适配）",
+		"ok": true, "loggedIn": loggedIn,
+		"enabled": getSetting(b.cfg, "doubanEnabled") == "1",
+		"note":    note,
 	})
 }
 

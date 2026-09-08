@@ -1675,6 +1675,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     const manualBtn = mkBtn('保存 Cookie', true);
     doubanBtns.appendChild(scanDoubanBtn); doubanBtns.appendChild(logoutDoubanBtn); doubanBtns.appendChild(manualBtn);
     colLogin.appendChild(doubanBtns);
+    // [v0.51.0] 网页端无内嵌浏览器，扫码登录不可用 → 隐藏（shim 设置 __FNTV_WEB__ 标志）
+    if ((window as any).__FNTV_WEB__) scanDoubanBtn.style.display = 'none';
 
     scanDoubanBtn.addEventListener('click', async (e: Event) => {
       e.stopPropagation();
@@ -1700,6 +1702,12 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     manualLabel.textContent = t('手动粘贴 Cookie（豆瓣风控/扫码失效时用）');
     manualLabel.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-muted);margin-bottom:4px;';
     manualWrap.appendChild(manualLabel);
+    // [v0.51.0] 获取方法提示（网页端主打此方式）
+    const manualHelp = document.createElement('div');
+    manualHelp.style.cssText = 'font-size:10px;color:var(--fnos-ui-sub);line-height:1.55;margin-bottom:5px;'
+      + 'background:var(--fnos-ui-input-bg);border:1px dashed var(--fnos-ui-border3);border-radius:7px;padding:6px 8px;';
+    manualHelp.innerHTML = t('获取方法：电脑浏览器登录豆瓣 → 按 F12 打开开发者工具 → 网络(Network)里任选一个 movie.douban.com 请求 → 请求头里复制完整的 Cookie 值粘贴到下面（须含 dbcl2 与 ck）。手机端可先在浏览器登录豆瓣后切换「电脑版网页」再取。');
+    manualWrap.appendChild(manualHelp);
     const manualTa = document.createElement('input');
     manualTa.type = 'text';
     manualTa.placeholder = t('粘贴浏览器里豆瓣的 Cookie 字符串（含 dbcl2 等）');
@@ -3136,7 +3144,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
           doubanStatus.textContent = t('已登录豆瓣 ✓');
           doubanStatus.style.color = 'var(--fnos-ui-ok)';
         } else {
-          doubanStatus.textContent = t('未登录豆瓣（点"扫码登录"）');
+          // [v0.51.0] 优先用后端 note（网页端="未配置豆瓣 Cookie（在设置面板「手动粘贴 Cookie」）"）
+          doubanStatus.textContent = (st && st.note) ? st.note : t('未登录豆瓣（点"扫码登录"）');
           doubanStatus.style.color = 'var(--fnos-ui-warn)';
         }
         swDouban.checked = !!(st && st.enabled);

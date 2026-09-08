@@ -338,6 +338,21 @@ const ipcRenderer = {
       });
     }
     if (channel === 'douban:enrich-one') return Promise.resolve(null);
+    if (channel === 'douban:manual-cookie') {
+      // [v0.51.0] 手动粘贴豆瓣 Cookie：存 NAS config（settings 通用通道），供后端
+      // doubanStatus 判定登录态 / fetchDoubanRating 带鉴权抓评分；后续标记同步同源使用。
+      const ck = String(args[0] || '').trim();
+      if (!ck) return Promise.resolve({ ok: false, msg: 'cookie 为空' });
+      return apiPost('/app/fntvplus/api/settings', { doubanCookie: ck }).then(() => ({ ok: true }));
+    }
+    if (channel === 'douban:logout') {
+      // 网页端无内嵌浏览器会话，"退出"= 清除已粘贴的 Cookie
+      return apiPost('/app/fntvplus/api/settings', { doubanCookie: '' }).then(() => ({ ok: true }));
+    }
+    if (channel === 'douban:open-login') {
+      // 网页端没有内嵌浏览器，扫码登录不可用——引导用手动粘贴
+      return Promise.resolve({ ok: false, msg: '网页端不支持扫码登录，请使用下方「手动粘贴 Cookie」' });
+    }
     if (channel === 'douban:scan-watched-manual') return Promise.resolve({ ok: false, message: '网页端豆瓣扫描未适配' });
     if (typeof channel === 'string' && channel.startsWith('douban:')) return Promise.resolve(undefined);
 
@@ -480,4 +495,6 @@ const shell = {
 shimExports.ipcRenderer = ipcRenderer;
 shimExports.shell = shell;
 try { if (typeof window !== 'undefined') window.__fntvShim = shimExports; } catch { /* ignore */ }
+// [v0.51.0] 网页端环境标志：插件据此隐藏桌面专属 UI（如豆瓣「扫码登录」——网页端无内嵌浏览器）
+try { if (typeof window !== 'undefined') window.__FNTV_WEB__ = true; } catch { /* ignore */ }
 export { ipcRenderer, shell };
