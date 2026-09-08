@@ -630,7 +630,13 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       } catch (_) {}
     }
 
-    buildSettingsPanel();
+    // [网页端] 面板构建失败不能静默：否则侧栏「设置」按钮可见但点击无任何反应，
+    //   排查成本极高。这里显式捕获并 console.error（diag 会回传 client.log，实时日志可见）。
+    try {
+      buildSettingsPanel();
+    } catch (e) {
+      console.error('[fntv-web] buildSettingsPanel failed', e);
+    }
   }
 
 
@@ -3385,21 +3391,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       if (r && r.ok) { biliManualTa.value = ''; refreshBili(); }
       else biliStatus.textContent = '保存失败：' + ((r && (r.msg || r.error)) || '未知');
     });
-    const refreshExit = (): void => {
-      const cur = (overlay as any)._exitMode || 'ask';
-      exitEls.forEach((b) => {
-        const on = b.dataset.mode === cur;
-        b.style.background = (on ? 'var(--fnos-ui-exit-on)' : 'var(--fnos-ui-exit-off)') + '!important';
-        b.style.color = on ? '#fff' : 'var(--fnos-ui-muted)';
-        b.style.fontWeight = on ? '700' : '500';
-        b.style.border = (on ? 'var(--fnos-exit-border-on)' : 'var(--fnos-exit-border-off)') + '!important';
-      });
-    };
-    // hover 时不要覆盖选中态背景 → 重写退出按钮的 hover(仅未选中项响应)
-    exitEls.forEach((b) => {
-      b.onmouseenter = () => { if (b.dataset.mode !== ((overlay as any)._exitMode || 'ask')) b.style.background = 'var(--fnos-ui-btn-hover2)!important'; };
-      b.onmouseleave = () => { refreshExit(); };
-    });
+    // [退出行为卡已移除] 原 refreshExit()/exitEls hover 绑定随卡片一起删除 —— 保留引用会在
+    //   面板构建期抛 ReferenceError，中断整个 buildSettingsPanel（症状：侧栏「设置」点了没反应）。
 
     // 底部安全区(给滚动留空间)
     const footer = document.createElement('div');
@@ -3449,8 +3442,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         renderIccBtn(s.mpvIccEnabled !== false);
         (overlay as any)._defaultPlayer = s.defaultPlayer || 'mpv';
         refreshDefaultPlayer();
-        (overlay as any)._exitMode = s.exitMode || 'ask';
-        refreshExit();
+        // [退出行为卡已移除] _exitMode / refreshExit() 一并删除（exitEls 孤儿引用，见上方注释）
       });
       seg('accounts', () => {
         refreshBili();
@@ -3573,8 +3565,14 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
   /** [新] 打开设置面板: 固定宽度, 整窗口正中居中显示并刷新数据 */
   function openSettingsPanel(_panel?: HTMLElement, sectionId?: string): void {
-    const overlay = document.getElementById('fnos-settings-panel') as HTMLElement | null;
-    if (!overlay) return;
+    let overlay = document.getElementById('fnos-settings-panel') as HTMLElement | null;
+    // [网页端自愈] 面板不存在（典型：构建期抛错被中断）时重建一次，而不是静默 return。
+    //   已修复的 exitEls ReferenceError 正是这个症状——按钮在、面板不在、点击毫无反应。
+    if (!overlay) {
+      try { buildSettingsPanel(); } catch (e) { console.error('[fntv-web] rebuild settings panel failed', e); }
+      overlay = document.getElementById('fnos-settings-panel') as HTMLElement | null;
+      if (!overlay) { console.error('[fntv-web] settings panel unavailable'); return; }
+    }
     // 整个客户端窗口正中居中(不再贴侧栏)
     overlay.style.top = '50%';
     overlay.style.left = '50%';
@@ -4445,9 +4443,20 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
   const _isHomePath = (): boolean => { const p = location.pathname; return p === '/v' || p === '/v/'; };
 
   let _wtsTimer = 0;
+  // [网页端] 触发风暴熔断：1 秒内回调超过 40 次即视为自激（回调自身在改 DOM → 再触发自己），
+  //   本秒内直接跳过轮播重建。真实飞牛页面 DOM 变动远比预期频繁，一旦有路径形成
+  //   「改 DOM → observer → 改 DOM」闭环，微任务会饿死主线程（整页无响应、点击全部失灵）。
+  let _moHits = 0;
+  let _moHitsTs = 0;
   new MutationObserver(() => {
     clearTimeout(_wtsTimer);
     _wtsTimer = window.setTimeout(wheelToScroll, 350);
+    const _moNow = Date.now();
+    if (_moNow - _moHitsTs > 1000) { _moHitsTs = _moNow; _moHits = 0; }
+    if (++_moHits > 40) {
+      if (_moHits === 41) log('[web] MutationObserver 触发风暴(>40/s)，本秒跳过轮播重建，防自激卡死');
+      return;
+    }
     if (!_isHomePath()) return; // [lc-906] 非首页: 不做任何轮播重建, 只保留横滑滚轮
     if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
       log('carousel lost, re-inject');

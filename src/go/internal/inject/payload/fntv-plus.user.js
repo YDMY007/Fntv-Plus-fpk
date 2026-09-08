@@ -12361,7 +12361,11 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         } catch (_) {
         }
       }
-      buildSettingsPanel();
+      try {
+        buildSettingsPanel();
+      } catch (e) {
+        console.error("[fntv-web] buildSettingsPanel failed", e);
+      }
     }
     function buildSettingsPanel() {
       if (document.getElementById("fnos-settings-panel")) return;
@@ -14887,24 +14891,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           refreshBili();
         } else biliStatus.textContent = "\u4FDD\u5B58\u5931\u8D25\uFF1A" + (r && (r.msg || r.error) || "\u672A\u77E5");
       });
-      const refreshExit = () => {
-        const cur = overlay._exitMode || "ask";
-        exitEls.forEach((b) => {
-          const on = b.dataset.mode === cur;
-          b.style.background = (on ? "var(--fnos-ui-exit-on)" : "var(--fnos-ui-exit-off)") + "!important";
-          b.style.color = on ? "#fff" : "var(--fnos-ui-muted)";
-          b.style.fontWeight = on ? "700" : "500";
-          b.style.border = (on ? "var(--fnos-exit-border-on)" : "var(--fnos-exit-border-off)") + "!important";
-        });
-      };
-      exitEls.forEach((b) => {
-        b.onmouseenter = () => {
-          if (b.dataset.mode !== (overlay._exitMode || "ask")) b.style.background = "var(--fnos-ui-btn-hover2)!important";
-        };
-        b.onmouseleave = () => {
-          refreshExit();
-        };
-      });
       const footer = document.createElement("div");
       footer.style.cssText = "height:6px;flex-shrink:0;";
       overlay.appendChild(footer);
@@ -14948,8 +14934,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           renderIccBtn(s.mpvIccEnabled !== false);
           overlay._defaultPlayer = s.defaultPlayer || "mpv";
           refreshDefaultPlayer();
-          overlay._exitMode = s.exitMode || "ask";
-          refreshExit();
         });
         seg2("accounts", () => {
           refreshBili();
@@ -15039,8 +15023,19 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       document.body.appendChild(overlay);
     }
     function openSettingsPanel(_panel, sectionId) {
-      const overlay = document.getElementById("fnos-settings-panel");
-      if (!overlay) return;
+      let overlay = document.getElementById("fnos-settings-panel");
+      if (!overlay) {
+        try {
+          buildSettingsPanel();
+        } catch (e) {
+          console.error("[fntv-web] rebuild settings panel failed", e);
+        }
+        overlay = document.getElementById("fnos-settings-panel");
+        if (!overlay) {
+          console.error("[fntv-web] settings panel unavailable");
+          return;
+        }
+      }
       overlay.style.top = "50%";
       overlay.style.left = "50%";
       overlay.style.right = "auto";
@@ -15788,9 +15783,20 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       return p === "/v" || p === "/v/";
     };
     let _wtsTimer = 0;
+    let _moHits = 0;
+    let _moHitsTs = 0;
     new MutationObserver(() => {
       clearTimeout(_wtsTimer);
       _wtsTimer = window.setTimeout(wheelToScroll, 350);
+      const _moNow = Date.now();
+      if (_moNow - _moHitsTs > 1e3) {
+        _moHitsTs = _moNow;
+        _moHits = 0;
+      }
+      if (++_moHits > 40) {
+        if (_moHits === 41) log6("[web] MutationObserver \u89E6\u53D1\u98CE\u66B4(>40/s)\uFF0C\u672C\u79D2\u8DF3\u8FC7\u8F6E\u64AD\u91CD\u5EFA\uFF0C\u9632\u81EA\u6FC0\u5361\u6B7B");
+        return;
+      }
       if (!_isHomePath()) return;
       if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
         log6("carousel lost, re-inject");

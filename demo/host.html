@@ -25,6 +25,15 @@
   </div>
   <div id="log" data-page-node-id="58m8arZOusXt6pg3O2QHle">（控制台输出将显示在这里）</div>
 
+  <!-- 仿飞牛侧边栏：汉堡键 + 抽屉（fixed.inset-0.lg:!hidden），用于回归「侧栏设置按钮 → 设置面板」链路 -->
+  <button class="lg:!hidden p-2" id="fake-burger" data-page-node-id="fakeburger0001">☰</button>
+  <div class="fixed inset-0 lg:!hidden" id="fake-drawer" data-page-node-id="fakedrawer0001" style="display:none">
+    <div class="fake-sidebar-panel" data-page-node-id="fakesidebar001" style="width:240px;height:100%;background:#ffffff">
+      <nav data-page-node-id="fakenav0000001"><a href="/v/">首页</a></nav>
+    </div>
+    <div class="absolute inset-0" data-page-node-id="fakemask00001" style="background:rgba(0,0,0,.35)"></div>
+  </div>
+
   <!-- 仿影视首页骨架（测试用，非真实 UI） -->
   <main id="homePage" data-page-node-id="nzr2X9iRVF1NrQuZJqfljo"><div class="home-container" data-page-node-id="sm0QwL9P9Zl7HmF2Lq9fUg">
     <div class="card" data-page-node-id="PZ2tJeGtekhNTXPzUBjMFz"></div><div class="card" data-page-node-id="ZCFR5xHMBfFpuWUJeIxBFp"></div><div class="card" data-page-node-id="Lbia3DmCDnMUGDoDXWexgo"></div><div class="card" data-page-node-id="6dz5C9QhYEWeBMQOScP4HB"></div>
@@ -35,7 +44,24 @@
     const status = document.getElementById('status');
     const boot = document.getElementById('boot');
     const logEl = document.getElementById('log');
-    function log(...a) { logEl.textContent += a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n'; }
+    // [自激防护] 早期实现是 log() 直接 += 到 #log.textContent —— 而 payload 内部也有
+    //   MutationObserver：日志写 DOM → 触发 observer → observer 回调又打日志 → 无限自激，
+    //   主线程被微任务饿死（DOMContentLoaded 都派发不了，页面完全无响应）。
+    //   这里改成「缓冲 + rAF 批量 flush」：log() 本身不再触碰 DOM，打破自激链条。
+    let logBuf = [];
+    let logFlushScheduled = false;
+    function flushLog() {
+      logFlushScheduled = false;
+      if (!logBuf.length) return;
+      const chunk = logBuf.join('');
+      logBuf = [];
+      if (logEl.textContent.length > 20000) logEl.textContent = logEl.textContent.slice(-8000);
+      logEl.appendChild(document.createTextNode(chunk));
+    }
+    function log(...a) {
+      logBuf.push(a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n');
+      if (!logFlushScheduled) { logFlushScheduled = true; requestAnimationFrame(flushLog); }
+    }
     window.addEventListener('error', e => { status.textContent = '脚本错误'; status.className = 'badge err'; log('❌', e.message); });
     window.addEventListener('unhandledrejection', e => { log('❌ promise', e.reason); });
     const orig = console.error.bind(console); console.error = (...a) => { log('[err]', ...a); orig(...a); };
