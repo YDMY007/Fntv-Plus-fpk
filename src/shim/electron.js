@@ -307,7 +307,11 @@ const ipcRenderer = {
     if (channel === 'danmaku:prepare') return Promise.resolve({ ok: false, message: '网页端暂未适配' });
 
     /* ── 人物页 TMDB 增强（fnOS person API → TMDB 链路待接）── */
-    if (channel === 'person:tmdb-brief' || channel === 'person:tmdb-credits') return Promise.resolve(null);
+    if (channel === 'person:tmdb-brief' || channel === 'person:tmdb-credits') {
+      // 演员页 TMDB 增强（桌面版 personTmdb 同款管线）：后端 fnOS person API → imdb → TMDB find/credits
+      const ep = channel === 'person:tmdb-brief' ? 'brief' : 'credits';
+      return apiPost('/app/fntvplus/api/bridge/person/' + ep, { guid: args[0], cookie: document.cookie });
+    }
 
     if (channel === 'settings:open-external') {
       try { window.open(String(args[0] || ''), '_blank', 'noopener'); } catch { /* ignore */ }

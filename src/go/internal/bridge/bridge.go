@@ -86,6 +86,8 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/status", b.doubanStatus)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/discover", b.doubanDiscover)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/image", b.doubanImage)
+	mux.HandleFunc("/app/fntvplus/api/bridge/person/credits", b.personCredits)
+	mux.HandleFunc("/app/fntvplus/api/bridge/person/brief", b.personBrief)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-generate", b.biliQrGenerate)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-poll", b.biliQrPoll)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/status", b.biliStatusHandler())

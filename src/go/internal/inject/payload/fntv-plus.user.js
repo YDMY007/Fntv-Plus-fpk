@@ -592,7 +592,10 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (channel === "bili:clear") return apiPost("/app/fntvplus/api/bridge/bili/clear", {});
           if (channel === "bili:open-danmaku-folder") return Promise.resolve(void 0);
           if (channel === "danmaku:prepare") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D" });
-          if (channel === "person:tmdb-brief" || channel === "person:tmdb-credits") return Promise.resolve(null);
+          if (channel === "person:tmdb-brief" || channel === "person:tmdb-credits") {
+            const ep = channel === "person:tmdb-brief" ? "brief" : "credits";
+            return apiPost("/app/fntvplus/api/bridge/person/" + ep, { guid: args[0], cookie: document.cookie });
+          }
           if (channel === "settings:open-external") {
             try {
               window.open(String(args[0] || ""), "_blank", "noopener");
