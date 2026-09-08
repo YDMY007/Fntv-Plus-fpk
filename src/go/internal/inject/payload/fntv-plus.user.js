@@ -4705,12 +4705,7 @@ html.fnos-perf.dark{
   padding: 7px 14px 9px; font-size: 11px; line-height: 1.4;
   color: rgba(255,255,255,.42); border-top: 1px solid rgba(255,255,255,.08); }
 #fntv-hot-foot-time { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#fntv-hot-refresh { flex: 0 0 auto; margin-left: 10px; padding: 3px 9px; cursor: pointer;
-  font-size: 11px; color: rgba(255,255,255,.72); background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.16); border-radius: 10px; transition: background .15s, color .15s; }
-#fntv-hot-refresh:hover { background: rgba(255,214,102,.22); color: #ffd666; }
-#fntv-hot-refresh:disabled { opacity: .5; cursor: default; }
-#fntv-hot-refresh.loading::after { content: "\u2026"; }
+/* [v0.48.0] \u300C\u21BB \u5237\u65B0\u300D\u6309\u94AE\u5DF2\u5220\uFF1A\u7F51\u9875\u7248\u6570\u636E\u901A\u9053\u65E0\u78C1\u76D8\u7F13\u5B58\uFF08\u6BCF\u6B21\u5B9E\u62C9\uFF09\uFF0C\u5F3A\u5236\u5237\u65B0\u65E0\u610F\u4E49 */
 
 .fntv-hot-loading, .fntv-hot-empty, .fntv-hot-err {
   padding: 30px 16px; text-align: center; font-size: 12.5px; opacity:.78; line-height: 1.6;
@@ -4771,10 +4766,6 @@ html.fnos-perf.dark{
 #fntv-hot-panel.fntv-hot-light #fntv-hot-reset:hover { color: #d4880a; }
 #fntv-hot-panel.fntv-hot-light #fntv-hot-foot {
   color: rgba(0,0,0,.45); border-top: 1px solid rgba(0,0,0,.08); }
-#fntv-hot-panel.fntv-hot-light #fntv-hot-refresh {
-  color: rgba(0,0,0,.6); background: rgba(0,0,0,.05);
-  border: 1px solid rgba(0,0,0,.12); }
-#fntv-hot-panel.fntv-hot-light #fntv-hot-refresh:hover { background: rgba(255,180,60,.22); color: #a9780a; }
 #fntv-hot-panel.fntv-hot-light .fntv-hot-warn {
   color: #a9780a; background: rgba(255,180,60,.14); border: 1px solid rgba(255,180,60,.30); }
 #fntv-hot-panel.fntv-hot-light .fntv-hot-loading,
@@ -5258,7 +5249,6 @@ html.fnos-perf.dark{
     <div id="fntv-hot-reset"></div>
     <div id="fntv-hot-foot">
       <span id="fntv-hot-foot-time"></span>
-      <button id="fntv-hot-refresh" type="button" title="\u5FFD\u7565\u672C\u5730\u7F13\u5B58\uFF0C\u91CD\u65B0\u62C9\u53D6\u6700\u65B0\u6570\u636E">\u21BB \u5237\u65B0</button>
     </div>`;
     document.body.appendChild(tab);
     document.body.appendChild(panel);
@@ -5292,7 +5282,6 @@ html.fnos-perf.dark{
     const subEl = panel.querySelector("#fntv-hot-sub");
     const resetEl = panel.querySelector("#fntv-hot-reset");
     const footTimeEl = panel.querySelector("#fntv-hot-foot-time");
-    const refreshBtn = panel.querySelector("#fntv-hot-refresh");
     const updateFoot = (res) => {
       const ts = res && typeof res.cachedAt === "number" ? res.cachedAt : 0;
       if (!ts) {
@@ -5449,11 +5438,6 @@ html.fnos-perf.dark{
     panel.querySelector("#fntv-hot-close").addEventListener("click", () => {
       panel.classList.remove("open");
     });
-    refreshBtn.addEventListener("click", () => {
-      if (refreshBtn.disabled) return;
-      if (source === "bangumi") loadBg(true);
-      else loadTm(true);
-    });
     refreshReset();
     applySourceUi();
     ipcRenderer.invoke("settings:get-hot-source").then((s) => {
@@ -5465,8 +5449,6 @@ html.fnos-perf.dark{
     });
     async function loadBg(force) {
       body.innerHTML = `<div class="fntv-hot-loading">\u23F3 \u6B63\u5728\u52A0\u8F7D\u2026</div>`;
-      refreshBtn.disabled = true;
-      refreshBtn.classList.add("loading");
       try {
         const res = await ipcRenderer.invoke("bangumi:calendar", !!force);
         if (!res || !res.ok) {
@@ -5479,15 +5461,10 @@ html.fnos-perf.dark{
         render2();
       } catch (e) {
         body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(String(e && e.message || e))}</div>`;
-      } finally {
-        refreshBtn.disabled = false;
-        refreshBtn.classList.remove("loading");
       }
     }
     async function loadTm(force) {
       body.innerHTML = `<div class="fntv-hot-loading">\u23F3 \u6B63\u5728\u52A0\u8F7D\u2026</div>`;
-      refreshBtn.disabled = true;
-      refreshBtn.classList.add("loading");
       try {
         const source2 = await ipcRenderer.invoke("settings:get-hot-source").catch(() => "douban");
         const channel = source2 === "tmdb" ? "tmdb:discover" : "douban:discover";
@@ -5511,9 +5488,6 @@ html.fnos-perf.dark{
         }
       } catch (e) {
         body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(String(e && e.message || e))}</div>`;
-      } finally {
-        refreshBtn.disabled = false;
-        refreshBtn.classList.remove("loading");
       }
     }
   }

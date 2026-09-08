@@ -257,12 +257,7 @@ function injectStyle(): void {
   padding: 7px 14px 9px; font-size: 11px; line-height: 1.4;
   color: rgba(255,255,255,.42); border-top: 1px solid rgba(255,255,255,.08); }
 #fntv-hot-foot-time { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#fntv-hot-refresh { flex: 0 0 auto; margin-left: 10px; padding: 3px 9px; cursor: pointer;
-  font-size: 11px; color: rgba(255,255,255,.72); background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.16); border-radius: 10px; transition: background .15s, color .15s; }
-#fntv-hot-refresh:hover { background: rgba(255,214,102,.22); color: #ffd666; }
-#fntv-hot-refresh:disabled { opacity: .5; cursor: default; }
-#fntv-hot-refresh.loading::after { content: "…"; }
+/* [v0.48.0] 「↻ 刷新」按钮已删：网页版数据通道无磁盘缓存（每次实拉），强制刷新无意义 */
 
 .fntv-hot-loading, .fntv-hot-empty, .fntv-hot-err {
   padding: 30px 16px; text-align: center; font-size: 12.5px; opacity:.78; line-height: 1.6;
@@ -323,10 +318,6 @@ function injectStyle(): void {
 #fntv-hot-panel.fntv-hot-light #fntv-hot-reset:hover { color: #d4880a; }
 #fntv-hot-panel.fntv-hot-light #fntv-hot-foot {
   color: rgba(0,0,0,.45); border-top: 1px solid rgba(0,0,0,.08); }
-#fntv-hot-panel.fntv-hot-light #fntv-hot-refresh {
-  color: rgba(0,0,0,.6); background: rgba(0,0,0,.05);
-  border: 1px solid rgba(0,0,0,.12); }
-#fntv-hot-panel.fntv-hot-light #fntv-hot-refresh:hover { background: rgba(255,180,60,.22); color: #a9780a; }
 #fntv-hot-panel.fntv-hot-light .fntv-hot-warn {
   color: #a9780a; background: rgba(255,180,60,.14); border: 1px solid rgba(255,180,60,.30); }
 #fntv-hot-panel.fntv-hot-light .fntv-hot-loading,
@@ -881,7 +872,6 @@ function buildPanel(): void {
     <div id="fntv-hot-reset"></div>
     <div id="fntv-hot-foot">
       <span id="fntv-hot-foot-time"></span>
-      <button id="fntv-hot-refresh" type="button" title="忽略本地缓存，重新拉取最新数据">↻ 刷新</button>
     </div>`;
 
   document.body.appendChild(tab);
@@ -920,7 +910,6 @@ function buildPanel(): void {
   const subEl = panel.querySelector('#fntv-hot-sub') as HTMLElement;
   const resetEl = panel.querySelector('#fntv-hot-reset') as HTMLElement;
   const footTimeEl = panel.querySelector('#fntv-hot-foot-time') as HTMLElement;
-  const refreshBtn = panel.querySelector('#fntv-hot-refresh') as HTMLButtonElement;
 
   // 把接口的更新时间戳写成底部小字「数据更新于 HH:MM（本地缓存）」
   const updateFoot = (res: any): void => {
@@ -1090,14 +1079,7 @@ function buildPanel(): void {
   (panel.querySelector('#fntv-hot-close') as HTMLElement).addEventListener('click', () => {
     panel.classList.remove('open');
   });
-
-  // 强制刷新按钮：忽略 24h 磁盘缓存，重新拉取【当前数据源】最新数据并覆写缓存。
-  // 仅用户主动点击才触发，日常自动刷新仍走缓存，避免被第三方接口限流/封禁。
-  refreshBtn.addEventListener('click', () => {
-    if (refreshBtn.disabled) return;
-    if (source === 'bangumi') loadBg(true);
-    else loadTm(true);
-  });
+  // [v0.48.0] 「强制刷新」按钮已删：网页版数据通道无磁盘缓存（每次实拉），刷新无意义。
 
   refreshReset();
   applySourceUi();
@@ -1112,7 +1094,6 @@ function buildPanel(): void {
 
   async function loadBg(force?: boolean): Promise<void> {
     body.innerHTML = `<div class="fntv-hot-loading">⏳ 正在加载…</div>`;
-    refreshBtn.disabled = true; refreshBtn.classList.add('loading');
     try {
       const res = await ipcRenderer.invoke('bangumi:calendar', !!force);
       if (!res || !res.ok) {
@@ -1125,14 +1106,11 @@ function buildPanel(): void {
       render();
     } catch (e: any) {
       body.innerHTML = `<div class="fntv-hot-err">获取失败：${escapeHtml(String((e && e.message) || e))}</div>`;
-    } finally {
-      refreshBtn.disabled = false; refreshBtn.classList.remove('loading');
     }
   }
 
   async function loadTm(force?: boolean): Promise<void> {
     body.innerHTML = `<div class="fntv-hot-loading">⏳ 正在加载…</div>`;
-    refreshBtn.disabled = true; refreshBtn.classList.add('loading');
     try {
       const source: string = await ipcRenderer.invoke('settings:get-hot-source').catch(() => 'douban');
       const channel = source === 'tmdb' ? 'tmdb:discover' : 'douban:discover';
@@ -1158,8 +1136,6 @@ function buildPanel(): void {
       }
     } catch (e: any) {
       body.innerHTML = `<div class="fntv-hot-err">获取失败：${escapeHtml(String((e && e.message) || e))}</div>`;
-    } finally {
-      refreshBtn.disabled = false; refreshBtn.classList.remove('loading');
     }
   }
 }
