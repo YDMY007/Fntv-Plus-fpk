@@ -190,8 +190,86 @@ const ipcRenderer = {
     /* ── 会话/窗口/杂项 ── */
     if (channel === 'settings:list-changelogs') return Promise.resolve([]);
     if (channel === 'settings:read-changelog') return Promise.resolve({ content: '' });
-    if (channel === 'settings:check-update') return Promise.resolve();
-    if (channel === 'get-version') return Promise.resolve({ version: '0.15.0-web' });
+    if (channel === 'settings:check-update') return Promise.resolve({ ok: false, message: '网页端更新走飞牛应用中心' });
+    if (channel === 'get-version') return Promise.resolve({ version: '0.30.0-web' });
+
+    /* ── 通用配置/缓存 ── */
+    if (channel === 'get-config' || channel === 'get-play-button-config') {
+      return apiGet('/app/fntvplus/api/settings').catch(() => ({}));
+    }
+    if (channel === 'library-index:read') {
+      try {
+        const v = localStorage.getItem('fntv:library-index');
+        return Promise.resolve(v ? { ok: true, items: JSON.parse(v) } : { ok: false });
+      } catch { return Promise.resolve({ ok: false }); }
+    }
+    if (channel === 'library-index:write') {
+      try {
+        localStorage.setItem('fntv:library-index', JSON.stringify(args[0] || []));
+        return Promise.resolve({ ok: true });
+      } catch { return Promise.resolve({ ok: false }); }
+    }
+    if (channel === 'log-message') return Promise.resolve(undefined); // emitLog 已并行 console.log，diag 会捕获
+
+    /* ── 补丁/解锁（桌面版更新机制；网页端更新走应用中心）── */
+    if (channel === 'settings:verify-unlock-code') return Promise.resolve({ ok: false, message: '网页端未适配解锁码' });
+    if (channel === 'settings:check-patch' || channel === 'settings:apply-patch' || channel === 'settings:apply-test-patch' || channel === 'settings:rollback-patch') {
+      return Promise.resolve({ ok: false, message: '网页端不支持补丁机制' });
+    }
+    if (channel === 'settings:list-test-patches') return Promise.resolve([]);
+
+    /* ── 文件选择/诊断（桌面主进程 dialog；网页端不可用）── */
+    if (channel === 'settings:pick-login-bg' || channel === 'settings:pick-mpv-path' || channel === 'settings:pick-pot-path') {
+      return Promise.resolve({ ok: false, canceled: true });
+    }
+    if (channel === 'settings:clear-login-bg') return apiPost('/app/fntvplus/api/settings', { loginBg: null });
+    if (channel === 'settings:clear-mpv-path') return apiPost('/app/fntvplus/api/settings', { mpvPath: '' });
+    if (channel === 'settings:clear-pot-path') return apiPost('/app/fntvplus/api/settings', { potPath: '' });
+    if (channel === 'settings:diagnostics') {
+      return apiGet('/app/fntvplus/api/settings').then((s) => ({ ok: true, settings: s, ua: navigator.userAgent }));
+    }
+    if (channel === 'settings:test-custom-proxy') return Promise.resolve({ ok: false, message: '网页端暂未适配代理测试，请以实际使用效果为准' });
+    if (channel === 'settings:test-danmu-api') return Promise.resolve({ ok: false, message: '网页端暂未适配弹幕接口测试，请以实际使用效果为准' });
+
+    /* ── 播放/媒体（网页端由原生 UI 承担；外部播放器不可用）── */
+    if (channel === 'play-movie' || channel === 'external-play' || channel === 'pause' || channel === 'media:control') {
+      return Promise.resolve(undefined);
+    }
+    if (channel === 'media:season-guid' || channel === 'skip:fetch-and-fill' || channel === 'skip:next-episode') {
+      return Promise.resolve(undefined); // 片头片尾/选集回填数据源待接
+    }
+    if (channel === 'mpv:get-render-preset') return apiGet('/app/fntvplus/api/settings').then((s) => s.mpvRenderPreset);
+    if (channel === 'mpv:set-render-preset') return apiPost('/app/fntvplus/api/settings', { mpvRenderPreset: args[0] });
+
+    /* ── B 站（扫码登录依赖桌面内嵌浏览器；网页端暂不支持）── */
+    if (channel === 'bili:cookie-status') return Promise.resolve({ loggedIn: false });
+    if (channel === 'bili:qr-generate' || channel === 'bili:qr-poll') {
+      return Promise.resolve({ ok: false, message: '网页端暂不支持 B 站扫码登录（请用桌面版）' });
+    }
+    if (channel === 'bili:manual-cookie') {
+      const p = apiPost('/app/fntvplus/api/settings', { biliCookie: String(args[0] || '') });
+      return p.then(() => ({ ok: true }));
+    }
+    if (channel === 'bili:clear') return apiPost('/app/fntvplus/api/settings', { biliCookie: '' }).then(() => ({ ok: true }));
+    if (channel === 'bili:open-danmaku-folder') return Promise.resolve(undefined);
+
+    /* ── 人物页 TMDB 增强（fnOS person API → TMDB 链路待接）── */
+    if (channel === 'person:tmdb-brief' || channel === 'person:tmdb-credits') return Promise.resolve(null);
+
+    if (channel === 'settings:open-external') {
+      try { window.open(String(args[0] || ''), '_blank', 'noopener'); } catch { /* ignore */ }
+      return Promise.resolve();
+    }
+    if (channel === 'trakt:clear-credentials') {
+      return apiPost('/app/fntvplus/api/bridge/trakt/disconnect', {});
+    }
+    if (channel === 'bili:qr-lib' || channel === 'danmaku:prepare') {
+      return Promise.resolve({ ok: false, message: '网页端暂未适配' });
+    }
+    if (channel === 'debug-filter-request' || channel === 'fnos-dialog:result' || channel === 'window-close' || channel === 'window-maximize' || channel === 'window-minimize') {
+      return Promise.resolve(undefined); // send 类/桌面窗口控制：网页端无意义，安全 no-op
+    }
+
     if (channel === 'fnos-gen-authx') {
       // 本地真签名（与桌面版主进程同算法），不再依赖页面捕获回放；getCapturedAuthx 仅留作诊断对照
       return Promise.resolve(genAuthx(String(args[0] || ''), args[1]));

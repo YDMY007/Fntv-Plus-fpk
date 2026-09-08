@@ -14,10 +14,33 @@ import { installDiag } from './preload/web/diag';
 
 installDiag();
 
+// [v0.30.0] 全插件挂载：与桌面版 preload 对齐（桌面是动态 require plugins 目录全部插件）。
+//  新增插件文件后需在此同步补一行 import（esbuild 静态打包不支持目录扫描）。
+import './preload/plugins/a11y';
+import './preload/plugins/animeLib';
+import './preload/plugins/autoplayNext';
+import './preload/plugins/customLogo';
+import './preload/plugins/danmakuHeat';
+import './preload/plugins/danmakuWeb';
+import './preload/plugins/dialogUI';
 import './preload/plugins/embyWall';
-// [飞牛影视特化 v0.11.0] 补回观影记录插件（自注册 OnReady：侧栏「🕐 观影记录」入口 + 面板；
-// 依赖 fnos-gen-authx 签名——shim 真签名已就绪，网页端可正常拉已观看数据）
+import './preload/plugins/gamepad';
+import './preload/plugins/gamepadFocus';
+import './preload/plugins/glassUI';
+import './preload/plugins/hotUpdates';
+import './preload/plugins/listLayout';
+import './preload/plugins/pageAnim';
+import './preload/plugins/personWorks';
+import './preload/plugins/playButton';
+import './preload/plugins/playChoice';
+import './preload/plugins/playMaskButton';
+import './preload/plugins/playMemory';
+import './preload/plugins/previewThumb';
+import './preload/plugins/skipInject';
+import './preload/plugins/titlebar';
 import './preload/plugins/watchHistory';
+import './preload/plugins/watchReport';
+import './preload/plugins/watchedSync';
 import { runHooks, HookType } from './preload/core/hooks';
 
 declare const window: any;

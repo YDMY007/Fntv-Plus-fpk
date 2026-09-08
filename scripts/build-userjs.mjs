@@ -13,8 +13,13 @@ await build({
   outfile: path.join(root, 'dist/fntv-plus.user.js'),
   platform: 'browser',
   target: ['es2019'],
-  // 把 `electron` 别名到浏览器垫片，避免打包真实 electron
-  alias: { electron: path.join(root, 'src/shim/electron.js') },
+  // 把 `electron` 别名到浏览器垫片，避免打包真实 electron；
+  // fs/path（部分插件的本地文件缓存）别名到浏览器垫片安全降级
+  alias: {
+    electron: path.join(root, 'src/shim/electron.js'),
+    fs: path.join(root, 'src/shim/node_fs.js'),
+    path: path.join(root, 'src/shim/node_path.js'),
+  },
   // 代码中仅用到 process.env.NODE_ENV
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'info',
