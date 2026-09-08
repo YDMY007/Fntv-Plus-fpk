@@ -133,8 +133,10 @@ const ipcRenderer = {
       // 特例：自定义代理回填需要 {enabled, proxyUrl} 复合形状（与桌面版 getCustomProxyConfig 对齐）
       if (channel === 'settings:get-custom-proxy') {
         return apiGet('/app/fntvplus/api/settings').then((s) => {
-          const u = (s && typeof s.customProxy === 'string') ? s.customProxy.trim() : '';
-          return { enabled: !!(s && s.customProxyEnabled) && !!u, proxyUrl: u };
+          const raw = s ? s.customProxy : undefined;
+          const u = (typeof raw === 'string') ? raw.trim() : '';
+          // dirty：旧版（≤v0.41）把 enabled 布尔误存进 customProxy 键（非字符串），URL 已丢需重填
+          return { enabled: !!(s && s.customProxyEnabled) && !!u, proxyUrl: u, dirty: raw != null && typeof raw !== 'string' };
         });
       }
       const key = settingKey(channel.replace('settings:get-', ''));

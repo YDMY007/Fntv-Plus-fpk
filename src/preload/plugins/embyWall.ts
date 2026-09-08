@@ -2774,8 +2774,12 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
           cpSetStatus('已启用但未填写主机:端口（不生效）', false);
           return;
         }
-        await ipcRenderer.invoke('settings:set-custom-proxy', cpToggle.checked, url);
-        cpSetStatus(cpToggle.checked && url ? ('已保存并启用：' + url) : '已关闭自定义代理', true);
+        await ipcRenderer.invoke('settings:set-custom-proxy', cpToggle.checked, url).then((resp: any) => {
+          // apiPost 对 HTTP 错误码不 reject（返回 {error:...}），必须显式校验响应，防止「假成功」
+          if (resp && resp.error) { cpSetStatus('保存失败：' + resp.error, false); return; }
+          if (!resp || typeof resp.customProxy !== 'string') { cpSetStatus('保存失败：后端未确认持久化', false); return; }
+          cpSetStatus(cpToggle.checked && url ? ('已保存并启用：' + url) : '已关闭自定义代理', true);
+        });
       } catch {
         cpSetStatus('保存失败', false);
       }
@@ -2808,8 +2812,10 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       cpUser.value = '';
       cpPass.value = '';
       try {
-        await ipcRenderer.invoke('settings:set-custom-proxy', false, '');
-        cpSetStatus('已关闭自定义代理', true);
+        await ipcRenderer.invoke('settings:set-custom-proxy', false, '').then((resp: any) => {
+          if (resp && resp.error) { cpSetStatus('重置失败：' + resp.error, false); return; }
+          cpSetStatus('已关闭自定义代理', true);
+        });
       } catch {
         cpSetStatus('重置失败', false);
       }
@@ -2839,6 +2845,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
               else { cpUser.value = decodeURIComponent(up); }
             }
             cpAddr.value = rest;
+          } else if (g.dirty) {
+            // 旧版（≤v0.41）shim 误把 enabled 布尔存进 customProxy 键，URL 已丢——明确提示重填
+            cpSetStatus('检测到旧版残留数据（地址已丢失），请重新填写并保存', false);
           }
         }
       } catch { /* ignore */ }

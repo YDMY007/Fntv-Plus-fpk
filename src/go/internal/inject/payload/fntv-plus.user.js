@@ -444,8 +444,9 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (typeof channel === "string" && channel.startsWith("settings:get-")) {
             if (channel === "settings:get-custom-proxy") {
               return apiGet("/app/fntvplus/api/settings").then((s) => {
-                const u = s && typeof s.customProxy === "string" ? s.customProxy.trim() : "";
-                return { enabled: !!(s && s.customProxyEnabled) && !!u, proxyUrl: u };
+                const raw = s ? s.customProxy : void 0;
+                const u = typeof raw === "string" ? raw.trim() : "";
+                return { enabled: !!(s && s.customProxyEnabled) && !!u, proxyUrl: u, dirty: raw != null && typeof raw !== "string" };
               });
             }
             const key = settingKey(channel.replace("settings:get-", ""));
@@ -14311,8 +14312,17 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
             cpSetStatus("\u5DF2\u542F\u7528\u4F46\u672A\u586B\u5199\u4E3B\u673A:\u7AEF\u53E3\uFF08\u4E0D\u751F\u6548\uFF09", false);
             return;
           }
-          await ipcRenderer.invoke("settings:set-custom-proxy", cpToggle.checked, url);
-          cpSetStatus(cpToggle.checked && url ? "\u5DF2\u4FDD\u5B58\u5E76\u542F\u7528\uFF1A" + url : "\u5DF2\u5173\u95ED\u81EA\u5B9A\u4E49\u4EE3\u7406", true);
+          await ipcRenderer.invoke("settings:set-custom-proxy", cpToggle.checked, url).then((resp) => {
+            if (resp && resp.error) {
+              cpSetStatus("\u4FDD\u5B58\u5931\u8D25\uFF1A" + resp.error, false);
+              return;
+            }
+            if (!resp || typeof resp.customProxy !== "string") {
+              cpSetStatus("\u4FDD\u5B58\u5931\u8D25\uFF1A\u540E\u7AEF\u672A\u786E\u8BA4\u6301\u4E45\u5316", false);
+              return;
+            }
+            cpSetStatus(cpToggle.checked && url ? "\u5DF2\u4FDD\u5B58\u5E76\u542F\u7528\uFF1A" + url : "\u5DF2\u5173\u95ED\u81EA\u5B9A\u4E49\u4EE3\u7406", true);
+          });
         } catch {
           cpSetStatus("\u4FDD\u5B58\u5931\u8D25", false);
         }
@@ -14349,8 +14359,13 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         cpUser.value = "";
         cpPass.value = "";
         try {
-          await ipcRenderer.invoke("settings:set-custom-proxy", false, "");
-          cpSetStatus("\u5DF2\u5173\u95ED\u81EA\u5B9A\u4E49\u4EE3\u7406", true);
+          await ipcRenderer.invoke("settings:set-custom-proxy", false, "").then((resp) => {
+            if (resp && resp.error) {
+              cpSetStatus("\u91CD\u7F6E\u5931\u8D25\uFF1A" + resp.error, false);
+              return;
+            }
+            cpSetStatus("\u5DF2\u5173\u95ED\u81EA\u5B9A\u4E49\u4EE3\u7406", true);
+          });
         } catch {
           cpSetStatus("\u91CD\u7F6E\u5931\u8D25", false);
         }
@@ -14382,6 +14397,8 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
                 }
               }
               cpAddr.value = rest;
+            } else if (g.dirty) {
+              cpSetStatus("\u68C0\u6D4B\u5230\u65E7\u7248\u6B8B\u7559\u6570\u636E\uFF08\u5730\u5740\u5DF2\u4E22\u5931\uFF09\uFF0C\u8BF7\u91CD\u65B0\u586B\u5199\u5E76\u4FDD\u5B58", false);
             }
           }
         } catch {
