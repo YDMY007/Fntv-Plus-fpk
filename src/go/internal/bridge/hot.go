@@ -357,24 +357,60 @@ func (b *Bridge) doubanImage(w http.ResponseWriter, r *http.Request) {
 
 /* ── Bangumi 每日放送 ── */
 
+// fetchWithTransport 桌面版 withTransport 的 Go 版（代理 > 直连）：
+// 配置了自定义代理(http/https)则先走代理（NAS 直连 bgm.tv 等外网源常超时），失败再用直连兜底重试。
+// 非 200 也视为该路失败继续尝试下一路；返回 body 字节或带传输方式的错误。
+func (b *Bridge) fetchWithTransport(rawURL, ua string) ([]byte, error) {
+	type attempt struct {
+		c   *http.Client
+		via string
+	}
+	attempts := []attempt{{&http.Client{Timeout: 8 * time.Second}, "直连"}}
+	if pu, err := url.Parse(strings.TrimSpace(getSetting(b.cfg, "customProxy"))); err == nil && (pu.Scheme == "http" || pu.Scheme == "https") && pu.Host != "" {
+		attempts = append([]attempt{{&http.Client{Timeout: 12 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}, "自定义代理"}}, attempts...)
+	}
+	var lastErr error
+	for _, a := range attempts {
+		req, _ := http.NewRequest(http.MethodGet, rawURL, nil)
+		if ua != "" {
+			req.Header.Set("User-Agent", ua)
+		}
+		resp, err := a.c.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("%s：%v", a.via, err)
+			continue
+		}
+		data, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+		_ = resp.Body.Close()
+		if readErr != nil {
+			lastErr = fmt.Errorf("%s：%v", a.via, readErr)
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("%s返回 HTTP %d", a.via, resp.StatusCode)
+			continue
+		}
+		return data, nil
+	}
+	return nil, lastErr
+}
+
 // bangumiCalendar 每日放送 Bangumi 源（桌面版 fetchCalendar 同款）：
-// 拉 /calendar → 展平 → 过滤（动画 type=2 / 三次元 type=6）→ 组装 → 同 id 去重（保留收藏更高）
+// 拉 /calendar（fetchWithTransport：代理优先+直连兜底，对齐桌面版 withTransport）→ 展平
+// → 过滤（动画 type=2 / 三次元 type=6）→ 组装 → 同 id 去重（保留收藏更高）
 // → 按收藏数+评分排序 → {ok, items}。此前只透传原始数组，前端期望 {ok, items} 形状不匹配致无数据。
 func (b *Bridge) bangumiCalendar(w http.ResponseWriter, r *http.Request) {
-	req, _ := http.NewRequest(http.MethodGet, "https://api.bgm.tv/calendar", nil)
-	req.Header.Set("User-Agent", bangumiUAWeb)
-	resp, err := b.client.Do(req)
+	data, err := b.fetchWithTransport("https://api.bgm.tv/calendar", bangumiUAWeb)
 	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "Bangumi 请求失败：" + err.Error()})
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": fmt.Sprintf("Bangumi 返回 HTTP %d", resp.StatusCode)})
+		msg := "Bangumi 请求失败：" + err.Error()
+		if strings.TrimSpace(getSetting(b.cfg, "customProxy")) == "" {
+			msg += "。NAS 直连 api.bgm.tv 超时，可在设置「自定义代理」配置 http(s) 代理后重试。"
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": msg})
 		return
 	}
 	var days []bgmDay
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 8*1024*1024)).Decode(&days); err != nil {
+	if err := json.Unmarshal(data, &days); err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "Bangumi 数据解析失败：" + err.Error()})
 		return
 	}

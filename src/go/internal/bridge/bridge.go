@@ -647,6 +647,10 @@ func (b *Bridge) tmdbDirectIPs() (apiIP, imgIP string) {
 // tmdbClient 返回带「免梯子直连」的 HTTP 客户端：开启且存有 IP 时，
 // TLS 连到 IP、SNI/证书校验仍用域名（CheckTMDB 的 IP 是官方反代，证书合法）。
 func (b *Bridge) tmdbClient() *http.Client {
+	// 桌面版 withTransport 语义：自定义代理 > 免梯子直连 > 系统 DNS（[lc-052] 补代理优先分支）
+	if pu, err := url.Parse(strings.TrimSpace(getSetting(b.cfg, "customProxy"))); err == nil && (pu.Scheme == "http" || pu.Scheme == "https") && pu.Host != "" {
+		return &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}
+	}
 	if !b.tmdbDirectOn() {
 		return b.client
 	}
