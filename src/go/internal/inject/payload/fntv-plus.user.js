@@ -14806,8 +14806,8 @@ html.fntv-boot-hide #root{visibility:hidden}
         }
       })();
       const cats = [
-        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secDaily.el, secUX.el] },
-        { id: "player", label: "\u64AD\u653E", els: [secSkip.el] },
+        // [v0.61.0] 「播放」分类删除：跳过片头片尾并入「通用」（原「外观」更名）；分类由 6 → 5
+        { id: "appearance", label: "\u901A\u7528", els: [secAppearance.el, secDaily.el, secUX.el, secSkip.el] },
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
         { id: "account", label: "\u8D26\u53F7\u4E0E\u7F51\u7EDC", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secCustomProxy.el, secTmdbDirect.el] },
