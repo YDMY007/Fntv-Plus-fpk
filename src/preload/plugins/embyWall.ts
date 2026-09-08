@@ -4,7 +4,7 @@ import { applyCarouselLogoNow, backfillDetailLogo } from './embyWall/carousel/lo
 import { applyLoginBgVar } from './embyWall/login';
 import { destroyCarousel, findMediaLibrarySection, injectCarousel, isModalOpen, resumeCarousel } from './embyWall/carousel/render';
 import { fntvOpenPatchApplyPopup } from './embyWall/modals/patch';
-import { injectExternalPlayButton, injectNativeReturnButton, injectVideoPreviewExternalPlay } from './embyWall/nav/inject';
+import { injectVideoPreviewExternalPlay } from './embyWall/nav/inject';
 import { isDetailPage } from './embyWall/detail/glass';
 import { applyDetailBeautify, teardownDetailBeautify } from './embyWall/detail/immersive';
 import { scheduleEpBackfill, ensureEpFixButton } from './embyWall/detail/epBackfill';
@@ -146,11 +146,10 @@ function handle(): void {
   }, 400);
   window.addEventListener('beforeunload', () => window.clearInterval(_tvClassTimer));
 
-  if (!isFntvTvPage()) {
-    injectNativeReturnButton();
-    injectExternalPlayButton();
-    return;
-  }
+  // [飞牛影视特化 v0.13.0] 非影视页（原生系统页）零注入：旧的「切换系统页面 → 返回影视」整套机制
+  //   已随「切换系统页面」按钮删除而废弃——原生页不再注入任何 Fntv-Plus 元素（返回影视/外部播放
+  //   浮动按钮删除，其 IPC 在网页端本就是 no-op），覆盖更新后打开影视不再闪现原生页残留。
+  if (!isFntvTvPage()) return;
 
   // [lc-453] 标记 <html> 为影视TV页: 供 mainwin.ts ACRYLIC_CSS 的白底清除规则(③)限定作用域,
   //   避免文件管理/设置等系统页的缩略图容器背景被误杀变黑框.

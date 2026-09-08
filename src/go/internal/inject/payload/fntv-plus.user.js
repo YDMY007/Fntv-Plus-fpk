@@ -8441,87 +8441,6 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
 
   // src/preload/plugins/embyWall/nav/inject.ts
   init_electron();
-  function injectNativeReturnButton() {
-    if (document.getElementById("fnos-native-return")) return;
-    const btn = document.createElement("button");
-    btn.id = "fnos-native-return";
-    btn.type = "button";
-    btn.textContent = "\u21A9 \u8FD4\u56DE\u5F71\u89C6";
-    btn.setAttribute("data-fnos-ui", "1");
-    btn.style.cssText = "position:fixed;left:20px;bottom:30px;z-index:2147483647;padding:9px 16px;border-radius:12px;cursor:pointer;background:rgba(40,30,60,.92);color:#fff;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.28);box-shadow:0 6px 20px rgba(0,0,0,.35);";
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      try {
-        sessionStorage.removeItem("fntv-system-intent");
-      } catch (_) {
-      }
-      ipcRenderer.send("fntv:exit-system-page");
-    });
-    document.body.appendChild(btn);
-    setInterval(() => {
-      if (!document.getElementById("fnos-native-return") && document.body) {
-        document.body.appendChild(btn);
-      }
-    }, 3e3);
-  }
-  function injectExternalPlayButton() {
-    if (document.getElementById("fnos-ext-play")) return;
-    const panel = document.createElement("div");
-    panel.id = "fnos-ext-play-panel";
-    panel.style.cssText = "position:fixed;right:20px;bottom:80px;z-index:2147483647;width:260px;padding:12px;border-radius:14px;background:rgba(30,24,44,.94);color:#fff;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);display:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);";
-    panel.innerHTML = '<div style="font-weight:700;margin-bottom:8px;">\u5916\u90E8\u64AD\u653E\u5668\u6253\u5F00</div><div style="margin-bottom:8px;">\u64AD\u653E\u5668\uFF1A<label style="margin-right:10px;cursor:pointer;"><input type="radio" name="ext-player" value="mpv" checked> MPV</label><label style="cursor:pointer;"><input type="radio" name="ext-player" value="potplayer"> PotPlayer</label></div><div style="margin-bottom:6px;color:rgba(255,255,255,.7);">\u76F4\u94FE URL</div><input id="ext-url" type="text" placeholder="https://.../xxx.mp4" style="width:100%;box-sizing:border-box;height:30px;margin-bottom:8px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.3);color:#fff;padding:0 8px;"><button id="ext-open-url" style="width:100%;height:30px;margin-bottom:10px;border-radius:7px;border:none;cursor:pointer;background:#6c5ce7;color:#fff;font-weight:600;">\u7528\u64AD\u653E\u5668\u6253\u5F00\u76F4\u94FE</button><div style="margin-bottom:6px;color:rgba(255,255,255,.7);">\u672C\u5730\u6587\u4EF6</div><input id="ext-file" type="file" accept="video/*" style="width:100%;margin-bottom:8px;color:#fff;"><button id="ext-open-file" style="width:100%;height:30px;border-radius:7px;border:none;cursor:pointer;background:#00b894;color:#fff;font-weight:600;">\u7528\u64AD\u653E\u5668\u6253\u5F00\u672C\u5730\u6587\u4EF6</button>';
-    const toggle = document.createElement("button");
-    toggle.id = "fnos-ext-play";
-    toggle.type = "button";
-    toggle.textContent = "\u{1F3AC} \u5916\u90E8\u64AD\u653E";
-    toggle.style.cssText = "position:fixed;right:20px;bottom:30px;z-index:2147483647;padding:9px 14px;border-radius:12px;cursor:pointer;background:rgba(40,30,60,.92);color:#fff;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.28);box-shadow:0 6px 20px rgba(0,0,0,.35);";
-    toggle.addEventListener("click", (e) => {
-      e.stopPropagation();
-      panel.style.display = panel.style.display === "none" ? "block" : "none";
-    });
-    panel.querySelector("#ext-open-url").addEventListener("click", (e) => {
-      var _a;
-      e.stopPropagation();
-      const url = panel.querySelector("#ext-url").value.trim();
-      const player = (_a = panel.querySelector("input[name=ext-player]:checked")) == null ? void 0 : _a.value;
-      if (!url) {
-        alert("\u8BF7\u5148\u7C98\u8D34\u89C6\u9891\u76F4\u94FE");
-        return;
-      }
-      ipcRenderer.send("external-play", { kind: "url", url, player });
-      panel.style.display = "none";
-    });
-    panel.querySelector("#ext-open-file").addEventListener("click", (e) => {
-      var _a;
-      e.stopPropagation();
-      const fileInput = panel.querySelector("#ext-file");
-      const f = fileInput.files && fileInput.files[0];
-      if (!f) {
-        alert("\u8BF7\u5148\u9009\u62E9\u672C\u5730\u89C6\u9891\u6587\u4EF6");
-        return;
-      }
-      const player = (_a = panel.querySelector("input[name=ext-player]:checked")) == null ? void 0 : _a.value;
-      const p = f.path;
-      if (!p) {
-        alert("\u65E0\u6CD5\u8BFB\u53D6\u672C\u5730\u6587\u4EF6\u8DEF\u5F84");
-        return;
-      }
-      ipcRenderer.send("external-play", { kind: "file", path: p, player });
-      panel.style.display = "none";
-    });
-    panel.addEventListener("click", (e) => e.stopPropagation());
-    document.addEventListener("click", () => {
-      if (panel.style.display === "block") panel.style.display = "none";
-    });
-    document.body.appendChild(panel);
-    document.body.appendChild(toggle);
-    setInterval(() => {
-      if (!document.getElementById("fnos-ext-play") && document.body) {
-        document.body.appendChild(panel);
-        document.body.appendChild(toggle);
-      }
-    }, 3e3);
-  }
   function injectVideoPreviewExternalPlay() {
     if (document.getElementById("fnos-video-preview-hook")) return;
     const marker = document.createElement("div");
@@ -9576,11 +9495,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       }
     }, 400);
     window.addEventListener("beforeunload", () => window.clearInterval(_tvClassTimer));
-    if (!isFntvTvPage()) {
-      injectNativeReturnButton();
-      injectExternalPlayButton();
-      return;
-    }
+    if (!isFntvTvPage()) return;
     document.documentElement.classList.add("fnos-tv-page");
     const logNav = (label) => log("NAV", label, location.href);
     logNav("init");
