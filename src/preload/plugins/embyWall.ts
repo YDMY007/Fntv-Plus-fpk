@@ -3474,14 +3474,27 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     logFooter.appendChild(logDivider);
     const logRow = document.createElement('div');
     logRow.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
+    // [v0.14.0] 自动刷新开关改用面板统一胶囊样式——原生 checkbox 在深色主题下显示异常（白底方块刺眼/错位）
+    const liveAutoLabel = document.createElement('label');
+    liveAutoLabel.style.cssText = 'display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--fnos-ui-text);font-size:12px;font-weight:500;';
     const liveAuto = document.createElement('input');
     liveAuto.type = 'checkbox';
     liveAuto.checked = true;
-    liveAuto.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:var(--fnos-ui-accent);';
-    const liveAutoLabel = document.createElement('label');
-    liveAutoLabel.style.cssText = 'display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--fnos-ui-text);font-size:12px;font-weight:500;';
+    liveAuto.style.cssText = 'position:absolute;opacity:0;width:0;height:0;';
+    const liveTrack = document.createElement('span');
+    liveTrack.style.cssText = 'position:relative;display:inline-block;width:42px;height:23px;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;flex-shrink:0;';
+    const liveKnob = document.createElement('span');
+    liveKnob.style.cssText = 'position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);';
     liveAutoLabel.appendChild(liveAuto);
+    liveAutoLabel.appendChild(liveTrack);
+    liveAutoLabel.appendChild(liveKnob);
     liveAutoLabel.appendChild(document.createTextNode(t('自动刷新（5 秒）')));
+    const paintLiveAuto = (): void => {
+      liveTrack.style.background = liveAuto.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
+      liveKnob.style.left = liveAuto.checked ? '21.5px' : '2.5px';
+    };
+    paintLiveAuto();
+    liveAuto.addEventListener('change', paintLiveAuto);
     const liveBtn = mkBtn('刷新', true);
     logRow.appendChild(liveAutoLabel);
     logRow.appendChild(liveBtn);
