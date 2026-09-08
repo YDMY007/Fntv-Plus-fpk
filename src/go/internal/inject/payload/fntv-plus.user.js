@@ -4662,6 +4662,43 @@ html.fnos-perf.dark{
   var STYLE_ID2 = "fntv-hot-updates-style";
   var BLOCK_KEY = "fntv-hot-blocked";
   var DAILY_VISIBLE_KEY = "fnos-show-daily";
+  var HOT_REFRESH_DAYS_KEY = "fnos-hot-refresh-days";
+  var HOT_CACHE_PREFIX = "fntv:hot-cache-";
+  function hotTtlMs() {
+    try {
+      const d = parseInt(localStorage.getItem(HOT_REFRESH_DAYS_KEY) || "1", 10);
+      return (Number.isFinite(d) && d >= 1 && d <= 7 ? d : 1) * 864e5;
+    } catch {
+      return 864e5;
+    }
+  }
+  function hotCacheGet(src) {
+    try {
+      const raw = localStorage.getItem(HOT_CACHE_PREFIX + src);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || !Array.isArray(o.items) || !o.items.length) return null;
+      if (Date.now() - (o.ts || 0) > hotTtlMs()) return null;
+      return { ts: o.ts || 0, items: o.items };
+    } catch {
+      return null;
+    }
+  }
+  function hotCacheSet(src, res) {
+    try {
+      if (!res || !res.ok || !Array.isArray(res.items) || !res.items.length) return;
+      localStorage.setItem(HOT_CACHE_PREFIX + src, JSON.stringify({ ts: Date.now(), items: res.items }));
+    } catch {
+    }
+  }
+  function hotCacheClearAll() {
+    for (const s of ["bangumi", "tmdb", "douban"]) {
+      try {
+        localStorage.removeItem(HOT_CACHE_PREFIX + s);
+      } catch {
+      }
+    }
+  }
   var WD_CN = ["\u5468\u4E00", "\u5468\u4E8C", "\u5468\u4E09", "\u5468\u56DB", "\u5468\u4E94", "\u5468\u516D", "\u5468\u65E5"];
   function shouldInject() {
     const h = location.href.toLowerCase();
@@ -5627,6 +5664,18 @@ html.fnos-perf.dark{
       if (open) applyHotTheme();
     };
     tab.addEventListener("click", toggle);
+    window.addEventListener("fntv:hot-refresh", () => {
+      try {
+        hotCacheClearAll();
+        loadedBg = false;
+        loadedTm = false;
+        logger_default.info("[hotUpdates] \u6536\u5230\u7ACB\u5373\u5237\u65B0\u6307\u4EE4\uFF1A\u7F13\u5B58\u5DF2\u6E05\u7A7A\uFF0C\u91CD\u65B0\u62C9\u53D6\u6570\u636E");
+        if (source === "bangumi") loadBg(true);
+        else loadTm(true);
+      } catch (e) {
+        logger_default.error("[hotUpdates] \u7ACB\u5373\u5237\u65B0\u5931\u8D25", String(e));
+      }
+    });
     panel.querySelector("#fntv-hot-close").addEventListener("click", () => {
       panel.classList.remove("open");
     });
@@ -5640,6 +5689,16 @@ html.fnos-perf.dark{
     }).catch(() => {
     });
     async function loadBg(force) {
+      if (!force) {
+        const cached = hotCacheGet("bangumi");
+        if (cached) {
+          allBg.length = 0;
+          for (const it of cached.items) allBg.push(it);
+          updateFoot({ cachedAt: cached.ts, fromCache: true });
+          render2();
+          return;
+        }
+      }
       body.innerHTML = `<div class="fntv-hot-loading">\u23F3 \u6B63\u5728\u52A0\u8F7D\u2026</div>`;
       try {
         const res = await ipcRenderer.invoke("bangumi:calendar", !!force);
@@ -5647,6 +5706,7 @@ html.fnos-perf.dark{
           body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(res && res.error || "\u672A\u77E5\u9519\u8BEF")}</div>`;
           return;
         }
+        hotCacheSet("bangumi", res);
         allBg.length = 0;
         for (const it of res.items || []) allBg.push(it);
         updateFoot(res);
@@ -5656,9 +5716,19 @@ html.fnos-perf.dark{
       }
     }
     async function loadTm(force) {
+      const source2 = await ipcRenderer.invoke("settings:get-hot-source").catch(() => "douban");
+      if (!force) {
+        const cached = hotCacheGet(source2);
+        if (cached) {
+          allTm.length = 0;
+          for (const it of cached.items) allTm.push(it);
+          updateFoot({ cachedAt: cached.ts, fromCache: true });
+          render2();
+          return;
+        }
+      }
       body.innerHTML = `<div class="fntv-hot-loading">\u23F3 \u6B63\u5728\u52A0\u8F7D\u2026</div>`;
       try {
-        const source2 = await ipcRenderer.invoke("settings:get-hot-source").catch(() => "douban");
         const channel = source2 === "tmdb" ? "tmdb:discover" : "douban:discover";
         const res = await ipcRenderer.invoke(channel, !!force);
         if (!res || !res.ok) {
@@ -5666,6 +5736,7 @@ html.fnos-perf.dark{
           body.innerHTML = `<div class="fntv-hot-err">\u83B7\u53D6\u5931\u8D25\uFF1A${escapeHtml(res && res.error || base)}</div>`;
           return;
         }
+        hotCacheSet(source2, res);
         allTm.length = 0;
         for (const it of res.items || []) allTm.push(it);
         updateFoot(res);
@@ -14446,6 +14517,84 @@ html.fntv-boot-hide #root{visibility:hidden}
       });
       _beautifyToggle = beautifyInput;
       _beautifyPaint = paintBeautify;
+      const hotWrap = document.createElement("div");
+      hotWrap.style.cssText = "margin-top:18px;display:flex;flex-direction:column;gap:8px;";
+      const hotTitle = document.createElement("span");
+      hotTitle.style.cssText = "font-weight:600;letter-spacing:.5px;";
+      hotTitle.textContent = "\u6BCF\u65E5\u653E\u9001";
+      hotWrap.appendChild(hotTitle);
+      const hotShowRow = document.createElement("div");
+      hotShowRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px;";
+      const hotShowLabel = document.createElement("span");
+      hotShowLabel.style.cssText = "font-size:11.5px;color:var(--fnos-ui-text);";
+      hotShowLabel.textContent = t("\u5728\u9996\u9875\u663E\u793A\u6BCF\u65E5\u653E\u9001\u5165\u53E3");
+      const hotShowInput = document.createElement("input");
+      hotShowInput.type = "checkbox";
+      hotShowInput.style.cssText = "width:18px;height:18px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
+      try {
+        hotShowInput.checked = localStorage.getItem("fnos-show-daily") !== "0";
+      } catch (_) {
+        hotShowInput.checked = true;
+      }
+      hotShowInput.addEventListener("change", () => {
+        try {
+          localStorage.setItem("fnos-show-daily", hotShowInput.checked ? "1" : "0");
+        } catch (_) {
+        }
+        try {
+          window.dispatchEvent(new CustomEvent("fntv:daily-toggle"));
+        } catch (_) {
+        }
+      });
+      hotShowRow.appendChild(hotShowLabel);
+      hotShowRow.appendChild(hotShowInput);
+      hotWrap.appendChild(hotShowRow);
+      const hotIntervalRow = document.createElement("div");
+      hotIntervalRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px;";
+      const hotIntervalLabel = document.createElement("span");
+      hotIntervalLabel.style.cssText = "font-size:11.5px;color:var(--fnos-ui-text);";
+      hotIntervalLabel.textContent = t("\u6570\u636E\u5237\u65B0\u95F4\u9694");
+      const hotIntervalSel = document.createElement("select");
+      hotIntervalSel.style.cssText = "height:28px;font-size:11px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:6px;padding:2px 6px;";
+      for (let d = 1; d <= 7; d++) {
+        const o = document.createElement("option");
+        o.value = String(d);
+        o.textContent = t("\u6BCF ") + d + t(" \u5929");
+        hotIntervalSel.appendChild(o);
+      }
+      try {
+        hotIntervalSel.value = localStorage.getItem("fnos-hot-refresh-days") || "1";
+      } catch (_) {
+        hotIntervalSel.value = "1";
+      }
+      if (!hotIntervalSel.value) hotIntervalSel.value = "1";
+      hotIntervalSel.addEventListener("change", () => {
+        try {
+          localStorage.setItem("fnos-hot-refresh-days", hotIntervalSel.value);
+        } catch (_) {
+        }
+      });
+      hotIntervalRow.appendChild(hotIntervalLabel);
+      hotIntervalRow.appendChild(hotIntervalSel);
+      hotWrap.appendChild(hotIntervalRow);
+      const hotRefreshBtn = mkBtn("\u7ACB\u5373\u5237\u65B0\u6570\u636E", true);
+      hotRefreshBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          window.dispatchEvent(new CustomEvent("fntv:hot-refresh"));
+        } catch (_) {
+        }
+        hotRefreshBtn.textContent = "\u5DF2\u89E6\u53D1 \u2713";
+        setTimeout(() => {
+          hotRefreshBtn.textContent = "\u7ACB\u5373\u5237\u65B0\u6570\u636E";
+        }, 1500);
+      });
+      hotWrap.appendChild(hotRefreshBtn);
+      const hotHint = document.createElement("div");
+      hotHint.style.cssText = "font-size:10px;color:var(--fnos-ui-sub);line-height:1.5;";
+      hotHint.textContent = t("\u6570\u636E\u4FDD\u5B58\u5728\u672C\u673A\uFF0C\u8D85\u8FC7\u5237\u65B0\u95F4\u9694\u540E\u5C55\u5F00\u6D6E\u5C42\u624D\u4F1A\u91CD\u65B0\u62C9\u53D6\u3002");
+      hotWrap.appendChild(hotHint);
+      secBodyAppearance.appendChild(hotWrap);
       const secCustomProxy = section("\u81EA\u5B9A\u4E49\u4EE3\u7406");
       const secBodyCustomProxy = secCustomProxy.body;
       secBodyCustomProxy.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";

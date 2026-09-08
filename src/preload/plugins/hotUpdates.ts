@@ -19,6 +19,43 @@ const PANEL_ID = 'fntv-hot-updates';
 const STYLE_ID = 'fntv-hot-updates-style';
 const BLOCK_KEY = 'fntv-hot-blocked';          // localStorage 屏蔽列表键（值形如 "bg|123" / "tm|456"）
 const DAILY_VISIBLE_KEY = 'fnos-show-daily';    // [lc-363] 设置面板"外观"开关：首页「每日放送」按钮是否显示（默认显示）
+const HOT_REFRESH_DAYS_KEY = 'fnos-hot-refresh-days'; // [v0.56.0] 数据刷新间隔（天，1-7，默认 1），设置面板「外观」可调
+const HOT_CACHE_PREFIX = 'fntv:hot-cache-';     // [v0.56.0] 每日放送数据本地持久化缓存（按源：bangumi/tmdb/douban）
+
+/** 刷新间隔（毫秒）：1-7 天，非法值回退 1 天 */
+function hotTtlMs(): number {
+  try {
+    const d = parseInt(localStorage.getItem(HOT_REFRESH_DAYS_KEY) || '1', 10);
+    return (Number.isFinite(d) && d >= 1 && d <= 7 ? d : 1) * 86400e3;
+  } catch { return 86400e3; }
+}
+
+/** 读本地持久化缓存：未过期且有数据返回 {ts, items}，否则 null */
+function hotCacheGet(src: string): { ts: number; items: any[] } | null {
+  try {
+    const raw = localStorage.getItem(HOT_CACHE_PREFIX + src);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || !Array.isArray(o.items) || !o.items.length) return null;
+    if (Date.now() - (o.ts || 0) > hotTtlMs()) return null; // 过期
+    return { ts: o.ts || 0, items: o.items };
+  } catch { return null; }
+}
+
+/** 写本地持久化缓存（仅成功结果） */
+function hotCacheSet(src: string, res: any): void {
+  try {
+    if (!res || !res.ok || !Array.isArray(res.items) || !res.items.length) return;
+    localStorage.setItem(HOT_CACHE_PREFIX + src, JSON.stringify({ ts: Date.now(), items: res.items }));
+  } catch { /* ignore */ }
+}
+
+/** 清空全部源的持久化缓存（立即刷新用） */
+function hotCacheClearAll(): void {
+  for (const s of ['bangumi', 'tmdb', 'douban']) {
+    try { localStorage.removeItem(HOT_CACHE_PREFIX + s); } catch { /* ignore */ }
+  }
+}
 const WD_CN = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 /** 仅在飞牛主界面注入；跳过登录页(file://) 与外部页 */
@@ -1076,6 +1113,17 @@ function buildPanel(): void {
     if (open) applyHotTheme();
   };
   tab.addEventListener('click', toggle);
+  // [v0.56.0] 设置面板「立即刷新」：清空三源持久化缓存并强制重拉当前源（面板没开也预拉）
+  window.addEventListener('fntv:hot-refresh', () => {
+    try {
+      hotCacheClearAll();
+      loadedBg = false;
+      loadedTm = false;
+      logger.info('[hotUpdates] 收到立即刷新指令：缓存已清空，重新拉取数据');
+      if (source === 'bangumi') loadBg(true);
+      else loadTm(true);
+    } catch (e) { logger.error('[hotUpdates] 立即刷新失败', String(e)); }
+  });
   (panel.querySelector('#fntv-hot-close') as HTMLElement).addEventListener('click', () => {
     panel.classList.remove('open');
   });
@@ -1093,6 +1141,17 @@ function buildPanel(): void {
   }).catch(() => {});
 
   async function loadBg(force?: boolean): Promise<void> {
+    // [v0.56.0] 本地持久化缓存优先：未超刷新间隔直接用缓存渲染，不再重新拉取
+    if (!force) {
+      const cached = hotCacheGet('bangumi');
+      if (cached) {
+        allBg.length = 0;
+        for (const it of cached.items) allBg.push(it);
+        updateFoot({ cachedAt: cached.ts, fromCache: true });
+        render();
+        return;
+      }
+    }
     body.innerHTML = `<div class="fntv-hot-loading">⏳ 正在加载…</div>`;
     try {
       const res = await ipcRenderer.invoke('bangumi:calendar', !!force);
@@ -1100,6 +1159,7 @@ function buildPanel(): void {
         body.innerHTML = `<div class="fntv-hot-err">获取失败：${escapeHtml((res && res.error) || '未知错误')}</div>`;
         return;
       }
+      hotCacheSet('bangumi', res);
       allBg.length = 0;
       for (const it of (res.items || [])) allBg.push(it);
       updateFoot(res);
@@ -1110,9 +1170,20 @@ function buildPanel(): void {
   }
 
   async function loadTm(force?: boolean): Promise<void> {
+    const source: string = await ipcRenderer.invoke('settings:get-hot-source').catch(() => 'douban');
+    // [v0.56.0] 本地持久化缓存优先（按源分键）
+    if (!force) {
+      const cached = hotCacheGet(source);
+      if (cached) {
+        allTm.length = 0;
+        for (const it of cached.items) allTm.push(it);
+        updateFoot({ cachedAt: cached.ts, fromCache: true });
+        render();
+        return;
+      }
+    }
     body.innerHTML = `<div class="fntv-hot-loading">⏳ 正在加载…</div>`;
     try {
-      const source: string = await ipcRenderer.invoke('settings:get-hot-source').catch(() => 'douban');
       const channel = source === 'tmdb' ? 'tmdb:discover' : 'douban:discover';
       const res = await ipcRenderer.invoke(channel, !!force);
       if (!res || !res.ok) {
@@ -1120,6 +1191,7 @@ function buildPanel(): void {
         body.innerHTML = `<div class="fntv-hot-err">获取失败：${escapeHtml((res && res.error) || base)}</div>`;
         return;
       }
+      hotCacheSet(source, res);
       allTm.length = 0;
       for (const it of (res.items || [])) allTm.push(it);
       updateFoot(res);

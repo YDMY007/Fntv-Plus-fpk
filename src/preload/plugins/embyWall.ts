@@ -2670,6 +2670,70 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     _beautifyToggle = beautifyInput;
     _beautifyPaint = paintBeautify;
 
+    // ===== [v0.56.0] 「每日放送」设置组（外观卡）：显示开关 + 数据刷新间隔 + 立即刷新 =====
+    const hotWrap = document.createElement('div');
+    hotWrap.style.cssText = 'margin-top:18px;display:flex;flex-direction:column;gap:8px;';
+    const hotTitle = document.createElement('span');
+    hotTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;';
+    hotTitle.textContent = '每日放送';
+    hotWrap.appendChild(hotTitle);
+
+    // 行1：显示开关（写 localStorage fnos-show-daily + 事件通知浮层实时显隐）
+    const hotShowRow = document.createElement('div');
+    hotShowRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;';
+    const hotShowLabel = document.createElement('span');
+    hotShowLabel.style.cssText = 'font-size:11.5px;color:var(--fnos-ui-text);';
+    hotShowLabel.textContent = t('在首页显示每日放送入口');
+    const hotShowInput = document.createElement('input');
+    hotShowInput.type = 'checkbox';
+    hotShowInput.style.cssText = 'width:18px;height:18px;cursor:pointer;accent-color:var(--fnos-ui-accent);';
+    try { hotShowInput.checked = localStorage.getItem('fnos-show-daily') !== '0'; } catch (_) { hotShowInput.checked = true; }
+    hotShowInput.addEventListener('change', () => {
+      try { localStorage.setItem('fnos-show-daily', hotShowInput.checked ? '1' : '0'); } catch (_) { /* ignore */ }
+      try { window.dispatchEvent(new CustomEvent('fntv:daily-toggle')); } catch (_) { /* ignore */ }
+    });
+    hotShowRow.appendChild(hotShowLabel);
+    hotShowRow.appendChild(hotShowInput);
+    hotWrap.appendChild(hotShowRow);
+
+    // 行2：数据刷新间隔（1-7 天；数据本地持久化，未到期展开浮层直接用缓存）
+    const hotIntervalRow = document.createElement('div');
+    hotIntervalRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;';
+    const hotIntervalLabel = document.createElement('span');
+    hotIntervalLabel.style.cssText = 'font-size:11.5px;color:var(--fnos-ui-text);';
+    hotIntervalLabel.textContent = t('数据刷新间隔');
+    const hotIntervalSel = document.createElement('select');
+    hotIntervalSel.style.cssText = 'height:28px;font-size:11px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:6px;padding:2px 6px;';
+    for (let d = 1; d <= 7; d++) {
+      const o = document.createElement('option');
+      o.value = String(d); o.textContent = t('每 ') + d + t(' 天');
+      hotIntervalSel.appendChild(o);
+    }
+    try { hotIntervalSel.value = localStorage.getItem('fnos-hot-refresh-days') || '1'; } catch (_) { hotIntervalSel.value = '1'; }
+    if (!hotIntervalSel.value) hotIntervalSel.value = '1';
+    hotIntervalSel.addEventListener('change', () => {
+      try { localStorage.setItem('fnos-hot-refresh-days', hotIntervalSel.value); } catch (_) { /* ignore */ }
+    });
+    hotIntervalRow.appendChild(hotIntervalLabel);
+    hotIntervalRow.appendChild(hotIntervalSel);
+    hotWrap.appendChild(hotIntervalRow);
+
+    // 行3：立即刷新（清空本地缓存并强制重拉当前源）
+    const hotRefreshBtn = mkBtn('立即刷新数据', true);
+    hotRefreshBtn.addEventListener('click', (e: Event) => {
+      e.stopPropagation();
+      try { window.dispatchEvent(new CustomEvent('fntv:hot-refresh')); } catch (_) { /* ignore */ }
+      hotRefreshBtn.textContent = '已触发 ✓';
+      setTimeout(() => { hotRefreshBtn.textContent = '立即刷新数据'; }, 1500);
+    });
+    hotWrap.appendChild(hotRefreshBtn);
+
+    const hotHint = document.createElement('div');
+    hotHint.style.cssText = 'font-size:10px;color:var(--fnos-ui-sub);line-height:1.5;';
+    hotHint.textContent = t('数据保存在本机，超过刷新间隔后展开浮层才会重新拉取。');
+    hotWrap.appendChild(hotHint);
+    secBodyAppearance.appendChild(hotWrap);
+
 
     // ===== 分组: 自定义代理（让 Bangumi 每日放送、TMDB 等走用户自建代理入口）=====
     const secCustomProxy = section('自定义代理');
