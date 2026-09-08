@@ -16311,7 +16311,10 @@ html.fntv-boot-hide #root{visibility:hidden}
   }
   function readSettings() {
     return {
-      enabled: getBool(K.enabled, DEF.enabled),
+      // [v0.57.0] 网页端强制关闭：玻璃规则命中所有 [class*="card"] 卡片（磨砂底/大软阴影/无边框
+      // 且不带圆角）→ 继续观看等卡片圆角视觉消失、海报行补 padding 导致整体下沉；且大面积
+      // backdrop-filter 在浏览器里性能差。桌面版行为不变。
+      enabled: typeof window !== "undefined" && window.__FNTV_WEB__ ? false : getBool(K.enabled, DEF.enabled),
       mode: getStr(K.mode, DEF.mode),
       tint: getStr(K.tint, DEF.tint),
       blur: getNum(K.blur, DEF.blur),
