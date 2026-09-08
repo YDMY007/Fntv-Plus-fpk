@@ -10,6 +10,20 @@
 // （images.ts/itemListApi 对空值会跳过或由 diag 剥离坏头，靠 cookie 直取同源图片）。
 
 import { getCapturedAuthx } from '../preload/web/diag';
+import { md5 } from './md5';
+
+// fnOS 影视 API 鉴权签名（算法与桌面版主进程 fnosAuth.js 完全一致）：
+// sign = md5([API_KEY, url, nonce, timestamp, md5(JSON.stringify(data)||''), API_SECRET].join('_'))
+const AUTHX_KEY = 'NDzZTVxnRKP8Z0jXg1VAMonaG8akvh';
+const AUTHX_SECRET = '16CCEB3D-AB42-077D-36A1-F355324E4237';
+
+function genAuthx(url, data) {
+  const nonce = String(Math.floor(Math.random() * (1000000 - 100000) + 100000));
+  const timestamp = Date.now().toString();
+  const dataJson = data ? JSON.stringify(data) : '';
+  const signStr = [AUTHX_KEY, String(url), nonce, timestamp, md5(dataJson), AUTHX_SECRET].join('_');
+  return 'nonce=' + nonce + '&timestamp=' + timestamp + '&sign=' + md5(signStr);
+}
 
 const LS_KEY = 'fntv:electron-settings';
 
@@ -36,8 +50,8 @@ const ipcRenderer = {
     if (channel === 'settings:check-update') return Promise.resolve();
     if (channel === 'get-version') return Promise.resolve({ version: '0.0.0-web' });
     if (channel === 'fnos-gen-authx') {
-      // 回放页面自身请求捕获的合法签名；未捕获到返回 ''（调用方会跳过/被 diag 剥离坏头）
-      return Promise.resolve(getCapturedAuthx(String(args[0] || '')));
+      // 本地真签名（与桌面版主进程同算法），不再依赖页面捕获回放；getCapturedAuthx 仅留作诊断对照
+      return Promise.resolve(genAuthx(String(args[0] || ''), args[1]));
     }
     // 其它一律安全 no-op
     return Promise.resolve(undefined);
