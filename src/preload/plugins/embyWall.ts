@@ -12,7 +12,7 @@ import { runPageTransition } from './embyWall/detail/veil';
 import { epResolutionDiag } from './embyWall/detail/epResolution';
 import { wheelToScroll } from './embyWall/nav/scroll';
 import { fetchShowsViaIPC, setOnShowsReady } from './embyWall/carousel/api';
-// bootCover（lc-1084 启动骨架遮罩）已下线：网页端用 fnOS 原生加载进度条，见 injectAll 内注释。
+import { armBootCover } from './embyWall/carousel/bootCover'; // [lc-066] 极简进度条遮罩（防原生页裸奔，无骨架布局）
 
 // preload/plugins/embyWall.ts
 //
@@ -4265,8 +4265,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
   });
   _detailObs.observe(document.body, { childList: true, subtree: true });
 
-  // [v0.49.0] 启动骨架遮罩已删（lc-1084 的 armBootCover）：网页端不需要——
-  //   刷新期间由 fnOS 原生加载进度条承担，骨架遮罩反而多遮一层。
+  // [lc-066] 启动进度条遮罩（极简版）：藏 #root + 顶部 3px 流动进度条（无骨架布局），
+  //   轮播注入/STRM 提示/离开首页/2.5s 兜底任一命中即揭开——消除「原生页裸奔 1-1.5s 再切海报墙」。
+  armBootCover();
 
   // 1) 首屏: 立即注入(数据未到显示骨架占位)
   injectCarousel();

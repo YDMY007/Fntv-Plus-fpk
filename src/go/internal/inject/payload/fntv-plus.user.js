@@ -12133,6 +12133,61 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     }
   }
 
+  // src/preload/plugins/embyWall/carousel/bootCover.ts
+  var STYLE_ID4 = "fntv-boot-style";
+  var BAR_ID = "fntv-boot-bar";
+  var POLL_MS = 120;
+  var HARD_LIFT_MS = 2500;
+  var _armed = false;
+  var _poll = 0;
+  var isHome = () => {
+    const p = location.pathname;
+    return p === "/v" || p === "/v/";
+  };
+  function ensure() {
+    if (document.getElementById(STYLE_ID4)) return;
+    const st = document.createElement("style");
+    st.id = STYLE_ID4;
+    st.textContent = `
+#${BAR_ID}{position:fixed;top:0;left:0;right:0;height:3px;z-index:99999;pointer-events:none;background:rgba(148,156,178,.15)}
+#${BAR_ID}::after{content:'';position:absolute;left:0;top:0;height:100%;width:38%;border-radius:3px;background:var(--fnos-ui-accent,#4a8df0);animation:fntv-boot-slide 1s ease-in-out infinite}
+@keyframes fntv-boot-slide{0%{left:-38%}100%{left:100%}}
+html.fntv-boot-hide #root{visibility:hidden}
+`;
+    document.documentElement.appendChild(st);
+  }
+  function lift() {
+    var _a, _b;
+    try {
+      document.documentElement.classList.remove("fntv-boot-hide");
+      (_a = document.getElementById(BAR_ID)) == null ? void 0 : _a.remove();
+      (_b = document.getElementById(STYLE_ID4)) == null ? void 0 : _b.remove();
+    } catch {
+    }
+    if (_poll) {
+      clearInterval(_poll);
+      _poll = 0;
+    }
+    _armed = false;
+  }
+  function armBootCover() {
+    if (_armed || !isHome()) return;
+    _armed = true;
+    ensure();
+    document.documentElement.classList.add("fntv-boot-hide");
+    if (!document.getElementById(BAR_ID)) {
+      const bar2 = document.createElement("div");
+      bar2.id = BAR_ID;
+      (document.body || document.documentElement).appendChild(bar2);
+    }
+    _poll = window.setInterval(() => {
+      if (!isHome()) return lift();
+      if (S.carouselInited) return lift();
+      if (S.carouselLoadedButNone) return lift();
+    }, POLL_MS);
+    setTimeout(lift, HARD_LIFT_MS);
+  }
+
   // src/preload/plugins/embyWall.ts
   init_electron();
   setOnShowsReady(injectCarousel);
@@ -15831,6 +15886,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       }, 200);
     });
     _detailObs.observe(document.body, { childList: true, subtree: true });
+    armBootCover();
     injectCarousel();
     fetchShowsViaIPC(base).then(() => {
       if (S.apiShows.length === 0) {
@@ -17348,7 +17404,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
 
   // src/preload/plugins/personWorks.ts
   init_electron();
-  var STYLE_ID4 = "fnos-person-works-style";
+  var STYLE_ID5 = "fnos-person-works-style";
   var PANEL_ID2 = "fnos-person-works";
   var POSTER_BASE = "https://image.tmdb.org/t/p/w342";
   var esc2 = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -17416,7 +17472,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
   function ensureStyle() {
     if (_styleInjected) return;
     const st = document.createElement("style");
-    st.id = STYLE_ID4;
+    st.id = STYLE_ID5;
     st.textContent = PANEL_CSS;
     (document.head || document.documentElement).appendChild(st);
     _styleInjected = true;
