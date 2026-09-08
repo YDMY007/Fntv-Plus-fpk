@@ -28,14 +28,15 @@ type Info struct {
 }
 
 // SettingsAPI 处理 GET（读配置）/ POST（改配置）。
+// 配置支持任意键（账号 token / 服务开关等平铺持久化，见 config.Extra）。
 func SettingsAPI(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			writeJSON(w, http.StatusOK, cfg.Get())
+			writeJSON(w, http.StatusOK, cfg.GetMap())
 		case http.MethodPost:
 			var patch map[string]any
-			if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+			if err := json.NewDecoder(io.LimitReader(r.Body, 1024*1024)).Decode(&patch); err != nil {
 				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad json"})
 				return
 			}
@@ -43,7 +44,7 @@ func SettingsAPI(cfg *config.Config) http.HandlerFunc {
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 				return
 			}
-			writeJSON(w, http.StatusOK, cfg.Get())
+			writeJSON(w, http.StatusOK, cfg.GetMap())
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

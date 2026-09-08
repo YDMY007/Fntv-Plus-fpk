@@ -9,10 +9,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
 // Config 是后端的全部可持久化配置。
+// 已知字段显式声明；其余键（账号 token / 服务开关等由设置面板写入的任意项）
+// 收进 Extra 平铺持久化（自定义 Marshal/Unmarshal 保持 JSON 顶层扁平，
+// 与桌面版 config.json 字段名对齐，面板 settings:get 直接可用）。
 type Config struct {
 	mu sync.RWMutex
 
@@ -25,14 +29,76 @@ type Config struct {
 	// InjectCSS 是否额外注入内联 CSS（预留，当前 payload 自带样式，默认 false）。
 	InjectCSS bool `json:"inject_css"`
 
+	// Extra 承载所有未显式声明的设置键（平铺进 JSON 顶层）。
+	Extra map[string]any `json:"-"`
+
 	path string
+}
+
+var knownKeys = map[string]bool{
+	"enhancement_enabled": true,
+	"upstream":            true,
+	"inject_css":          true,
+}
+
+// MarshalJSON 平铺输出：已知字段 + Extra。
+func (c Config) MarshalJSON() ([]byte, error) {
+	type known struct {
+		EnhancementEnabled bool   `json:"enhancement_enabled"`
+		Upstream           string `json:"upstream"`
+		InjectCSS          bool   `json:"inject_css"`
+	}
+	k := known{c.EnhancementEnabled, c.Upstream, c.InjectCSS}
+	out, err := json.Marshal(k)
+	if err != nil {
+		return nil, err
+	}
+	if len(c.Extra) == 0 {
+		return out, nil
+	}
+	m := map[string]any{}
+	_ = json.Unmarshal(out, &m)
+	for kk, vv := range c.Extra {
+		if !knownKeys[kk] {
+			m[kk] = vv
+		}
+	}
+	return json.Marshal(m)
+}
+
+// UnmarshalJSON 平铺解析：已知键入字段，其余进 Extra。
+func (c *Config) UnmarshalJSON(data []byte) error {
+	type known struct {
+		EnhancementEnabled bool   `json:"enhancement_enabled"`
+		Upstream           string `json:"upstream"`
+		InjectCSS          bool   `json:"inject_css"`
+	}
+	var k known
+	if err := json.Unmarshal(data, &k); err != nil {
+		return err
+	}
+	c.EnhancementEnabled = k.EnhancementEnabled
+	c.Upstream = k.Upstream
+	c.InjectCSS = k.InjectCSS
+	c.Extra = map[string]any{}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	for kk, vv := range m {
+		if !knownKeys[kk] {
+			c.Extra[kk] = vv
+		}
+	}
+	return nil
 }
 
 // Default 返回出厂配置：增强默认开启。
 func Default() *Config {
 	return &Config{
 		EnhancementEnabled: true,
-		InjectCSS:           false,
+		InjectCSS:          false,
+		Extra:              map[string]any{},
 	}
 }
 
@@ -86,11 +152,65 @@ func (c *Config) save() error {
 func (c *Config) Get() Config {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	extra := map[string]any{}
+	for kk, vv := range c.Extra {
+		extra[kk] = vv
+	}
 	return Config{
 		EnhancementEnabled: c.EnhancementEnabled,
 		Upstream:           c.Upstream,
 		InjectCSS:          c.InjectCSS,
+		Extra:              extra,
 	}
+}
+
+// GetMap 返回平铺配置快照（供 settings API / bridge 使用）。
+func (c *Config) GetMap() map[string]any {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	m := map[string]any{
+		"enhancement_enabled": c.EnhancementEnabled,
+		"upstream":            c.Upstream,
+		"inject_css":          c.InjectCSS,
+	}
+	for kk, vv := range c.Extra {
+		if !knownKeys[kk] {
+			m[kk] = vv
+		}
+	}
+	return m
+}
+
+// GetSetting 取单个设置值（不存在返回 "", false）。
+func (c *Config) GetSetting(key string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if key == "upstream" && c.Upstream != "" {
+		return c.Upstream, true
+	}
+	v, ok := c.Extra[key]
+	if !ok {
+		return "", false
+	}
+	switch tv := v.(type) {
+	case string:
+		return tv, true
+	case bool:
+		if tv {
+			return "1", true
+		}
+		return "0", true
+	case float64:
+		return strconv.FormatFloat(tv, 'f', -1, 64), true
+	default:
+		b, _ := json.Marshal(v)
+		return string(b), true
+	}
+}
+
+// SetSetting 写单个设置值并落盘（线程安全）。
+func (c *Config) SetSetting(key string, value any) error {
+	return c.Update(map[string]any{key: value})
 }
 
 // Update 用部分字段覆盖并落盘（线程安全）。仅覆盖显式传入的字段，避免清空未传字段。
@@ -112,6 +232,20 @@ func (c *Config) Update(patch map[string]any) error {
 		if s, ok := v.(string); ok {
 			c.Upstream = s
 		}
+	}
+	// 其余键进 Extra 平铺持久化（账号 token / 服务开关等任意设置项）
+	for kk, vv := range patch {
+		if knownKeys[kk] {
+			continue
+		}
+		if vv == nil {
+			delete(c.Extra, kk)
+			continue
+		}
+		if c.Extra == nil {
+			c.Extra = map[string]any{}
+		}
+		c.Extra[kk] = vv
 	}
 	return c.save()
 }

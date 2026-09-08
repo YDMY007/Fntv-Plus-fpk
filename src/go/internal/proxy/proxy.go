@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"fntvplus/internal/admin"
+	"fntvplus/internal/bridge"
 	"fntvplus/internal/config"
 	"fntvplus/internal/inject"
 )
@@ -53,6 +54,8 @@ func NewServer(d Deps) *Server {
 	s.mux.Handle("/app/fntvplus/__payload__/", d.Injector.Handler())
 	// 1b) 反馈弹窗二维码（桌面版由主进程读本地文件，网页端由后端内嵌直出）。
 	s.mux.Handle("/app/fntvplus/qrcode.png", inject.QRHandler())
+	// 1c) 服务桥：账号同步/外部 API 的后端网络层（fnOS 签名桥/白名单代理/Trakt/TMDB/Bangumi/豆瓣）。
+	bridge.New(d.Config, d.Upstream.String()).Mount(s.mux)
 
 	// 2) 管理页 + 设置/状态/日志 API。
 	info := admin.Info{

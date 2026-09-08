@@ -333,6 +333,20 @@
     const signStr = [AUTHX_KEY, String(url), nonce, timestamp, md5(dataJson), AUTHX_SECRET].join("_");
     return "nonce=" + nonce + "&timestamp=" + timestamp + "&sign=" + md5(signStr);
   }
+  function settingKey(suffix) {
+    return SETTINGS_KEY_MAP[suffix] || String(suffix).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  }
+  function apiGet(path) {
+    return fetch(path, { credentials: "include" }).then((r) => r.json());
+  }
+  function apiPost(path, body) {
+    return fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+      credentials: "include"
+    }).then((r) => r.json());
+  }
   function loadSettings() {
     try {
       return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
@@ -346,7 +360,7 @@
     } catch {
     }
   }
-  var AUTHX_KEY, AUTHX_SECRET, LS_KEY, ipcRenderer, shell;
+  var AUTHX_KEY, AUTHX_SECRET, LS_KEY, SETTINGS_KEY_MAP, ipcRenderer, shell;
   var init_electron = __esm({
     "src/shim/electron.js"() {
       init_diag();
@@ -354,20 +368,123 @@
       AUTHX_KEY = "NDzZTVxnRKP8Z0jXg1VAMonaG8akvh";
       AUTHX_SECRET = "16CCEB3D-AB42-077D-36A1-F355324E4237";
       LS_KEY = "fntv:electron-settings";
+      SETTINGS_KEY_MAP = {
+        "bangumi-token": "bangumiToken",
+        "bangumi-sync-enabled": "bangumiSyncEnabled",
+        "bangumi-sync-threshold": "bangumiSyncThreshold",
+        "tmdb-key": "tmdbApiKey",
+        "tmdb-direct": "tmdbDirect",
+        "custom-proxy": "customProxy",
+        "wheel-hscroll": "wheelHScroll",
+        "hide-play": "hideOriginalPlayButton",
+        "carousel-logo": "carouselLogoEnabled",
+        "detail-boxless": "detailBoxless",
+        "nas-proxy": "nasProxyEnabled",
+        "download-proxy": "downloadProxyEnabled",
+        "system-page-url": "systemPageUrl",
+        "smart-skip-enabled": "smartSkipEnabled",
+        "dandanplay-credentials": "dandanplayCredentials",
+        "exit-mode": "exitMode",
+        "custom-version": "customVersion",
+        "debug-enabled": "debugEnabled",
+        "debug-components": "debugComponents",
+        "danmu-api": "danmuApi",
+        "hot-source": "hotSource"
+      };
       ipcRenderer = {
         invoke(channel, ...args) {
-          if (channel === "settings:get") return Promise.resolve(loadSettings());
-          if (typeof channel === "string" && channel.startsWith("settings:set-")) {
-            const key = channel.replace("settings:set-", "");
-            const s = loadSettings();
-            s[key] = args[0];
-            saveSettings(s);
-            return Promise.resolve();
+          if (channel === "settings:get") {
+            return apiGet("/app/fntvplus/api/settings").catch(() => loadSettings());
           }
+          if (typeof channel === "string" && channel.startsWith("settings:set-")) {
+            const key = settingKey(channel.replace("settings:set-", ""));
+            const p = apiPost("/app/fntvplus/api/settings", { [key]: args[0] });
+            p.then(() => {
+              const s = loadSettings();
+              s[key] = args[0];
+              saveSettings(s);
+            }).catch(() => {
+            });
+            return p;
+          }
+          if (typeof channel === "string" && channel.startsWith("settings:get-")) {
+            const key = settingKey(channel.replace("settings:get-", ""));
+            return apiGet("/app/fntvplus/api/settings").then((s) => s && s[key] !== void 0 ? s[key] : loadSettings()[key]);
+          }
+          if (channel === "trakt:get-status") return apiGet("/app/fntvplus/api/bridge/trakt/status");
+          if (channel === "trakt:get-credentials") return apiGet("/app/fntvplus/api/bridge/trakt/credentials");
+          if (channel === "trakt:save-credentials") {
+            return apiPost("/app/fntvplus/api/bridge/trakt/credentials", { client_id: args[0], client_secret: args[1] });
+          }
+          if (channel === "trakt:device-start") return apiPost("/app/fntvplus/api/bridge/trakt/device/start", {});
+          if (channel === "trakt:device-cancel") return apiPost("/app/fntvplus/api/bridge/trakt/device/cancel", {});
+          if (channel === "trakt:disconnect") return apiPost("/app/fntvplus/api/bridge/trakt/disconnect", {});
+          if (channel === "trakt:scrobble") {
+            return apiPost("/app/fntvplus/api/bridge/trakt/scrobble", {
+              action: args[0],
+              guid: args[1],
+              progress: args[2],
+              cookie: document.cookie
+            });
+          }
+          if (channel === "trakt:sync-watched") {
+            return apiPost("/app/fntvplus/api/bridge/trakt/sync-watched", { cookie: document.cookie });
+          }
+          if (channel === "trakt:set-scrobble-enabled") {
+            const key = "traktScrobbleEnabled";
+            const p = apiPost("/app/fntvplus/api/settings", { [key]: args[0] });
+            p.then(() => {
+              const s = loadSettings();
+              s[key] = args[0];
+              saveSettings(s);
+            }).catch(() => {
+            });
+            return p;
+          }
+          if (channel === "trakt:get-scrobble-enabled") {
+            return apiGet("/app/fntvplus/api/settings").then((s) => !!s.traktScrobbleEnabled);
+          }
+          if (channel === "tmdb:image" || channel === "tmdb:img") {
+            return fetch("/app/fntvplus/api/bridge/tmdb/img?url=" + encodeURIComponent(String(args[0] || ""))).then((r) => r.json()).catch(() => ({ ok: false }));
+          }
+          if (channel === "tmdb:logo") return apiPost("/app/fntvplus/api/bridge/tmdb/logo", args[0] || {});
+          if (channel === "tmdb:show") return apiPost("/app/fntvplus/api/bridge/tmdb/show", args[0] || {});
+          if (channel === "tmdb:update-ip") return Promise.resolve(void 0);
+          if (channel === "bangumi:calendar") {
+            return fetch("/app/fntvplus/api/bridge/bangumi/calendar").then((r) => r.json()).catch(() => []);
+          }
+          if (channel === "douban:login-status") {
+            return apiPost("/app/fntvplus/api/bridge/douban/status", {}).then((s) => ({ loggedIn: !!s.loggedIn, note: s.note }));
+          }
+          if (channel === "douban:get-watched-items") {
+            return apiPost("/app/fntvplus/api/bridge/fnos", {
+              method: "POST",
+              path: "/v/api/v1/item/list",
+              body: {
+                tags: { type: ["Movie", "TV"] },
+                sort_type: "DESC",
+                sort_column: "create_time",
+                exclude_grouped_video: 1,
+                page: 1,
+                page_size: 200
+              },
+              cookie: document.cookie
+            }).then((j) => j && j.data && Array.isArray(j.data.list) ? j.data.list.map((it) => ({
+              guid: it.item_guid || it.guid,
+              title: it.title,
+              type: it.type,
+              trim_id: it.trim_id,
+              poster: it.poster,
+              watched: true
+            })) : []);
+          }
+          if (channel === "douban:enrich-one") return Promise.resolve(null);
+          if (channel === "douban:scan-watched-manual") return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u8C46\u74E3\u626B\u63CF\u672A\u9002\u914D" });
+          if (typeof channel === "string" && channel.startsWith("douban:")) return Promise.resolve(void 0);
           if (channel === "settings:list-changelogs") return Promise.resolve([]);
           if (channel === "settings:read-changelog") return Promise.resolve({ content: "" });
           if (channel === "settings:check-update") return Promise.resolve();
-          if (channel === "get-version") return Promise.resolve({ version: "0.0.0-web" });
+          if (channel === "get-version") return Promise.resolve({ version: "0.15.0-web" });
           if (channel === "fnos-gen-authx") {
             return Promise.resolve(genAuthx(String(args[0] || ""), args[1]));
           }
