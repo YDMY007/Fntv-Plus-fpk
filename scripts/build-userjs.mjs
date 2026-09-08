@@ -20,8 +20,10 @@ await build({
     fs: path.join(root, 'src/shim/node_fs.js'),
     path: path.join(root, 'src/shim/node_path.js'),
   },
-  // 代码中仅用到 process.env.NODE_ENV
+  // 代码中仅用到 process.env.NODE_ENV；
+  // banner：在 IIFE 最前挂 window.require/__dirname 兜底（先于所有模块初始化，防顶层 ReferenceError 中断）
   define: { 'process.env.NODE_ENV': '"production"' },
+  banner: { js: `try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){window.require=function(id){if(id==='electron'||id==='electron/main')return (window.__fntvShim||{});throw new Error('网页端不支持 Node 模块: '+id)};}if(typeof window.__dirname==='undefined')window.__dirname='/fntv-web';}}catch(e){}` },
   logLevel: 'info',
   legalComments: 'inline',
   treeShaking: true,

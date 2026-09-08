@@ -187,3 +187,6 @@ export function installDiag(): void {
 
   push('[diag] installed @' + location.href);
 }
+
+// 模块体顶层自动安装：本模块是 payload 第一个 import，确保先于所有插件初始化装好错误钩子
+installDiag(); // 模块加载即自动安装

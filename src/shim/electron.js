@@ -27,6 +27,22 @@ function genAuthx(url, data) {
 
 const LS_KEY = 'fntv:electron-settings';
 
+// [v0.34.0] 浏览器全局兜底：部分桌面插件在模块顶层用 __dirname / require('electron')，
+// esbuild 无法静态转换全局引用 → 运行时 ReferenceError 导致整个 IIFE 中断（页面静默变原生）。
+// require('electron') 返回本垫片命名空间；__dirname 给出无害占位。
+const shimExports = { ipcRenderer: null, shell: null };
+try {
+  if (typeof window !== 'undefined') {
+    if (typeof window.require === 'undefined') {
+      window.require = function (id) {
+        if (id === 'electron' || id === 'electron/main') return shimExports;
+        throw new Error('网页端不支持 Node 模块: ' + id);
+      };
+    }
+    if (typeof window.__dirname === 'undefined') window.__dirname = '/fntv-web';
+  }
+} catch { /* ignore */ }
+
 // settings:set-<后缀> → 服务端 config 键名映射（与桌面版 config.json 字段名对齐）
 const SETTINGS_KEY_MAP = {
   'bangumi-token': 'bangumiToken',
@@ -309,6 +325,7 @@ const ipcRenderer = {
     return () => {};
   },
   removeListener() {},
+  off(channel, cb) { return this.removeListener(channel, cb); },
   removeAllListeners() {},
 };
 
@@ -318,4 +335,7 @@ const shell = {
   showItemInFolder() {},
 };
 
+shimExports.ipcRenderer = ipcRenderer;
+shimExports.shell = shell;
+try { if (typeof window !== 'undefined') window.__fntvShim = shimExports; } catch { /* ignore */ }
 export { ipcRenderer, shell };

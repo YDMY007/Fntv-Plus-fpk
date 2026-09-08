@@ -1,3 +1,4 @@
+try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){window.require=function(id){if(id==='electron'||id==='electron/main')return (window.__fntvShim||{});throw new Error('网页端不支持 Node 模块: '+id)};}if(typeof window.__dirname==='undefined')window.__dirname='/fntv-web';}}catch(e){}
 (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -178,6 +179,7 @@
       buf = [];
       timer = null;
       authxMap = [];
+      installDiag();
     }
   });
 
@@ -360,7 +362,7 @@
     } catch {
     }
   }
-  var AUTHX_KEY, AUTHX_SECRET, LS_KEY2, SETTINGS_KEY_MAP, ipcRenderer, shell;
+  var AUTHX_KEY, AUTHX_SECRET, LS_KEY2, shimExports, SETTINGS_KEY_MAP, ipcRenderer, shell;
   var init_electron = __esm({
     "src/shim/electron.js"() {
       init_diag();
@@ -368,6 +370,19 @@
       AUTHX_KEY = "NDzZTVxnRKP8Z0jXg1VAMonaG8akvh";
       AUTHX_SECRET = "16CCEB3D-AB42-077D-36A1-F355324E4237";
       LS_KEY2 = "fntv:electron-settings";
+      shimExports = { ipcRenderer: null, shell: null };
+      try {
+        if (typeof window !== "undefined") {
+          if (typeof window.require === "undefined") {
+            window.require = function(id) {
+              if (id === "electron" || id === "electron/main") return shimExports;
+              throw new Error("\u7F51\u9875\u7AEF\u4E0D\u652F\u6301 Node \u6A21\u5757: " + id);
+            };
+          }
+          if (typeof window.__dirname === "undefined") window.__dirname = "/fntv-web";
+        }
+      } catch {
+      }
       SETTINGS_KEY_MAP = {
         "bangumi-token": "bangumiToken",
         "bangumi-sync-enabled": "bangumiSyncEnabled",
@@ -612,6 +627,9 @@
         },
         removeListener() {
         },
+        off(channel, cb) {
+          return this.removeListener(channel, cb);
+        },
         removeAllListeners() {
         }
       };
@@ -623,11 +641,14 @@
         showItemInFolder() {
         }
       };
+      shimExports.ipcRenderer = ipcRenderer;
+      shimExports.shell = shell;
+      try {
+        if (typeof window !== "undefined") window.__fntvShim = shimExports;
+      } catch {
+      }
     }
   });
-
-  // src/web-entry.ts
-  init_diag();
 
   // src/preload/core/hooks.ts
   var HookType = /* @__PURE__ */ ((HookType2) => {
@@ -21990,7 +22011,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
   };
 
   // src/web-entry.ts
-  installDiag();
   function boot() {
     try {
       runHooks("onReady" /* OnReady */);
