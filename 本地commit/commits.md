@@ -47,3 +47,4 @@
 | lc-036 | 2026-09-08 | v0.25.0 修 TMDB search 401：TMDB 双格式鉴权（v3 api_key / v4 Bearer JWT 双支持，与桌面一致），非 200 附 Key 格式诊断 |
 | lc-037 | 2026-09-08 | v0.26.0 修免梯子直连保存后显示未开启：set-tmdb-direct 复合对象拆 tmdbDirectConnect/tmdbDirectIp 两字段（与桌面 config 对齐），Go 读键同步修正；连带修 dandanplay-credentials 双参数拆分 |
 | lc-038 | 2026-09-08 | v0.27.0 冰块图标去白框：内切 7% 裁剪+自绘 22% 圆角透明边，四角 alpha=0 验证通过，预览 docs/ice-cube-cropped-preview.png |
+| lc-039 | 2026-09-08 | v0.28.0 修 TMDB 卡数据不全：忠实移植 fetchShowDetails（append_to_response 聚合+include_image_language）+ normalizeShow 完整形状（评分/类型/演职员/主创/外链/预告/平台/推荐/上下集）+ 长标题递进搜索 + tmdb:season-episodes 双语分集 |
