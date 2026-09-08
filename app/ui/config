@@ -1,8 +1,8 @@
 {
   ".url": {
     "fntvplus.Application": {
-      "title": "影视 Plus",
-      "icon": "images/icon_{0}.png",
+      "title": "Fntv-Plus",
+      "icon": "images/fntv_{0}.png",
       "type": "url",
       "protocol": "http",
       "port": "22350",
@@ -11,8 +11,8 @@
       "control": { "accessPerm": "editable" }
     },
     "fntvplus.Settings": {
-      "title": "影视 Plus 设置",
-      "icon": "images/icon_{0}.png",
+      "title": "Fntv-Plus 设置",
+      "icon": "images/setting_{0}.png",
       "type": "url",
       "protocol": "http",
       "port": "22350",
