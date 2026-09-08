@@ -12,7 +12,7 @@
     },
     "fntvplus.Settings": {
       "title": "Fntv-Plus 设置",
-      "icon": "images/fntv_v2_{0}.png",
+      "icon": "images/setting_v2_{0}.png",
       "type": "url",
       "protocol": "http",
       "port": "22350",
