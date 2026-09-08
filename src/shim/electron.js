@@ -266,9 +266,6 @@ const ipcRenderer = {
     if (channel === 'bili:qr-lib' || channel === 'danmaku:prepare') {
       return Promise.resolve({ ok: false, message: '网页端暂未适配' });
     }
-    if (channel === 'debug-filter-request' || channel === 'fnos-dialog:result' || channel === 'window-close' || channel === 'window-maximize' || channel === 'window-minimize') {
-      return Promise.resolve(undefined); // send 类/桌面窗口控制：网页端无意义，安全 no-op
-    }
 
     if (channel === 'fnos-gen-authx') {
       // 本地真签名（与桌面版主进程同算法），不再依赖页面捕获回放；getCapturedAuthx 仅留作诊断对照

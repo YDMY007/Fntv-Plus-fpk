@@ -567,9 +567,6 @@
           if (channel === "bili:qr-lib" || channel === "danmaku:prepare") {
             return Promise.resolve({ ok: false, message: "\u7F51\u9875\u7AEF\u6682\u672A\u9002\u914D" });
           }
-          if (channel === "debug-filter-request" || channel === "fnos-dialog:result" || channel === "window-close" || channel === "window-maximize" || channel === "window-minimize") {
-            return Promise.resolve(void 0);
-          }
           if (channel === "fnos-gen-authx") {
             return Promise.resolve(genAuthx(String(args[0] || ""), args[1]));
           }
