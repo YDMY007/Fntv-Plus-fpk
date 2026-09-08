@@ -619,33 +619,8 @@ function handle(): void {
         + 'color:#fff;font-size:12px;user-select:none;';
       panel.appendChild(ctrl);
     }
-    // [lc-371] "切换系统页面"按钮: 置于 #fnos-sidebar-actions 容器内部(设置按钮旁),
-    //   点击后整窗导航到飞牛原生 NAS 系统页(根路径 `/`); 原生页由 injectNativeReturnButton 提供返回。
-    // [lc-373-fix] 必须放进 ctrl 容器内部, 不能 insertBefore 到容器外——
-    //   容器外的位置可能被面板布局推出可视区/被遮挡导致不可见。
-    // [lc-633] 顺序调整: 用户要求"设置"第一、"切换系统页面"第二——这里先 append 占位,
-    //   下方设置按钮块用 prepend 插到最前 → 最终顺序: 设置 → 切换系统页面 → 软件反馈建议。
-    if (!ctrl.querySelector('#fnos-switch-system-btn')) {
-      const swBtn = document.createElement('button');
-      swBtn.id = 'fnos-switch-system-btn';
-      swBtn.type = 'button';
-      swBtn.textContent = '切换系统页面';
-      swBtn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;'
-        + 'background:var(--fnos-sidebar-btn-bg)!important;color:#fff;font-size:13px;font-weight:600;'
-        + 'border:1px solid rgba(255,255,255,.28);box-shadow:0 4px 16px rgba(0,0,0,.18);text-align:center;'
-        + 'backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);';
-      swBtn.addEventListener('click', (e: Event) => {
-        e.stopPropagation();
-        // [lc-473] 标记用户主动切系统页 → 抑制 autoJumpToTv 的桌面纠正(reload /v)
-        try { sessionStorage.setItem('fntv-system-intent', '1'); } catch (_) { /* ignore */ }
-        // [lc-375] 改由主进程执行跳转: 先置 _systemPageMode 再 loadURL('/'), 避免
-        //   主进程导航守卫(lc-203)的 did-navigate 在标记生效前就把 / 纠正回 /v
-        ipcRenderer.send('fntv:enter-system-page');
-        // [lc-705] 复刻飞牛原生类目按钮：点击后自动收起侧边栏抽屉
-        (window as any).fntvCloseSidebar?.();
-      });
-      ctrl.appendChild(swBtn);  // [lc-633] 占位(设置按钮块稍后 prepend 到最前)
-    }
+    // [飞牛影视特化 v0.8.0] 侧边栏左下角「切换系统页面」（切换NAS界面）按钮已按需移除；
+    //  523/529 行的历史 id 守卫无副作用保留。侧栏容器现在只有：设置 → 软件反馈建议。
 
     if (ctrl.querySelector('#fnos-settings-btn')) return; // 幂等
 
@@ -4220,7 +4195,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
       { id: 'danmaku', label: '弹幕', els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
       { id: 'account', label: '账号同步', els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el] },
-      { id: 'network', label: '网络', els: [secNet.el, secCustomProxy.el, secTmdbDirect.el] },
+      { id: 'network', label: '网络', els: [secCustomProxy.el, secTmdbDirect.el] },
       { id: 'gamepad', label: '手柄', els: [secGamepad.el] },
       { id: 'diag', label: '诊断与日志', els: [secDiag.el, secDebug.el] },
       { id: 'about', label: '关于', els: [secAbout.el] },

@@ -9900,24 +9900,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         ctrl.style.cssText = "position:sticky;bottom:10px;flex-shrink:0;box-sizing:border-box;margin:14px 12px 0;width:calc(100% - 24px);padding:14px 14px 16px;border-radius:14px;display:flex;flex-direction:column;gap:6px;background:var(--fnos-sidebar-btn-bg)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.28);box-shadow:0 4px 16px rgba(0,0,0,.18);color:#fff;font-size:12px;user-select:none;";
         panel.appendChild(ctrl);
       }
-      if (!ctrl.querySelector("#fnos-switch-system-btn")) {
-        const swBtn = document.createElement("button");
-        swBtn.id = "fnos-switch-system-btn";
-        swBtn.type = "button";
-        swBtn.textContent = "\u5207\u6362\u7CFB\u7EDF\u9875\u9762";
-        swBtn.style.cssText = "box-sizing:border-box;width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;background:var(--fnos-sidebar-btn-bg)!important;color:#fff;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.28);box-shadow:0 4px 16px rgba(0,0,0,.18);text-align:center;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);";
-        swBtn.addEventListener("click", (e) => {
-          var _a;
-          e.stopPropagation();
-          try {
-            sessionStorage.setItem("fntv-system-intent", "1");
-          } catch (_) {
-          }
-          ipcRenderer.send("fntv:enter-system-page");
-          (_a = window.fntvCloseSidebar) == null ? void 0 : _a.call(window);
-        });
-        ctrl.appendChild(swBtn);
-      }
       if (ctrl.querySelector("#fnos-settings-btn")) return;
       const btn = document.createElement("button");
       btn.id = "fnos-settings-btn";
@@ -13193,7 +13175,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
         { id: "account", label: "\u8D26\u53F7\u540C\u6B65", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el] },
-        { id: "network", label: "\u7F51\u7EDC", els: [secNet.el, secCustomProxy.el, secTmdbDirect.el] },
+        { id: "network", label: "\u7F51\u7EDC", els: [secCustomProxy.el, secTmdbDirect.el] },
         { id: "gamepad", label: "\u624B\u67C4", els: [secGamepad.el] },
         { id: "diag", label: "\u8BCA\u65AD\u4E0E\u65E5\u5FD7", els: [secDiag.el, secDebug.el] },
         { id: "about", label: "\u5173\u4E8E", els: [secAbout.el] }
