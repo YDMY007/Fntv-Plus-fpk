@@ -338,6 +338,18 @@ const ipcRenderer = {
       });
     }
     if (channel === 'douban:enrich-one') return Promise.resolve(null);
+    if (channel === 'douban:sync-progress') {
+      // [v0.52.0] 播放进度 → 豆瓣标「在看/看过」（后端带手动粘贴的 doubanCookie，标 interest）
+      return apiPost('/app/fntvplus/api/bridge/douban/sync-progress', {
+        guid: args[0], percentage: args[1], item: args[2] || null, duration: args[3] || 0,
+      });
+    }
+    if (channel === 'douban:sync-watched') {
+      // 飞牛「标记为已观看」→ 豆瓣标「看过」
+      return apiPost('/app/fntvplus/api/bridge/douban/sync-watched', {
+        guid: args[0], item: args[1] || null,
+      });
+    }
     if (channel === 'douban:manual-cookie') {
       // [v0.51.0] 手动粘贴豆瓣 Cookie：存 NAS config（settings 通用通道），供后端
       // doubanStatus 判定登录态 / fetchDoubanRating 带鉴权抓评分；后续标记同步同源使用。

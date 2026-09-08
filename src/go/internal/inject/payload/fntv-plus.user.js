@@ -634,6 +634,20 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             });
           }
           if (channel === "douban:enrich-one") return Promise.resolve(null);
+          if (channel === "douban:sync-progress") {
+            return apiPost("/app/fntvplus/api/bridge/douban/sync-progress", {
+              guid: args[0],
+              percentage: args[1],
+              item: args[2] || null,
+              duration: args[3] || 0
+            });
+          }
+          if (channel === "douban:sync-watched") {
+            return apiPost("/app/fntvplus/api/bridge/douban/sync-watched", {
+              guid: args[0],
+              item: args[1] || null
+            });
+          }
           if (channel === "douban:manual-cookie") {
             const ck = String(args[0] || "").trim();
             if (!ck) return Promise.resolve({ ok: false, msg: "cookie \u4E3A\u7A7A" });
@@ -863,23 +877,33 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   var missed = /* @__PURE__ */ new Set();
   var SYNCABLE = ["Movie", "Episode", "TvSeries", "TV"];
   var _lastFire = 0;
-  async function fetchPlayInfo(guid) {
-    try {
-      const path = "/v/api/v1/play/info";
-      const payload = { item_guid: guid };
-      const authx = await ipcRenderer.invoke("fnos-gen-authx", path, payload);
-      const resp = await fetch(location.origin + path, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Authx": authx, "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (!resp.ok) return null;
-      const j = await resp.json();
-      return j && j.data && j.data.item ? j.data.item : null;
-    } catch {
-      return null;
-    }
+  var _lastDoubanFire = 0;
+  var inflightInfo = /* @__PURE__ */ new Map();
+  function fetchPlayInfo(guid) {
+    const cached = inflightInfo.get(guid);
+    if (cached) return cached;
+    const p = (async () => {
+      try {
+        const path = "/v/api/v1/play/info";
+        const payload = { item_guid: guid };
+        const authx = await ipcRenderer.invoke("fnos-gen-authx", path, payload);
+        const resp = await fetch(location.origin + path, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Authx": authx, "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) return null;
+        const j = await resp.json();
+        return j && j.data && j.data.item ? j.data.item : null;
+      } catch {
+        return null;
+      } finally {
+        setTimeout(() => inflightInfo.delete(guid), 2e3);
+      }
+    })();
+    inflightInfo.set(guid, p);
+    return p;
   }
   function handleRecord(body) {
     try {
@@ -889,9 +913,23 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       const duration = Number(body.duration || 0);
       if (!guid || !(ts > 0) || !(duration > 0)) return;
       const percentage = Math.min(100, ts / duration * 100);
+      const now = Date.now();
+      if (now - _lastDoubanFire > 3e3) {
+        _lastDoubanFire = now;
+        void (async () => {
+          const item = await fetchPlayInfo(guid);
+          if (!item || !SYNCABLE.includes(String(item.type || ""))) return;
+          try {
+            const r = await ipcRenderer.invoke("douban:sync-progress", guid, percentage, item, duration);
+            if (r && r.ok && String(r.message || "").indexOf("\u5DF2\u6807\u8BB0") !== -1) {
+              log2.info("[play-sync][\u8C46\u74E3]", String(r.message));
+            }
+          } catch {
+          }
+        })();
+      }
       if (percentage < 5) return;
       if (marked.has(guid) || missed.has(guid)) return;
-      const now = Date.now();
       if (now - _lastFire < 3e3) return;
       _lastFire = now;
       void (async () => {
@@ -922,18 +960,46 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     } catch {
     }
   }
+  function handleItemWatched(body) {
+    try {
+      if (!body || typeof body !== "object") return;
+      const guid = String(body.item_guid || body.guid || body.itemGuid || "");
+      if (!guid) return;
+      void (async () => {
+        const item = await fetchPlayInfo(guid);
+        if (!item || !SYNCABLE.includes(String(item.type || ""))) return;
+        try {
+          const r = await ipcRenderer.invoke("douban:sync-watched", guid, item);
+          if (r && r.ok && String(r.message || "").indexOf("\u5DF2\u6807\u8BB0") !== -1) {
+            log2.info("[play-sync][\u8C46\u74E3]", String(r.message));
+          }
+        } catch {
+        }
+      })();
+    } catch {
+    }
+  }
+  function inspectRequest(url, method, bodyText) {
+    try {
+      if (!bodyText || String(method || "").toUpperCase() !== "POST") return;
+      let parsed;
+      try {
+        parsed = typeof bodyText === "string" ? JSON.parse(bodyText) : bodyText;
+      } catch {
+        return;
+      }
+      if (String(url).indexOf("/v/api/v1/play/record") !== -1) handleRecord(parsed);
+      else if (String(url).indexOf("/v/api/v1/item/watched") !== -1) handleItemWatched(parsed);
+    } catch {
+    }
+  }
   function installPlayRecordHook() {
     try {
       const origFetch = window.fetch;
       window.fetch = function(input, init) {
         try {
           const url = typeof input === "string" ? input : input && input.url || "";
-          if (init && String(init.method || "").toUpperCase() === "POST" && String(url).indexOf("/v/api/v1/play/record") !== -1 && init.body) {
-            try {
-              handleRecord(typeof init.body === "string" ? JSON.parse(init.body) : init.body);
-            } catch {
-            }
-          }
+          if (init && init.body) inspectRequest(url, init.method, init.body);
         } catch {
         }
         return origFetch.call(this, input, init);
@@ -950,14 +1016,12 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       };
       XMLHttpRequest.prototype.send = function(body) {
         try {
-          if (body && typeof body === "string" && this.__fntvMethod === "POST" && String(this.__fntvUrl || "").indexOf("/v/api/v1/play/record") !== -1) {
-            handleRecord(JSON.parse(body));
-          }
+          if (body && typeof body === "string") inspectRequest(this.__fntvUrl || "", this.__fntvMethod, body);
         } catch {
         }
         return XSend.apply(this, [body]);
       };
-      log2.info("[play-sync] play/record \u62E6\u622A\u5DF2\u6302\u8F7D\uFF08\u7F51\u9875\u7AEF Bangumi \u540C\u6B65\u89E6\u53D1\u5668\uFF09");
+      log2.info("[play-sync] play/record + item/watched \u62E6\u622A\u5DF2\u6302\u8F7D\uFF08\u7F51\u9875\u7AEF\u8C46\u74E3/Bangumi \u540C\u6B65\u89E6\u53D1\u5668\uFF09");
     } catch (e) {
       logger_default.error("[play-sync] \u6302\u8F7D\u5931\u8D25", String(e));
     }
