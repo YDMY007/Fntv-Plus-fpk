@@ -72,6 +72,9 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/scrobble", b.traktScrobble)
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/sync-watched", b.traktSyncWatched)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bangumi/calendar", b.bangumiCalendar)
+	mux.HandleFunc("/app/fntvplus/api/bridge/bangumi/sync-progress", b.bangumiSyncProgress)
+	mux.HandleFunc("/app/fntvplus/api/bridge/douban/watched", b.doubanWatched)
+	mux.HandleFunc("/app/fntvplus/api/bridge/douban/enrich", b.doubanEnrich)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/status", b.doubanStatus)
 }
 

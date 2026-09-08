@@ -145,25 +145,22 @@ const ipcRenderer = {
       return apiPost('/app/fntvplus/api/bridge/douban/status', {}).then((s) => ({ loggedIn: !!s.loggedIn, note: s.note }));
     }
     if (channel === 'douban:get-watched-items') {
-      // 精简移植：经 fnOS 签名桥拉已识别作品（豆瓣评分增强待后续版本）
-      return apiPost('/app/fntvplus/api/bridge/fnos', {
-        method: 'POST',
-        path: '/v/api/v1/item/list',
-        body: {
-          tags: { type: ['Movie', 'TV'] }, sort_type: 'DESC', sort_column: 'create_time',
-          exclude_grouped_video: 1, page: 1, page_size: 200,
-        },
-        cookie: document.cookie,
-      }).then((j) => (j && j.data && Array.isArray(j.data.list))
-        ? j.data.list.map((it) => ({
-            guid: it.item_guid || it.guid,
-            title: it.title,
-            type: it.type,
-            trim_id: it.trim_id,
-            poster: it.poster,
-            watched: true,
-          }))
-        : []);
+      // 忠实移植：后端钻取全库（季→集进度分析），返回桌面版同形状 { items, libraryTotal }
+      return apiPost('/app/fntvplus/api/bridge/douban/watched', {
+        cookie: document.cookie, force: !!args[0],
+      });
+    }
+    if (channel === 'douban:enrich-one') {
+      // 单条补全：TMDB 分类/类型/评分 + 豆瓣评分（item 无 guid 时静默 null）
+      if (!args[0] || !args[0].guid) return Promise.resolve(null);
+      return apiPost('/app/fntvplus/api/bridge/douban/enrich', { item: args[0], cookie: document.cookie })
+        .then((r) => (r && r.category !== undefined ? { guid: args[0].guid, ...r } : null))
+        .catch(() => null);
+    }
+    if (channel === 'bangumi:sync-progress') {
+      return apiPost('/app/fntvplus/api/bridge/bangumi/sync-progress', {
+        guid: args[0], percentage: args[1], cookie: document.cookie,
+      });
     }
     if (channel === 'douban:enrich-one') return Promise.resolve(null);
     if (channel === 'douban:scan-watched-manual') return Promise.resolve({ ok: false, message: '网页端豆瓣扫描未适配' });
