@@ -7,12 +7,57 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
+
+// logf bridge 包日志（落 fntvplus.log，管理页「实时日志」可见）。
+func logf(format string, args ...any) {
+	log.Printf("[fntv-bridge] "+format, args...)
+}
+
+/* ===== 前端字段兼容类型 ===== */
+
+// flexInt64 兼容「数字 或 数字字符串」。
+//
+// 由来（网页端「剧集信息：标题为空」的真因）：渲染层 extractTmdbId() 返回的是 **string**
+// （如 "66732"），桌面版主进程 resolveShowId 用 /^\d+$/ 正则接受数字字符串；而本文件原先
+// 用 `TmdbID int64` 接收 → JSON 反序列化报 "cannot unmarshal string into int64"，
+// 该错误又被 `_ = json.NewDecoder(...).Decode(&req)` 直接丢弃 → tmdbId 静默变成 0
+// → 只能退回「按标题搜索」，而季页（二级详情页）拿到的季对象往往没有独立标题
+// → resolveShowID 返回 "标题为空"。桌面版从不报这个错，正因它接受字符串型 id。
+//
+// 注意：必须**宽容解析（不返回 error）**。encoding/json 在 object 内遇到字段级类型错误时
+// 会记录错误并继续，但任何返回 error 的自定义 UnmarshalJSON 都可能让调用方整体放弃该请求体；
+// 这里只把它归零，绝不因此丢掉同结构体的 title / seasonNumber 等关键字段。
+type flexInt64 int64
+
+func (f *flexInt64) UnmarshalJSON(b []byte) error {
+	s := strings.TrimSpace(string(b))
+	if len(s) >= 2 && (s[0] == '"' || s[0] == '\'') && s[len(s)-1] == s[0] {
+		s = strings.TrimSpace(s[1 : len(s)-1]) // 引号内可能还带空格：" 66732 "
+	}
+	if s == "" || s == "null" || s == "undefined" {
+		*f = 0
+		return nil
+	}
+	if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+		*f = flexInt64(n)
+		return nil
+	}
+	// 浮点写法（123.0）也接受
+	if fl, err := strconv.ParseFloat(s, 64); err == nil {
+		*f = flexInt64(int64(fl))
+	}
+	return nil
+}
+
+func (f flexInt64) Int64() int64 { return int64(f) }
 
 /* ===== JSON 访问小工具 ===== */
 
@@ -244,7 +289,10 @@ func (b *Bridge) resolveShowID(mt string, tmdbID int64, title, year string) (int
 	title = strings.TrimSpace(title)
 	title = seasonSuffixRe.ReplaceAllString(title, "")
 	if title == "" {
-		return 0, fmt.Errorf("标题为空")
+		// 错误信息必须自带诊断信息：用户只看到「标题为空」四个字时无从判断是
+		// 「元数据没有 tmdbId」还是「tmdbId 传了但后端没吃下」。带上 mediaType 便于定位。
+		return 0, fmt.Errorf("缺少标题且无 TMDB id（mediaType=%s）——季页元数据通常不带标题，"+
+			"请确认该剧在飞牛刮削时已写入 TMDB 编号", mt)
 	}
 	return b.tmdbSearchBest(mt, title, year)
 }
@@ -654,21 +702,28 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		TmdbID       int64  `json:"tmdbId"`
-		Title        string `json:"title"`
-		Year         string `json:"year"`
-		MediaType    string `json:"mediaType"`
-		SeasonNumber *int64 `json:"seasonNumber"`
-		Force        bool   `json:"force"`
+		// flexInt64：前端 extractTmdbId() 返回字符串（"66732"），必须兼容（详见类型注释）。
+		// 用 int64 会把字符串型 id 静默吞成 0 → 退化为「按标题搜索」→ 季页无标题即报错。
+		TmdbID       flexInt64  `json:"tmdbId"`
+		Title        string     `json:"title"`
+		Year         string     `json:"year"`
+		MediaType    string     `json:"mediaType"`
+		SeasonNumber *flexInt64 `json:"seasonNumber"`
+		Force        bool       `json:"force"`
 	}
-	_ = json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req)
+	// 解析错误不再静默丢弃：字段类型不匹配曾导致「tmdbId 变 0」这类问题完全无迹可寻。
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req); err != nil {
+		logf("[tmdb] show 请求体解析失败: %v", err)
+	}
 	mt := req.MediaType
 	if mt != "movie" && mt != "tv" {
 		mt = "tv"
 	}
+	logf("[tmdb] show req: tmdbId=%d title=%q year=%q mt=%s season=%v",
+		req.TmdbID.Int64(), req.Title, req.Year, mt, req.SeasonNumber != nil)
 	client := b.tmdbClient()
 	bearer, queryKey := authForKey(b.tmdbAPIKey())
-	id, err := b.resolveShowID(mt, req.TmdbID, req.Title, req.Year)
+	id, err := b.resolveShowID(mt, req.TmdbID.Int64(), req.Title, req.Year)
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
 		return
@@ -704,25 +759,31 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var season any
-	if mt == "tv" && req.SeasonNumber != nil && *req.SeasonNumber >= 0 {
-		su := fmt.Sprintf("https://api.themoviedb.org/3/tv/%d/season/%d", id, *req.SeasonNumber)
-		sq, _ := url.Parse(su)
-		sqq := sq.Query()
-		sqq.Set("language", "zh-CN")
-		if queryKey != "" {
-			sqq.Set("api_key", queryKey)
+	if mt == "tv" && req.SeasonNumber != nil {
+		sn := req.SeasonNumber.Int64()
+		if sn < 0 {
+			sn = -1 // 负季号无意义，跳过分季请求
 		}
-		sq.RawQuery = sqq.Encode()
-		sreq, _ := http.NewRequest(http.MethodGet, sq.String(), nil)
-		sreq.Header.Set("Accept", "application/json")
-		if bearer != "" {
-			sreq.Header.Set("Authorization", bearer)
-		}
-		if sresp, serr := client.Do(sreq); serr == nil {
-			var sd map[string]any
-			_ = json.NewDecoder(io.LimitReader(sresp.Body, 16*1024*1024)).Decode(&sd)
-			sresp.Body.Close()
-			season = normalizeSeason(sd, *req.SeasonNumber)
+		if sn >= 0 {
+			su := fmt.Sprintf("https://api.themoviedb.org/3/tv/%d/season/%d", id, sn)
+			sq, _ := url.Parse(su)
+			sqq := sq.Query()
+			sqq.Set("language", "zh-CN")
+			if queryKey != "" {
+				sqq.Set("api_key", queryKey)
+			}
+			sq.RawQuery = sqq.Encode()
+			sreq, _ := http.NewRequest(http.MethodGet, sq.String(), nil)
+			sreq.Header.Set("Accept", "application/json")
+			if bearer != "" {
+				sreq.Header.Set("Authorization", bearer)
+			}
+			if sresp, serr := client.Do(sreq); serr == nil {
+				var sd map[string]any
+				_ = json.NewDecoder(io.LimitReader(sresp.Body, 16*1024*1024)).Decode(&sd)
+				sresp.Body.Close()
+				season = normalizeSeason(sd, sn)
+			}
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -736,12 +797,15 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 // tmdbSeasonEpisodes {tmdbId?, title?, seasonNumber, force} → 双语分集（zh 主 + en 补）。
 func (b *Bridge) tmdbSeasonEpisodes(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		TmdbID       int64  `json:"tmdbId"`
-		Title        string `json:"title"`
-		SeasonNumber *int64 `json:"seasonNumber"`
-		Force        bool   `json:"force"`
+		// 同 tmdbShow：前端的 tmdbId 是字符串，必须兼容（int64 会静默丢成 0）
+		TmdbID       flexInt64  `json:"tmdbId"`
+		Title        string     `json:"title"`
+		SeasonNumber *flexInt64 `json:"seasonNumber"`
+		Force        bool       `json:"force"`
 	}
-	_ = json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req)
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req); err != nil {
+		logf("[tmdb] season-episodes 请求体解析失败: %v", err)
+	}
 	if req.SeasonNumber == nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "缺少季号，无法定位 TMDB 分季。"})
 		return
@@ -751,8 +815,8 @@ func (b *Bridge) tmdbSeasonEpisodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mt := "tv"
-	sn := *req.SeasonNumber
-	id, err := b.resolveShowID(mt, req.TmdbID, req.Title, "")
+	sn := req.SeasonNumber.Int64()
+	id, err := b.resolveShowID(mt, req.TmdbID.Int64(), req.Title, "")
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
 		return
