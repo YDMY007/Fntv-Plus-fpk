@@ -1113,7 +1113,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     //   更新与维护: 检查更新/历史版本 + 维护开发者按钮（归通用分类，原嵌在开关卡底部）
     const secNet = section('网络与代理');
     const secBodyNet = secNet.body;
-    const secUX = section('界面与浏览');
+    const secUX = section('界面交互');
     const secBodyUX = secUX.body;
     const secUpd = section('更新与维护');
     const secBodyUpd = secUpd.body;
@@ -4133,17 +4133,19 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     // [飞牛影视特化 v0.6.0] 按需精简：
     //   删「通用」整页（退出行为/语言/系统桌面/更新与维护——FPK 版更新走应用中心）
     //   外观只留「主题与外观」卡（内含亚克力透明度/背景模糊两滑块），轮播 Logo 卡移除（Logo 默认开）
-    //   播放只留「跳过片头片尾」+「界面与浏览」（仅鼠标滚轮横向滚动一行，隐藏原始播放按钮已游离）
+    //   v0.15.0 重排：外观=主题模式+界面交互(滚轮) · 播放=片头片尾+手柄 · 账号与网络合并 · 弹幕/诊断/关于保留
     //   弹幕/账号同步/网络/手柄/诊断与日志/关于 未点名 → 保留
     type Cat = { id: string; label: string; els: HTMLElement[] };
+    // [飞牛影视特化 v0.15.0] 全部项重新分类排版（精简后余项按功能域收敛为 6 类）：
+    //   外观=主题模式+界面交互(滚轮横滚) · 播放=跳过片头片尾+手柄遥控(播放体验域)
+    //   弹幕=4卡 · 账号与网络=四家同步+自定义代理+TMDB直连(第三方服务/代理同域)
+    //   诊断与日志=调试开关+组件日志+实时日志 · 关于
     const cats: Cat[] = [
-      { id: 'appearance', label: '外观', els: [secAppearance.el] },
-      { id: 'player', label: '播放', els: [secSkip.el, secUX.el] },
+      { id: 'appearance', label: '外观', els: [secAppearance.el, secUX.el] },
+      { id: 'player', label: '播放', els: [secSkip.el, secGamepad.el] },
       // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
       { id: 'danmaku', label: '弹幕', els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
-      { id: 'account', label: '账号同步', els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el] },
-      { id: 'network', label: '网络', els: [secCustomProxy.el, secTmdbDirect.el] },
-      { id: 'gamepad', label: '手柄', els: [secGamepad.el] },
+      { id: 'account', label: '账号与网络', els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secCustomProxy.el, secTmdbDirect.el] },
       { id: 'diag', label: '诊断与日志', els: [secDiag.el, secDebug.el] },
       { id: 'about', label: '关于', els: [secAbout.el] },
     ];

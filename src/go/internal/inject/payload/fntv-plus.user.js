@@ -10285,7 +10285,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       const secDebugBody = secDebug.body;
       const secNet = section("\u7F51\u7EDC\u4E0E\u4EE3\u7406");
       const secBodyNet = secNet.body;
-      const secUX = section("\u754C\u9762\u4E0E\u6D4F\u89C8");
+      const secUX = section("\u754C\u9762\u4EA4\u4E92");
       const secBodyUX = secUX.body;
       const secUpd = section("\u66F4\u65B0\u4E0E\u7EF4\u62A4");
       const secBodyUpd = secUpd.body;
@@ -13063,13 +13063,11 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         applyCarouselLogoNow();
       });
       const cats = [
-        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el] },
-        { id: "player", label: "\u64AD\u653E", els: [secSkip.el, secUX.el] },
+        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secUX.el] },
+        { id: "player", label: "\u64AD\u653E", els: [secSkip.el, secGamepad.el] },
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
-        { id: "account", label: "\u8D26\u53F7\u540C\u6B65", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el] },
-        { id: "network", label: "\u7F51\u7EDC", els: [secCustomProxy.el, secTmdbDirect.el] },
-        { id: "gamepad", label: "\u624B\u67C4", els: [secGamepad.el] },
+        { id: "account", label: "\u8D26\u53F7\u4E0E\u7F51\u7EDC", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secCustomProxy.el, secTmdbDirect.el] },
         { id: "diag", label: "\u8BCA\u65AD\u4E0E\u65E5\u5FD7", els: [secDiag.el, secDebug.el] },
         { id: "about", label: "\u5173\u4E8E", els: [secAbout.el] }
       ];
