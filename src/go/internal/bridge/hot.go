@@ -366,7 +366,8 @@ func (b *Bridge) fetchWithTransport(rawURL, ua string) ([]byte, error) {
 		via string
 	}
 	attempts := []attempt{{&http.Client{Timeout: 8 * time.Second}, "直连"}}
-	if pu, err := url.Parse(strings.TrimSpace(getSetting(b.cfg, "customProxy"))); err == nil && (pu.Scheme == "http" || pu.Scheme == "https") && pu.Host != "" {
+	if proxy := b.customProxyURL(); proxy != "" {
+		pu, _ := url.Parse(proxy)
 		attempts = append([]attempt{{&http.Client{Timeout: 12 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}, "自定义代理"}}, attempts...)
 	}
 	var lastErr error
@@ -403,8 +404,8 @@ func (b *Bridge) bangumiCalendar(w http.ResponseWriter, r *http.Request) {
 	data, err := b.fetchWithTransport("https://api.bgm.tv/calendar", bangumiUAWeb)
 	if err != nil {
 		msg := "Bangumi 请求失败：" + err.Error()
-		if strings.TrimSpace(getSetting(b.cfg, "customProxy")) == "" {
-			msg += "。NAS 直连 api.bgm.tv 超时，可在设置「自定义代理」配置 http(s) 代理后重试。"
+		if b.customProxyURL() == "" {
+			msg += "。NAS 直连 api.bgm.tv 超时，可在设置「自定义代理」配置 http(s) 代理并保存后重试。"
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": msg})
 		return

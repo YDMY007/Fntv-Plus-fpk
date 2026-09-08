@@ -26,6 +26,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -122,6 +123,28 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 func getSetting(cfg *config.Config, key string) string {
 	v, _ := cfg.GetSetting(key)
 	return v
+}
+
+// customProxyURL 生效中的自定义代理 URL（桌面版 proxyAgent.pickProxyUrl 同款语义）：
+// 环境变量 HTTPS_PROXY/HTTP_PROXY 优先；否则须 customProxyEnabled=true 且 customProxy
+// 为合法 http(s):// 地址才返回，未启用/非法/脏数据（如历史误存的 "1"）一律返回空串。
+func (b *Bridge) customProxyURL() string {
+	for _, k := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+		if s := strings.TrimSpace(os.Getenv(k)); s != "" {
+			return s
+		}
+	}
+	if getSetting(b.cfg, "customProxyEnabled") != "1" {
+		return ""
+	}
+	raw := strings.TrimSpace(getSetting(b.cfg, "customProxy"))
+	if raw == "" {
+		return ""
+	}
+	if pu, err := url.Parse(raw); err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Host == "" {
+		return ""
+	}
+	return raw
 }
 
 /* ========== fnOS 签名桥 ========== */
@@ -648,7 +671,8 @@ func (b *Bridge) tmdbDirectIPs() (apiIP, imgIP string) {
 // TLS 连到 IP、SNI/证书校验仍用域名（CheckTMDB 的 IP 是官方反代，证书合法）。
 func (b *Bridge) tmdbClient() *http.Client {
 	// 桌面版 withTransport 语义：自定义代理 > 免梯子直连 > 系统 DNS（[lc-052] 补代理优先分支）
-	if pu, err := url.Parse(strings.TrimSpace(getSetting(b.cfg, "customProxy"))); err == nil && (pu.Scheme == "http" || pu.Scheme == "https") && pu.Host != "" {
+	if proxy := b.customProxyURL(); proxy != "" {
+		pu, _ := url.Parse(proxy)
 		return &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}
 	}
 	if !b.tmdbDirectOn() {
@@ -695,7 +719,7 @@ func (b *Bridge) tmdbUpdateIP(w http.ResponseWriter, r *http.Request) {
 	req2, _ := http.NewRequest(http.MethodGet, ipURL, nil)
 	req2.Header.Set("User-Agent", "Fntv-Plus-Web/0.15.0 (https://github.com/YDMY007/Fntv-Plus)")
 	// raw.githubusercontent.com 国内可能被墙：若用户配了自定义代理则走代理
-	if proxy := getSetting(b.cfg, "customProxy"); proxy != "" {
+	if proxy := b.customProxyURL(); proxy != "" {
 		if pu, err := url.Parse(proxy); err == nil && pu.Scheme != "" {
 			tr := &http.Transport{Proxy: http.ProxyURL(pu)}
 			client := &http.Client{Timeout: 20 * time.Second, Transport: tr}

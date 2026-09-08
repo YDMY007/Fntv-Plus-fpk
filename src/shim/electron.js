@@ -107,6 +107,14 @@ const ipcRenderer = {
           tmdbDirectIp: a.ip || null,
         });
       }
+      if (channel === 'settings:set-custom-proxy') {
+        // 复合设置：(enabled, proxyUrl) → 桌面 config.json 两字段 customProxyEnabled + customProxy。
+        // 此前无特例时通用逻辑把 args[0]（enabled 布尔）误存进 customProxy，URL 被丢弃 → 后端永远拿不到代理。
+        return apiPost('/app/fntvplus/api/settings', {
+          customProxyEnabled: !!args[0],
+          customProxy: (typeof args[1] === 'string' ? args[1].trim() : ''),
+        });
+      }
       if (channel === 'settings:set-dandanplay-credentials') {
         return apiPost('/app/fntvplus/api/settings', {
           dandanplayAppId: String(args[0] || ''),
@@ -122,6 +130,13 @@ const ipcRenderer = {
       return p;
     }
     if (typeof channel === 'string' && channel.startsWith('settings:get-')) {
+      // 特例：自定义代理回填需要 {enabled, proxyUrl} 复合形状（与桌面版 getCustomProxyConfig 对齐）
+      if (channel === 'settings:get-custom-proxy') {
+        return apiGet('/app/fntvplus/api/settings').then((s) => {
+          const u = (s && typeof s.customProxy === 'string') ? s.customProxy.trim() : '';
+          return { enabled: !!(s && s.customProxyEnabled) && !!u, proxyUrl: u };
+        });
+      }
       const key = settingKey(channel.replace('settings:get-', ''));
       return apiGet('/app/fntvplus/api/settings').then((s) => (s && s[key] !== undefined ? s[key] : loadSettings()[key]));
     }

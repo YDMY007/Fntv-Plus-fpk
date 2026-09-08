@@ -420,6 +420,12 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
                 tmdbDirectIp: a.ip || null
               });
             }
+            if (channel === "settings:set-custom-proxy") {
+              return apiPost("/app/fntvplus/api/settings", {
+                customProxyEnabled: !!args[0],
+                customProxy: typeof args[1] === "string" ? args[1].trim() : ""
+              });
+            }
             if (channel === "settings:set-dandanplay-credentials") {
               return apiPost("/app/fntvplus/api/settings", {
                 dandanplayAppId: String(args[0] || ""),
@@ -436,6 +442,12 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             return p;
           }
           if (typeof channel === "string" && channel.startsWith("settings:get-")) {
+            if (channel === "settings:get-custom-proxy") {
+              return apiGet("/app/fntvplus/api/settings").then((s) => {
+                const u = s && typeof s.customProxy === "string" ? s.customProxy.trim() : "";
+                return { enabled: !!(s && s.customProxyEnabled) && !!u, proxyUrl: u };
+              });
+            }
             const key = settingKey(channel.replace("settings:get-", ""));
             return apiGet("/app/fntvplus/api/settings").then((s) => s && s[key] !== void 0 ? s[key] : loadSettings()[key]);
           }
