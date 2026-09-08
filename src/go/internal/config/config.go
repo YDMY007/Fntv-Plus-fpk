@@ -41,8 +41,8 @@ var knownKeys = map[string]bool{
 	"inject_css":          true,
 }
 
-// MarshalJSON 平铺输出：已知字段 + Extra。
-func (c Config) MarshalJSON() ([]byte, error) {
+// MarshalJSON 平铺输出：已知字段 + Extra。（指针接收者：避免按值拷贝内嵌 sync.RWMutex，go vet 报锁拷贝）
+func (c *Config) MarshalJSON() ([]byte, error) {
 	type known struct {
 		EnhancementEnabled bool   `json:"enhancement_enabled"`
 		Upstream           string `json:"upstream"`

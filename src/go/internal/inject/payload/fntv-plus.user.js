@@ -480,12 +480,21 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (channel === "tmdb:season-episodes") {
             return apiPost("/app/fntvplus/api/bridge/tmdb/season-episodes", args[0] || {});
           }
+          if (channel === "tmdb:discover") {
+            return apiPost("/app/fntvplus/api/bridge/tmdb/discover", { force: !!args[0] });
+          }
           if (channel === "tmdb:update-ip") {
             return apiPost("/app/fntvplus/api/bridge/tmdb/update-ip", { force: true });
           }
           if (channel === "tmdb:update-ip") return Promise.resolve(void 0);
           if (channel === "bangumi:calendar") {
-            return fetch("/app/fntvplus/api/bridge/bangumi/calendar").then((r) => r.json()).catch(() => []);
+            return fetch("/app/fntvplus/api/bridge/bangumi/calendar").then((r) => r.json()).catch(() => ({ ok: false, error: "\u7F51\u7EDC\u9519\u8BEF\uFF1A\u65E0\u6CD5\u8FDE\u63A5\u540E\u7AEF" }));
+          }
+          if (channel === "douban:discover") {
+            return apiPost("/app/fntvplus/api/bridge/douban/discover", { force: !!args[0] });
+          }
+          if (channel === "douban:image") {
+            return fetch("/app/fntvplus/api/bridge/douban/image?url=" + encodeURIComponent(String(args[0] || ""))).then((r) => r.json()).catch(() => ({ ok: false }));
           }
           if (channel === "douban:login-status") {
             return apiPost("/app/fntvplus/api/bridge/douban/status", {}).then((s) => ({ loggedIn: !!s.loggedIn, note: s.note }));

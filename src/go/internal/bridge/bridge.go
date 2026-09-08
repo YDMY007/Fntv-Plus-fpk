@@ -70,6 +70,7 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/show", b.tmdbShow)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/season-episodes", b.tmdbSeasonEpisodes)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/update-ip", b.tmdbUpdateIP)
+	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/discover", b.tmdbDiscover)
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/credentials", b.traktCredsHandler())
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/status", b.traktStatusHandler())
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/device/start", b.traktDeviceStart)
@@ -82,6 +83,8 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/watched", b.doubanWatched)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/enrich", b.doubanEnrich)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/status", b.doubanStatus)
+	mux.HandleFunc("/app/fntvplus/api/bridge/douban/discover", b.doubanDiscover)
+	mux.HandleFunc("/app/fntvplus/api/bridge/douban/image", b.doubanImage)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-generate", b.biliQrGenerate)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-poll", b.biliQrPoll)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/status", b.biliStatusHandler())
@@ -857,20 +860,7 @@ func (b *Bridge) tmdbLogo(w http.ResponseWriter, r *http.Request) {
 /* ========== Bangumi / 豆瓣 ========== */
 
 // bangumiCalendar 代理 api.bgm.tv/calendar（bgm.tv 要求自定义 UA）。
-func (b *Bridge) bangumiCalendar(w http.ResponseWriter, r *http.Request) {
-	req, _ := http.NewRequest(http.MethodGet, "https://api.bgm.tv/calendar", nil)
-	req.Header.Set("User-Agent", "Fntv-Plus-Web/0.15.0 (https://github.com/YDMY007/Fntv-Plus)")
-	resp, err := b.client.Do(req)
-	if err != nil {
-		writeErr(w, http.StatusBadGateway, err.Error())
-		return
-	}
-	defer resp.Body.Close()
-	data, _ := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(resp.StatusCode)
-	_, _ = w.Write(data)
-}
+// bangumiCalendar 已迁移至 hot.go（[lc-051] 重写为桌面版 fetchCalendar 同款 {ok, items} 形状）。
 
 // doubanStatus 网页端豆瓣登录暂未适配（桌面版依赖内嵌浏览器会话），如实告知。
 func (b *Bridge) doubanStatus(w http.ResponseWriter, r *http.Request) {

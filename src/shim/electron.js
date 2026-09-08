@@ -168,6 +168,10 @@ const ipcRenderer = {
     if (channel === 'tmdb:season-episodes') {
       return apiPost('/app/fntvplus/api/bridge/tmdb/season-episodes', args[0] || {});
     }
+    if (channel === 'tmdb:discover') {
+      // 每日放送 TMDB 源：后端 /discover/movie + /discover/tv 合并（复用 Key 鉴权 + 免梯子直连）
+      return apiPost('/app/fntvplus/api/bridge/tmdb/discover', { force: !!args[0] });
+    }
     if (channel === 'tmdb:update-ip') {
       // 免梯子直连「更新 IP」：后端拉 CheckTMDB hosts 片段刷新直连 IP（force 覆盖手动值）
       return apiPost('/app/fntvplus/api/bridge/tmdb/update-ip', { force: true });
@@ -176,7 +180,20 @@ const ipcRenderer = {
 
     /* ── Bangumi / 豆瓣 ── */
     if (channel === 'bangumi:calendar') {
-      return fetch('/app/fntvplus/api/bridge/bangumi/calendar').then((r) => r.json()).catch(() => []);
+      // 每日放送 Bangumi 源：后端已包装成桌面版同形状 {ok, items}；失败也回 JSON（不吞错）
+      return fetch('/app/fntvplus/api/bridge/bangumi/calendar')
+        .then((r) => r.json())
+        .catch(() => ({ ok: false, error: '网络错误：无法连接后端' }));
+    }
+    if (channel === 'douban:discover') {
+      // 每日放送豆瓣源：后端 Rexxar movie_hot_gaia + tv_hot 合并（免 Key，国内直连）
+      return apiPost('/app/fntvplus/api/bridge/douban/discover', { force: !!args[0] });
+    }
+    if (channel === 'douban:image') {
+      // 豆瓣海报防盗链代理（后端带 UA+Referer 解 418，转 dataUrl）
+      return fetch('/app/fntvplus/api/bridge/douban/image?url=' + encodeURIComponent(String(args[0] || '')))
+        .then((r) => r.json())
+        .catch(() => ({ ok: false }));
     }
     if (channel === 'douban:login-status') {
       return apiPost('/app/fntvplus/api/bridge/douban/status', {}).then((s) => ({ loggedIn: !!s.loggedIn, note: s.note }));
