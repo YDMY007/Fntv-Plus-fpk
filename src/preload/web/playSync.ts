@@ -12,7 +12,12 @@
 import { ipcRenderer } from 'electron';
 import logger from '../core/logger';
 
-const log = logger.component('play-sync');
+// [v0.53.0 修复] 网页版 logger 无 component 方法（桌面版专属）——此前顶层调用直接抛
+// TypeError，整个 IIFE 中断 → 页面变原生。改用 info/error + 消息前缀。
+const log = {
+  info: (...a: any[]): void => logger.info('[play-sync]', ...a),
+  error: (...a: any[]): void => logger.error('[play-sync]', ...a),
+};
 
 // Bangumi 会话级去重（与桌面版 markedSet/missSet 同语义）
 const marked = new Set<string>();

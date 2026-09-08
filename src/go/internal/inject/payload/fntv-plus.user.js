@@ -872,7 +872,10 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   var logger_default = preloadLogger;
 
   // src/preload/web/playSync.ts
-  var log2 = logger_default.component("play-sync");
+  var log2 = {
+    info: (...a) => logger_default.info("[play-sync]", ...a),
+    error: (...a) => logger_default.error("[play-sync]", ...a)
+  };
   var marked = /* @__PURE__ */ new Set();
   var missed = /* @__PURE__ */ new Set();
   var SYNCABLE = ["Movie", "Episode", "TvSeries", "TV"];
