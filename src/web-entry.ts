@@ -15,6 +15,9 @@ import { installDiag } from './preload/web/diag';
 installDiag();
 
 import './preload/plugins/embyWall';
+// [飞牛影视特化 v0.11.0] 补回观影记录插件（自注册 OnReady：侧栏「🕐 观影记录」入口 + 面板；
+// 依赖 fnos-gen-authx 签名——shim 真签名已就绪，网页端可正常拉已观看数据）
+import './preload/plugins/watchHistory';
 import { runHooks, HookType } from './preload/core/hooks';
 
 declare const window: any;
