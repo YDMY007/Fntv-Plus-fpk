@@ -599,24 +599,36 @@ func (b *Bridge) traktSyncWatched(w http.ResponseWriter, r *http.Request) {
 // tmdbAPIKey 设置面板填的 TMDB API Key（v3）。
 func (b *Bridge) tmdbAPIKey() string { return getSetting(b.cfg, "tmdbApiKey") }
 
-// tmdbDirectOn 「免梯子直连」开关是否开启（兼容 "1"/"true" 两种存法）。
+// tmdbDirectOn 「免梯子直连」开关是否开启（面板存 tmdbDirectConnect bool；兼容 "1"/"true" 存法）。
 func (b *Bridge) tmdbDirectOn() bool {
-	v := strings.ToLower(getSetting(b.cfg, "tmdbDirect"))
+	v := strings.ToLower(getSetting(b.cfg, "tmdbDirectConnect"))
 	return v == "1" || v == "true"
 }
 
-// tmdbDirectIPs 读取存的直连 IP {api, img}。
+// tmdbDirectIPs 读取存的直连 IP（面板存 tmdbDirectIp 对象 {api, img}；兼容内存 RawMessage/字符串/重启后 map 三种形态）。
 func (b *Bridge) tmdbDirectIPs() (apiIP, imgIP string) {
-	raw := getSetting(b.cfg, "tmdb_direct_ip")
-	if raw == "" {
+	m := b.cfg.GetMap()
+	var parse func(v any) (string, string)
+	parse = func(v any) (string, string) {
+		switch raw := v.(type) {
+		case map[string]any:
+			api, _ := raw["api"].(string)
+			img, _ := raw["img"].(string)
+			return api, img
+		case json.RawMessage:
+			var out map[string]any
+			_ = json.Unmarshal(raw, &out)
+			return parse(out)
+		case string:
+			if strings.HasPrefix(raw, "{") {
+				var out map[string]any
+				_ = json.Unmarshal([]byte(raw), &out)
+				return parse(out)
+			}
+		}
 		return "", ""
 	}
-	var ips struct {
-		API string `json:"api"`
-		Img string `json:"img"`
-	}
-	_ = json.Unmarshal([]byte(raw), &ips)
-	return ips.API, ips.Img
+	return parse(m["tmdbDirectIp"])
 }
 
 // tmdbClient 返回带「免梯子直连」的 HTTP 客户端：开启且存有 IP 时，
@@ -710,7 +722,7 @@ func (b *Bridge) saveDirectIPs(w http.ResponseWriter, text string, force bool) {
 		}
 	}
 	ipJSON, _ := json.Marshal(map[string]any{"api": nextAPI, "img": nextImg})
-	_ = b.cfg.SetSetting("tmdb_direct_ip", string(ipJSON))
+	_ = b.cfg.SetSetting("tmdbDirectIp", json.RawMessage(ipJSON))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "api": nextAPI, "img": nextImg})
 }
 

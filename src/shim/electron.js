@@ -83,6 +83,20 @@ const ipcRenderer = {
     }
     if (typeof channel === 'string' && channel.startsWith('settings:set-')) {
       const key = settingKey(channel.replace('settings:set-', ''));
+      // 特例：桌面版 handler 会拆字段的复合设置（键名与桌面 config.json 对齐）
+      if (channel === 'settings:set-tmdb-direct') {
+        const a = args[0] || {};
+        return apiPost('/app/fntvplus/api/settings', {
+          tmdbDirectConnect: !!a.enabled,
+          tmdbDirectIp: a.ip || null,
+        });
+      }
+      if (channel === 'settings:set-dandanplay-credentials') {
+        return apiPost('/app/fntvplus/api/settings', {
+          dandanplayAppId: String(args[0] || ''),
+          dandanplayAppSecret: String(args[1] || ''),
+        });
+      }
       const p = apiPost('/app/fntvplus/api/settings', { [key]: args[0] });
       p.then(() => {
         const s = loadSettings();
