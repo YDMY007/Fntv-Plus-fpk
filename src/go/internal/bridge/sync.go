@@ -272,6 +272,11 @@ func (b *Bridge) doubanEnrich(w http.ResponseWriter, r *http.Request) {
 	st, res, err := b.tmdbGet("/search/"+mt, params)
 	if err != nil || st != http.StatusOK {
 		out["note"] = "TMDB 搜索失败"
+		if err != nil {
+			out["note"] += "（" + err.Error() + "）"
+		} else {
+			out["note"] += fmt.Sprintf("（%d）", st)
+		}
 		writeJSON(w, http.StatusOK, out)
 		return
 	}

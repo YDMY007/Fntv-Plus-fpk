@@ -723,17 +723,35 @@ func pickHostIP(text, host string) string {
 	return ""
 }
 
+// authForKey TMDB 双格式鉴权（与桌面版一致）：
+//   - v4 Read Access Token（JWT，形如 eyJ...）→ Authorization: Bearer 头
+//   - v3 API Key（32 位十六进制）→ ?api_key= 查询参数
+func authForKey(key string) (bearer string, queryKey string) {
+	k := strings.TrimSpace(key)
+	if strings.HasPrefix(k, "eyJ") {
+		return "Bearer " + k, ""
+	}
+	return "", k
+}
+
 func (b *Bridge) tmdbGet(path string, params map[string]string) (int, map[string]any, error) {
+	key := b.tmdbAPIKey()
+	bearer, queryKey := authForKey(key)
 	u, _ := url.Parse("https://api.themoviedb.org/3" + path)
 	q := u.Query()
 	q.Set("language", "zh-CN")
 	for k, v := range params {
 		q.Set(k, v)
 	}
-	q.Set("api_key", b.tmdbAPIKey())
+	if queryKey != "" {
+		q.Set("api_key", queryKey)
+	}
 	u.RawQuery = q.Encode()
 	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	req.Header.Set("Accept", "application/json")
+	if bearer != "" {
+		req.Header.Set("Authorization", bearer)
+	}
 	resp, err := b.tmdbClient().Do(req)
 	if err != nil {
 		return 0, nil, err
@@ -741,6 +759,17 @@ func (b *Bridge) tmdbGet(path string, params map[string]string) (int, map[string
 	defer resp.Body.Close()
 	var out map[string]any
 	_ = json.NewDecoder(io.LimitReader(resp.Body, 16*1024*1024)).Decode(&out)
+	if resp.StatusCode != http.StatusOK {
+		format := "未配置"
+		if key != "" {
+			if bearer != "" {
+				format = "v4长Token(JWT Bearer)"
+			} else {
+				format = "v3短Key(api_key)"
+			}
+		}
+		return resp.StatusCode, out, fmt.Errorf("Key格式=%s", format)
+	}
 	return resp.StatusCode, out, nil
 }
 
