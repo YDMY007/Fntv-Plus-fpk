@@ -148,19 +148,29 @@ func (b *Bridge) tmdbDiscover(w http.ResponseWriter, r *http.Request) {
 	}
 	ch := make(chan resT, 2)
 	fetch := func(path string) {
-		st, out, err := b.tmdbGet(path, map[string]string{"sort_by": "popularity.desc", "page": "1"})
-		if err != nil {
-			ch <- resT{nil, st, err}
-			return
-		}
-		list, _ := out["results"].([]any)
-		raws := make([]map[string]any, 0, len(list))
-		for _, v := range list {
-			if m, ok := v.(map[string]any); ok {
-				raws = append(raws, m)
+		// [v0.63.0] 每路失败重试一次（经代理偶发超时/限流；桌面版 getWithRetry 同语义）
+		var raws []map[string]any
+		var status int
+		var err error
+		for attempt := 0; attempt < 2; attempt++ {
+			st, out, e := b.tmdbGet(path, map[string]string{"sort_by": "popularity.desc", "page": "1"})
+			if e == nil {
+				list, _ := out["results"].([]any)
+				raws = make([]map[string]any, 0, len(list))
+				for _, v := range list {
+					if m, ok := v.(map[string]any); ok {
+						raws = append(raws, m)
+					}
+				}
+				ch <- resT{raws, st, nil}
+				return
+			}
+			status, err = st, e
+			if attempt == 0 {
+				time.Sleep(600 * time.Millisecond)
 			}
 		}
-		ch <- resT{raws, st, nil}
+		ch <- resT{nil, status, err}
 	}
 	go fetch("/discover/movie")
 	go fetch("/discover/tv")

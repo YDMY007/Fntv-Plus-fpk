@@ -291,25 +291,51 @@ func (b *Bridge) handleTMDBImage(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "仅支持 image.tmdb.org/t/p/ 路径"})
 		return
 	}
-	resp, err := b.tmdbClient().Get(raw)
-	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error()})
+	// [v0.63.0] 多路尝试：自定义代理 → 免梯子直连 IP → 系统直连，任一成功即返回。
+	// 每日放送 TMDB 源海报此前单路失败即整批挂（代理对 image.tmdb.org 慢/失败时无兜底）。
+	type imgAttempt struct {
+		c   *http.Client
+		via string
+	}
+	attempts := []imgAttempt{}
+	if proxy := b.customProxyURL(); proxy != "" {
+		pu, _ := url.Parse(proxy)
+		attempts = append(attempts, imgAttempt{&http.Client{Timeout: 12 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}, "自定义代理"})
+	}
+	if dc := b.tmdbDirectClient(); dc != nil {
+		attempts = append(attempts, imgAttempt{dc, "免梯子直连"})
+	}
+	attempts = append(attempts, imgAttempt{b.client, "系统直连"})
+	var lastErr error
+	for _, a := range attempts {
+		resp, err := a.c.Get(raw)
+		if err != nil {
+			lastErr = fmt.Errorf("%s：%v", a.via, err)
+			continue
+		}
+		data, readErr := func() ([]byte, error) {
+			defer resp.Body.Close()
+			return io.ReadAll(io.LimitReader(resp.Body, 16*1024*1024))
+		}()
+		if readErr != nil {
+			lastErr = fmt.Errorf("%s：%v", a.via, readErr)
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("%s upstream %d", a.via, resp.StatusCode)
+			continue
+		}
+		ct := resp.Header.Get("Content-Type")
+		if ct == "" {
+			ct = "image/jpeg"
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":      true,
+			"dataUrl": "data:" + ct + ";base64," + b64encode(data),
+		})
 		return
 	}
-	defer resp.Body.Close()
-	data, _ := io.ReadAll(io.LimitReader(resp.Body, 16*1024*1024))
-	if resp.StatusCode != http.StatusOK {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": fmt.Sprintf("upstream %d", resp.StatusCode)})
-		return
-	}
-	ct := resp.Header.Get("Content-Type")
-	if ct == "" {
-		ct = "image/jpeg"
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":      true,
-		"dataUrl": "data:" + ct + ";base64," + b64encode(data),
-	})
+	writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": lastErr.Error()})
 }
 
 /* ========== Trakt ========== */
@@ -671,20 +697,15 @@ func (b *Bridge) tmdbDirectIPs() (apiIP, imgIP string) {
 	return parse(m["tmdbDirectIp"])
 }
 
-// tmdbClient 返回带「免梯子直连」的 HTTP 客户端：开启且存有 IP 时，
-// TLS 连到 IP、SNI/证书校验仍用域名（CheckTMDB 的 IP 是官方反代，证书合法）。
-func (b *Bridge) tmdbClient() *http.Client {
-	// 桌面版 withTransport 语义：自定义代理 > 免梯子直连 > 系统 DNS（[lc-052] 补代理优先分支）
-	if proxy := b.customProxyURL(); proxy != "" {
-		pu, _ := url.Parse(proxy)
-		return &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}
-	}
+// tmdbDirectClient 免梯子直连专属客户端（CheckTMDB IP + 域名 SNI）。
+// 未开启直连或缺 IP 时返回 nil（供多路兜底探测可用性）。
+func (b *Bridge) tmdbDirectClient() *http.Client {
 	if !b.tmdbDirectOn() {
-		return b.client
+		return nil
 	}
 	apiIP, imgIP := b.tmdbDirectIPs()
 	if apiIP == "" && imgIP == "" {
-		return b.client
+		return nil
 	}
 	dialer := &net.Dialer{Timeout: 15 * time.Second}
 	tr := &http.Transport{
@@ -708,6 +729,19 @@ func (b *Bridge) tmdbClient() *http.Client {
 		},
 	}
 	return &http.Client{Timeout: 20 * time.Second, Transport: tr}
+}
+
+// tmdbClient 返回 TMDB 专用 HTTP 客户端：自定义代理 > 免梯子直连 > 系统 DNS
+// （桌面版 withTransport 语义，[lc-052] 补代理优先分支）。
+func (b *Bridge) tmdbClient() *http.Client {
+	if proxy := b.customProxyURL(); proxy != "" {
+		pu, _ := url.Parse(proxy)
+		return &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}
+	}
+	if c := b.tmdbDirectClient(); c != nil {
+		return c
+	}
+	return b.client
 }
 
 // tmdbUpdateIP {force}：拉 CheckTMDB hosts 片段 → 抠 api/image 两域最新 IPv4 → 存直连配置。
