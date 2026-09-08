@@ -716,7 +716,7 @@ export function ensureStyle4Css(): void {
 [data-fntv-carousel-style="4"] .fntv-s4-card.far-left,[data-fntv-carousel-style="4"] .fntv-s4-card.far-right{opacity:0;visibility:hidden;transform:scale(.55) translateX(135%) rotateY(38deg);z-index:1}
 [data-fntv-carousel-style="4"] .fntv-s4-bg{width:100%;height:100%;background-size:cover;background-position:center;position:relative;display:flex;align-items:flex-end;padding:2rem;transform:scale(1.08);transition:transform 3.6s cubic-bezier(.2,.7,.2,1)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.active .fntv-s4-bg{transform:scale(1)}
-[data-fntv-carousel-style="4"] .fntv-s4-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,.1) 70%,rgba(0,0,0,.02) 100%)}
+[data-fntv-carousel-style="4"] .fntv-s4-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.42) 0%,rgba(0,0,0,.16) 26%,transparent 52%)}
 [data-fntv-carousel-style="4"] .fntv-s4-info h3.fntv-s4-title--logo{background:none;-webkit-background-clip:border-box;background-clip:border-box;-webkit-text-fill-color:initial;color:#fff;filter:none;display:block;margin-bottom:.4rem;line-height:1.1}
 [data-fntv-carousel-style="4"] .fntv-s4-title-logo-img{max-height:100px;max-width:64%;width:auto;height:auto;display:block;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(0,0,0,.7))}
 [data-fntv-carousel-style="4"] .fntv-s4-info{position:absolute;left:0;right:0;bottom:0;z-index:3;color:#fff;padding:2rem 2rem 3rem;box-sizing:border-box}
