@@ -9871,7 +9871,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       const wrap = document.createElement("div");
       wrap.id = "fnos-appearance-ctrl";
       wrap.style.cssText = "display:flex;flex-direction:column;gap:2px;";
-      wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:600;letter-spacing:.5px;">\u4E9A\u514B\u529B\u900F\u660E\u5EA6</span><span id="fnos-alpha-val" style="opacity:.85;">' + alphaPct + '%</span></div><input id="fnos-alpha" type="range" min="0" max="100" value="' + alphaPct + '" style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;"><div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;"><span style="font-weight:600;letter-spacing:.5px;">\u80CC\u666F\u6A21\u7CCA</span><span id="fnos-blur-val" style="opacity:.85;">' + storedBlur + 'px</span></div><input id="fnos-blur" type="range" min="0" max="100" value="' + storedBlur + '" style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;"><div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;"><span style="font-weight:600;letter-spacing:.5px;">\u9996\u9875\u300C\u6BCF\u65E5\u653E\u9001\u300D\u6309\u94AE</span><label style="position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;"><input id="fnos-show-daily" type="checkbox" style="position:absolute;opacity:0;width:0;height:0;"><span id="fnos-show-daily-track" style="position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;"></span><span id="fnos-show-daily-knob" style="position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span></label></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;"><span style="font-weight:600;letter-spacing:.5px;">\u6027\u80FD\u6A21\u5F0F\uFF08\u4F4E\u914D\u673A\uFF09</span><label style="position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;"><input id="fnos-perf-mode" type="checkbox" style="position:absolute;opacity:0;width:0;height:0;"><span id="fnos-perf-track" style="position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;"></span><span id="fnos-perf-knob" style="position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span></label></div><div style="font-size:11px;color:var(--fnos-ui-sub,#888);line-height:1.5;margin-top:4px;">\u5B9E\u5FC3\u5E95\u8272\u3001\u5173\u95ED\u5168\u90E8\u52A8\u753B/\u78E8\u7802/\u5149\u6CFD\uFF08\u542B\u4E91\u6BCD\u589E\u5F3A\uFF09\uFF0C\u4EC5\u4FDD\u7559\u8F6E\u64AD\u57FA\u672C\u5207\u6362\u3002\u5373\u65F6\u751F\u6548\u3002</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;"><span style="font-weight:600;letter-spacing:.5px;">\u786C\u4EF6\u52A0\u901F\uFF08\u4F18\u7F8E\u52A8\u753B\uFF09</span><label style="position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;"><input id="fnos-hw-accel" type="checkbox" style="position:absolute;opacity:0;width:0;height:0;"><span id="fnos-hw-track" style="position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;"></span><span id="fnos-hw-knob" style="position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span></label></div><div id="fnos-hw-restart" style="display:none;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--fnos-ui-accent) 12%,transparent);"><span style="font-size:11px;line-height:1.4;">\u786C\u4EF6\u52A0\u901F\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u91CD\u542F\u5E94\u7528\u540E\u751F\u6548\u3002</span><button id="fnos-hw-restart-btn" style="flex:none;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;background:var(--fnos-ui-accent);color:#fff;font-family:inherit;">\u7ACB\u5373\u91CD\u542F</button></div>';
+      wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:600;letter-spacing:.5px;">\u4E9A\u514B\u529B\u900F\u660E\u5EA6</span><span id="fnos-alpha-val" style="opacity:.85;">' + alphaPct + '%</span></div><input id="fnos-alpha" type="range" min="0" max="100" value="' + alphaPct + '" style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;"><div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;"><span style="font-weight:600;letter-spacing:.5px;">\u80CC\u666F\u6A21\u7CCA</span><span id="fnos-blur-val" style="opacity:.85;">' + storedBlur + 'px</span></div><input id="fnos-blur" type="range" min="0" max="100" value="' + storedBlur + '" style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;">';
       const alphaInput = wrap.querySelector("#fnos-alpha");
       const alphaVal = wrap.querySelector("#fnos-alpha-val");
       const blurInput = wrap.querySelector("#fnos-blur");
@@ -9889,186 +9889,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         if (blurVal) blurVal.textContent = px + "px";
         localStorage.setItem("fnos-glass-blur", String(px));
       });
-      const showDaily = localStorage.getItem("fnos-show-daily") !== "0";
-      const dailyInput = wrap.querySelector("#fnos-show-daily");
-      const dailyTrack = wrap.querySelector("#fnos-show-daily-track");
-      const dailyKnob = wrap.querySelector("#fnos-show-daily-knob");
-      const paintDaily = () => {
-        dailyTrack.style.background = dailyInput.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
-        dailyKnob.style.left = dailyInput.checked ? "21.5px" : "2.5px";
-      };
-      dailyInput.checked = showDaily;
-      paintDaily();
-      dailyInput.addEventListener("change", () => {
-        localStorage.setItem("fnos-show-daily", dailyInput.checked ? "1" : "0");
-        paintDaily();
-        try {
-          window.dispatchEvent(new CustomEvent("fntv:daily-toggle", { detail: { on: dailyInput.checked } }));
-        } catch (_) {
-        }
-      });
-      const perfInput = wrap.querySelector("#fnos-perf-mode");
-      const perfTrack = wrap.querySelector("#fnos-perf-track");
-      const perfKnob = wrap.querySelector("#fnos-perf-knob");
-      const paintPerf = () => {
-        perfTrack.style.background = perfInput.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
-        perfKnob.style.left = perfInput.checked ? "21.5px" : "2.5px";
-      };
-      perfInput.checked = document.documentElement.classList.contains("fnos-perf");
-      paintPerf();
-      perfInput.addEventListener("change", () => {
-        const on = perfInput.checked;
-        const had = document.documentElement.classList.contains("fnos-perf");
-        document.documentElement.classList.toggle("fnos-perf", on);
-        paintPerf();
-        try {
-          localStorage.setItem("fntv-perf-mode", on ? "1" : "0");
-        } catch (_) {
-        }
-        S.perfModeEnabled = on;
-        ipcRenderer.invoke("settings:set-perf-mode", on).then(() => {
-          try {
-            location.reload();
-          } catch (_) {
-          }
-        }).catch(() => {
-          try {
-            location.reload();
-          } catch (_) {
-          }
-        });
-        if (had !== on) {
-          try {
-            window.dispatchEvent(new CustomEvent("fntv:perf-change", { detail: { on } }));
-          } catch (_) {
-          }
-        }
-      });
-      const hwInput = wrap.querySelector("#fnos-hw-accel");
-      const hwTrack = wrap.querySelector("#fnos-hw-track");
-      const hwKnob = wrap.querySelector("#fnos-hw-knob");
-      const hwRestart = wrap.querySelector("#fnos-hw-restart");
-      const paintHw = () => {
-        hwTrack.style.background = hwInput.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
-        hwKnob.style.left = hwInput.checked ? "21.5px" : "2.5px";
-      };
-      hwInput.checked = true;
-      paintHw();
-      ipcRenderer.invoke("settings:get").then((s) => {
-        hwInput.checked = s ? s.hwAccelEnabled !== false : true;
-        paintHw();
-      }).catch(() => {
-      });
-      hwInput.addEventListener("change", () => {
-        paintHw();
-        ipcRenderer.invoke("settings:set-hw-accel", hwInput.checked).catch(() => {
-        });
-        if (hwRestart) hwRestart.style.display = "flex";
-      });
-      const hwRestartBtn = wrap.querySelector("#fnos-hw-restart-btn");
-      if (hwRestartBtn) {
-        hwRestartBtn.addEventListener("click", () => {
-          ipcRenderer.invoke("settings:restart-app").catch(() => {
-          });
-        });
-      }
-      const getCs = () => {
-        const v = parseInt(localStorage.getItem("fnos-carousel-style") || "4", 10);
-        return v >= 1 && v <= 4 ? v : 4;
-      };
-      const csWrap = document.createElement("div");
-      csWrap.style.cssText = "margin-top:20px;";
-      const csTitle = document.createElement("div");
-      csTitle.style.cssText = "font-weight:600;letter-spacing:.5px;margin-bottom:8px;";
-      csTitle.textContent = t("\u9996\u9875\u8F6E\u64AD\u56FE\u6837\u5F0F");
-      csWrap.appendChild(csTitle);
-      const csSeg = document.createElement("div");
-      csSeg.id = "fnos-carousel-style-seg";
-      csSeg.style.cssText = "display:flex;gap:6px;";
-      const csLabels = ["\u7AD6\u5411\u8F6E\u64AD", "\u6A2A\u5411\u8F6E\u64AD", "\u5806\u53E0\u5207\u6362", "\u7ACB\u4F53\u5806\u53E0"];
-      csLabels.forEach((lab, idx) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.dataset.style = String(idx + 1);
-        b.textContent = t(lab);
-        const active = idx + 1 === getCs();
-        b.style.cssText = "flex:1 1 0;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;box-sizing:border-box;border:1px solid " + (active ? "var(--fnos-ui-accent)" : "var(--fnos-ui-border)") + ";background:" + (active ? "var(--fnos-ui-accent)" : "var(--fnos-ui-input-bg)") + ";color:" + (active ? "#fff" : "var(--fnos-ui-text)") + ";transition:.15s;";
-        csSeg.appendChild(b);
-      });
-      csWrap.appendChild(csSeg);
-      const csHint = document.createElement("div");
-      csHint.style.cssText = "font-size:11px;opacity:.7;margin-top:6px;line-height:1.4;";
-      csHint.textContent = "\u5207\u6362\u6837\u5F0F\u540E\u5C06\u81EA\u52A8\u56DE\u5230\u9996\u9875\u5E76\u5237\u65B0\uFF0C\u7ACB\u5373\u5E94\u7528\u65B0\u6837\u5F0F\u3002";
-      csWrap.appendChild(csHint);
-      const paintCs = () => {
-        const cur = getCs();
-        csSeg.querySelectorAll("button").forEach((btn) => {
-          const on = parseInt(btn.dataset.style || "1", 10) === cur;
-          btn.style.borderColor = on ? "var(--fnos-ui-accent)" : "var(--fnos-ui-border)";
-          btn.style.background = on ? "var(--fnos-ui-accent)" : "var(--fnos-ui-input-bg)";
-          btn.style.color = on ? "#fff" : "var(--fnos-ui-text)";
-        });
-      };
-      csSeg.querySelectorAll("button").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const s = parseInt(btn.dataset.style || "1", 10);
-          localStorage.setItem("fnos-carousel-style", String(s));
-          paintCs();
-          try {
-            window.location.href = (window.location.origin || "") + "/v";
-          } catch (_) {
-            try {
-              window.location.reload();
-            } catch (__) {
-            }
-          }
-        });
-      });
-      wrap.appendChild(csWrap);
-      const beautifyRow = document.createElement("div");
-      beautifyRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;";
-      const beautifyTextWrap = document.createElement("div");
-      beautifyTextWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;";
-      const beautifyTitle = document.createElement("span");
-      beautifyTitle.style.cssText = "font-weight:600;letter-spacing:.5px;";
-      beautifyTitle.textContent = "\u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316";
-      const beautifyHint = document.createElement("span");
-      beautifyHint.style.cssText = "font-size:11px;opacity:.7;line-height:1.4;";
-      beautifyHint.textContent = "\u6C89\u6D78\u5E95\u56FE / \u4E24\u680F\u5E03\u5C40 / \u78E8\u7802\u5361\u7247\uFF1B\u5173\u95ED\u5373\u6062\u590D\u98DE\u725B\u539F\u751F\u8BE6\u60C5\u9875\u3002";
-      beautifyTextWrap.appendChild(beautifyTitle);
-      beautifyTextWrap.appendChild(beautifyHint);
-      const beautifyLabel = document.createElement("label");
-      beautifyLabel.style.cssText = "position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;flex-shrink:0;";
-      const beautifyInput = document.createElement("input");
-      beautifyInput.id = "fnos-sw-beautify";
-      beautifyInput.type = "checkbox";
-      beautifyInput.style.cssText = "position:absolute;opacity:0;width:0;height:0;";
-      const beautifyTrack = document.createElement("span");
-      beautifyTrack.style.cssText = "position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;";
-      const beautifyKnob = document.createElement("span");
-      beautifyKnob.style.cssText = "position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);";
-      beautifyLabel.appendChild(beautifyInput);
-      beautifyLabel.appendChild(beautifyTrack);
-      beautifyLabel.appendChild(beautifyKnob);
-      beautifyRow.appendChild(beautifyTextWrap);
-      beautifyRow.appendChild(beautifyLabel);
-      wrap.appendChild(beautifyRow);
-      const paintBeautify = () => {
-        beautifyTrack.style.background = beautifyInput.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
-        beautifyKnob.style.left = beautifyInput.checked ? "21.5px" : "2.5px";
-      };
-      beautifyInput.checked = !S.detailBoxless;
-      paintBeautify();
-      beautifyInput.addEventListener("change", () => {
-        S.detailBoxless = !beautifyInput.checked;
-        log("[\u5F00\u5173\u4FDD\u5B58] \u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316=" + beautifyInput.checked + " (detailBoxless=" + S.detailBoxless + ")");
-        ipcRenderer.invoke("settings:set-detail-boxless", S.detailBoxless).catch((e) => log("set-detail-boxless failed", e));
-        paintBeautify();
-        if (S.detailBoxless) teardownDetailBeautify();
-        else applyDetailBeautify();
-      });
-      _beautifyToggle = beautifyInput;
-      _beautifyPaint = paintBeautify;
       return wrap;
     }
     function injectSettingsUI(panel) {
@@ -10606,7 +10426,7 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         return sw;
       };
       const swProxy = addToggle("\u4E0B\u8F7D\u4EE3\u7406", secBodyNet);
-      const swHide = addToggle("\u9690\u85CF\u539F\u59CB\u64AD\u653E\u6309\u94AE", secBodyUX);
+      const swHide = addToggle("\u9690\u85CF\u539F\u59CB\u64AD\u653E\u6309\u94AE");
       const swNas = addToggle("NAS \u672C\u5730\u7F51\u76D8\u4EE3\u7406", secBodyNet);
       const swWheel = addToggle("\u9F20\u6807\u6EDA\u8F6E\u6A2A\u5411\u6EDA\u52A8", secBodyUX);
       swProxy.addEventListener("change", () => {
@@ -13124,11 +12944,9 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         aboutLink.style.color = "var(--fnos-ui-pill-text)";
       };
       secBodyAbout.appendChild(aboutLink);
-      const secAppearance = section("\u4E3B\u9898\u4E0E\u5916\u89C2");
+      const secAppearance = section("\u5916\u89C2");
       const secBodyAppearance = secAppearance.body;
       secBodyAppearance.style.cssText = "padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;";
-      themeRow.style.cssText += "margin-bottom:6px;";
-      secBodyAppearance.appendChild(themeRow);
       secBodyAppearance.appendChild(buildAppearanceControls());
       const secSystem = section("\u7CFB\u7EDF\u684C\u9762");
       const secBodySystem = secSystem.body;
@@ -13368,9 +13186,8 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
         applyCarouselLogoNow();
       });
       const cats = [
-        { id: "general", label: "\u901A\u7528", els: [sec3.el, secLang.el, secSystem.el, secUpd.el] },
-        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secCarousel.el] },
-        { id: "player", label: "\u64AD\u653E", els: [sec2.el, secSkip.el, secInterp.el, secRender.el, secUX.el] },
+        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el] },
+        { id: "player", label: "\u64AD\u653E", els: [secSkip.el, secUX.el] },
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
         { id: "account", label: "\u8D26\u53F7\u540C\u6B65", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el] },

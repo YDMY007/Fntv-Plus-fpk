@@ -572,38 +572,9 @@ function handle(): void {
       +   '<span style="font-weight:600;letter-spacing:.5px;">背景模糊</span>'
       +   '<span id="fnos-blur-val" style="opacity:.85;">' + storedBlur + 'px</span></div>'
       + '<input id="fnos-blur" type="range" min="0" max="100" value="' + storedBlur + '" '
-      +   'style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;">'
-      +   '<span style="font-weight:600;letter-spacing:.5px;">首页「每日放送」按钮</span>'
-      +   '<label style="position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;">'
-      +     '<input id="fnos-show-daily" type="checkbox" style="position:absolute;opacity:0;width:0;height:0;">'
-      +     '<span id="fnos-show-daily-track" style="position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;"></span>'
-      +     '<span id="fnos-show-daily-knob" style="position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>'
-      +   '</label>'
-      + '</div>'
-      /* [lc-1014] 性能模式（低配机）：html.fnos-perf 总闸——全局压动画/关磨砂，即时生效 */
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">'
-      +   '<span style="font-weight:600;letter-spacing:.5px;">性能模式（低配机）</span>'
-      +   '<label style="position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;">'
-      +     '<input id="fnos-perf-mode" type="checkbox" style="position:absolute;opacity:0;width:0;height:0;">'
-      +     '<span id="fnos-perf-track" style="position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;"></span>'
-      +     '<span id="fnos-perf-knob" style="position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>'
-      +   '</label>'
-      + '</div>'
-      + '<div style="font-size:11px;color:var(--fnos-ui-sub,#888);line-height:1.5;margin-top:4px;">实心底色、关闭全部动画/磨砂/光泽（含云母增强），仅保留轮播基本切换。即时生效。</div>'
-      /* [lc-1014] 硬件加速：Electron 启动级开关，改动写 config 重启后生效 */
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">'
-      +   '<span style="font-weight:600;letter-spacing:.5px;">硬件加速（优美动画）</span>'
-      +   '<label style="position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;">'
-      +     '<input id="fnos-hw-accel" type="checkbox" style="position:absolute;opacity:0;width:0;height:0;">'
-      +     '<span id="fnos-hw-track" style="position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;"></span>'
-      +     '<span id="fnos-hw-knob" style="position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>'
-      +   '</label>'
-      + '</div>'
-      + '<div id="fnos-hw-restart" style="display:none;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--fnos-ui-accent) 12%,transparent);">'
-      +   '<span style="font-size:11px;line-height:1.4;">硬件加速设置已保存，重启应用后生效。</span>'
-      +   '<button id="fnos-hw-restart-btn" style="flex:none;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;background:var(--fnos-ui-accent);color:#fff;font-family:inherit;">立即重启</button>'
-      + '</div>';
+      +   'style="width:100%;accent-color:var(--fnos-ui-accent);cursor:pointer;">';
+    // [飞牛影视特化 v0.6.0] 外观只保留「亚克力透明度/背景模糊」两滑块——
+    // 每日放送开关/性能模式/硬件加速/轮播样式切换/剧集详情页美化开关已按需移除（功能默认态不变）。
 
     const alphaInput = wrap.querySelector('#fnos-alpha') as HTMLInputElement;
     const alphaVal = wrap.querySelector('#fnos-alpha-val') as HTMLElement;
@@ -623,180 +594,8 @@ function handle(): void {
       if (blurVal) blurVal.textContent = px + 'px';
       localStorage.setItem('fnos-glass-blur', String(px));
     });
-
-    // [lc-363] 首页「每日放送」按钮开关（设置面板"外观"）：写 localStorage + 广播自定义事件给 hotUpdates 实时刷新
-    const showDaily = localStorage.getItem('fnos-show-daily') !== '0';
-    const dailyInput = wrap.querySelector('#fnos-show-daily') as HTMLInputElement;
-    const dailyTrack = wrap.querySelector('#fnos-show-daily-track') as HTMLElement;
-    const dailyKnob = wrap.querySelector('#fnos-show-daily-knob') as HTMLElement;
-    const paintDaily = (): void => {
-      dailyTrack.style.background = dailyInput.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
-      dailyKnob.style.left = dailyInput.checked ? '21.5px' : '2.5px';
-    };
-    dailyInput.checked = showDaily;
-    paintDaily();
-    dailyInput.addEventListener('change', () => {
-      localStorage.setItem('fnos-show-daily', dailyInput.checked ? '1' : '0');
-      paintDaily();
-      try { window.dispatchEvent(new CustomEvent('fntv:daily-toggle', { detail: { on: dailyInput.checked } })); } catch (_) {}
-    });
-
-    /* ── [lc-1014] 性能模式开关：切 html.fnos-perf 总闸类（即时生效）+ localStorage 镜像
-       （embyWall handle() 与 patch.ts 启动种子据此预读/回填）+ 写 config 持久化 ── */
-    const perfInput = wrap.querySelector('#fnos-perf-mode') as HTMLInputElement;
-    const perfTrack = wrap.querySelector('#fnos-perf-track') as HTMLElement;
-    const perfKnob = wrap.querySelector('#fnos-perf-knob') as HTMLElement;
-    const paintPerf = (): void => {
-      perfTrack.style.background = perfInput.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
-      perfKnob.style.left = perfInput.checked ? '21.5px' : '2.5px';
-    };
-    perfInput.checked = document.documentElement.classList.contains('fnos-perf');
-    paintPerf();
-    perfInput.addEventListener('change', () => {
-      const on = perfInput.checked;
-      const had = document.documentElement.classList.contains('fnos-perf');
-      document.documentElement.classList.toggle('fnos-perf', on);
-      paintPerf();
-      try { localStorage.setItem('fntv-perf-mode', on ? '1' : '0'); } catch (_) {}
-      S.perfModeEnabled = on;
-      ipcRenderer.invoke('settings:set-perf-mode', on)
-        // [lc-1099] 每次切换都强制刷新: 运行期只改 html 类会遗留跨态不一致(用户实测关 perf 后整页
-        //   偏暗需手动强刷)。reload 让所有插件从 localStorage 镜像(上一行已同步写入)干净重建。
-        //   等 config 落盘后再刷; .catch 也刷(镜像已在, 落盘失败不影响本次态, 下次启动 patch.ts 会补写)。
-        .then(() => { try { location.reload(); } catch (_) {} })
-        .catch(() => { try { location.reload(); } catch (_) {} });
-      // [lc-1099] 运行期同步接管(reload 前的即时反馈): glassUI 云母增强摘属性/回挂、pageAnim 重挂入场动画
-      if (had !== on) { try { window.dispatchEvent(new CustomEvent('fntv:perf-change', { detail: { on } })); } catch (_) {} }
-    });
-
-    /* ── [lc-1014] 硬件加速开关：写 config，重启后生效（主进程启动期才挂 GPU 开关）。
-       初值异步回填（config 缺失视为开启）；用户改动后出现「立即重启」提示条 ── */
-    const hwInput = wrap.querySelector('#fnos-hw-accel') as HTMLInputElement;
-    const hwTrack = wrap.querySelector('#fnos-hw-track') as HTMLElement;
-    const hwKnob = wrap.querySelector('#fnos-hw-knob') as HTMLElement;
-    const hwRestart = wrap.querySelector('#fnos-hw-restart') as HTMLElement;
-    const paintHw = (): void => {
-      hwTrack.style.background = hwInput.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
-      hwKnob.style.left = hwInput.checked ? '21.5px' : '2.5px';
-    };
-    hwInput.checked = true;
-    paintHw();
-    ipcRenderer.invoke('settings:get').then((s: any) => {
-      hwInput.checked = s ? s.hwAccelEnabled !== false : true;
-      paintHw();
-    }).catch(() => {});
-    hwInput.addEventListener('change', () => {
-      paintHw();
-      ipcRenderer.invoke('settings:set-hw-accel', hwInput.checked).catch(() => {});
-      if (hwRestart) hwRestart.style.display = 'flex';
-    });
-    const hwRestartBtn = wrap.querySelector('#fnos-hw-restart-btn') as HTMLElement;
-    if (hwRestartBtn) {
-      hwRestartBtn.addEventListener('click', () => {
-        ipcRenderer.invoke('settings:restart-app').catch(() => {});
-      });
-    }
-
-    // [lc-780/lc-781→lc-845→lc-846] 首页轮播图样式切换（设置面板"外观"）：样式 1 = 竖向轮播，样式 2 = 横向轮播，样式 3 = 堆叠切换，样式 4 = 立体堆叠；点击后整页重载回首页并刷新(见下方 click 处理)
-    const getCs = (): number => {
-      const v = parseInt(localStorage.getItem('fnos-carousel-style') || '4', 10);
-      return (v >= 1 && v <= 4) ? v : 4;
-    };
-    const csWrap = document.createElement('div');
-    csWrap.style.cssText = 'margin-top:20px;';
-    const csTitle = document.createElement('div');
-    csTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;margin-bottom:8px;';
-    csTitle.textContent = t('首页轮播图样式');
-    csWrap.appendChild(csTitle);
-    const csSeg = document.createElement('div');
-    csSeg.id = 'fnos-carousel-style-seg';
-    csSeg.style.cssText = 'display:flex;gap:6px;';
-    const csLabels = ['竖向轮播', '横向轮播', '堆叠切换', '立体堆叠'];
-    csLabels.forEach((lab, idx) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.dataset.style = String(idx + 1);
-      b.textContent = t(lab);
-      const active = (idx + 1) === getCs();
-      b.style.cssText = 'flex:1 1 0;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;'
-        + 'box-sizing:border-box;border:1px solid ' + (active ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-border)') + ';'
-        + 'background:' + (active ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-input-bg)') + ';'
-        + 'color:' + (active ? '#fff' : 'var(--fnos-ui-text)') + ';transition:.15s;';
-      csSeg.appendChild(b);
-    });
-    csWrap.appendChild(csSeg);
-    const csHint = document.createElement('div');
-    csHint.style.cssText = 'font-size:11px;opacity:.7;margin-top:6px;line-height:1.4;';
-    csHint.textContent = '切换样式后将自动回到首页并刷新，立即应用新样式。';
-    csWrap.appendChild(csHint);
-    const paintCs = (): void => {
-      const cur = getCs();
-      csSeg.querySelectorAll('button').forEach((btn) => {
-        const on = parseInt((btn as HTMLElement).dataset.style || '1', 10) === cur;
-        btn.style.borderColor = on ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-border)';
-        btn.style.background = on ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-input-bg)';
-        btn.style.color = on ? '#fff' : 'var(--fnos-ui-text)';
-      });
-    };
-    csSeg.querySelectorAll('button').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const s = parseInt((btn as HTMLElement).dataset.style || '1', 10);
-        localStorage.setItem('fnos-carousel-style', String(s));
-        paintCs();
-        // [lc-845] 切换样式后强制回到首页并刷新整个首页: 整页重载到 /v(新样式已从 localStorage 读取, 干净生效, 避免 live-rebuild 跨样式残留/不彻底)
-        try { window.location.href = (window.location.origin || '') + '/v'; } catch (_) { try { window.location.reload(); } catch (__){} }
-      });
-    });
-    wrap.appendChild(csWrap);
-
-    // [lc-980] 「剧集详情页美化」开关(外观页, 复刻 lc-973 位置): 开=套用美化(沉浸底图/两栏/磨砂卡), 关=恢复 fnOS 原生详情页。
-    //   语义: detailBoxless=true 表示关闭美化/走原生, 故 checked = !detailBoxless。
-    const beautifyRow = document.createElement('div');
-    beautifyRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;';
-    const beautifyTextWrap = document.createElement('div');
-    beautifyTextWrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0;';
-    const beautifyTitle = document.createElement('span');
-    beautifyTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;';
-    beautifyTitle.textContent = '剧集详情页美化';
-    const beautifyHint = document.createElement('span');
-    beautifyHint.style.cssText = 'font-size:11px;opacity:.7;line-height:1.4;';
-    beautifyHint.textContent = '沉浸底图 / 两栏布局 / 磨砂卡片；关闭即恢复飞牛原生详情页。';
-    beautifyTextWrap.appendChild(beautifyTitle);
-    beautifyTextWrap.appendChild(beautifyHint);
-    const beautifyLabel = document.createElement('label');
-    beautifyLabel.style.cssText = 'position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;flex-shrink:0;';
-    const beautifyInput = document.createElement('input');
-    beautifyInput.id = 'fnos-sw-beautify';
-    beautifyInput.type = 'checkbox';
-    beautifyInput.style.cssText = 'position:absolute;opacity:0;width:0;height:0;';
-    const beautifyTrack = document.createElement('span');
-    beautifyTrack.style.cssText = 'position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;';
-    const beautifyKnob = document.createElement('span');
-    beautifyKnob.style.cssText = 'position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);';
-    beautifyLabel.appendChild(beautifyInput);
-    beautifyLabel.appendChild(beautifyTrack);
-    beautifyLabel.appendChild(beautifyKnob);
-    beautifyRow.appendChild(beautifyTextWrap);
-    beautifyRow.appendChild(beautifyLabel);
-    wrap.appendChild(beautifyRow);
-
-    const paintBeautify = (): void => {
-      beautifyTrack.style.background = beautifyInput.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
-      beautifyKnob.style.left = beautifyInput.checked ? '21.5px' : '2.5px';
-    };
-    beautifyInput.checked = !S.detailBoxless;
-    paintBeautify();
-    beautifyInput.addEventListener('change', () => {
-      S.detailBoxless = !beautifyInput.checked;
-      log('[开关保存] 剧集详情页美化=' + beautifyInput.checked + ' (detailBoxless=' + S.detailBoxless + ')');
-      ipcRenderer.invoke('settings:set-detail-boxless', S.detailBoxless).catch((e) => log('set-detail-boxless failed', e));
-      paintBeautify();
-      // 立即应用: 关→teardown 恢复原生; 开→若正在详情页立即套用
-      if (S.detailBoxless) teardownDetailBeautify(); else applyDetailBeautify();
-    });
-    // 暴露给设置回填(持久化设置异步 resolve 后同步勾选态并重绘)
-    _beautifyToggle = beautifyInput;
-    _beautifyPaint = paintBeautify;
+    // [飞牛影视特化 v0.6.0] 已移除：每日放送开关、性能模式、硬件加速、轮播样式切换、剧集详情页美化开关的
+    // 面板 UI 与事件（功能本体保留默认行为）；_beautifyToggle 保持 null，回填处有 null 守卫。
 
     return wrap;
   }
@@ -1413,7 +1212,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       return sw;
     };
     const swProxy = addToggle('下载代理', secBodyNet);
-    const swHide = addToggle('隐藏原始播放按钮', secBodyUX);
+    // [飞牛影视特化 v0.6.0] 「隐藏原始播放按钮」按需移除：变量保留（回填/日志引用）但游离不显示
+    const swHide = addToggle('隐藏原始播放按钮');
     const swNas = addToggle('NAS 本地网盘代理', secBodyNet);
     const swWheel = addToggle('鼠标滚轮横向滚动', secBodyUX);
     swProxy.addEventListener('change', () => { log('[开关保存] swProxy=' + swProxy.checked); ipcRenderer.invoke('settings:set-download-proxy', swProxy.checked).catch((e) => log('set-download-proxy failed', e)); });
@@ -4139,12 +3939,10 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     secBodyAbout.appendChild(aboutLink);
 
     // ===== 分组: 外观（独立标签页；原侧栏"亚克力透明度/背景模糊"滑块迁入设置面板）=====
-    const secAppearance = section('主题与外观');
+    // [飞牛影视特化 v0.6.0] 卡内只留两个滑块：主题模式三选一行移除（跟随已持久化偏好）
+    const secAppearance = section('外观');
     const secBodyAppearance = secAppearance.body;
     secBodyAppearance.style.cssText = 'padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;';
-    // [lc-1041] 主题模式行从原「功能开关」并入本卡首位
-    themeRow.style.cssText += 'margin-bottom:6px;';
-    secBodyAppearance.appendChild(themeRow);
     secBodyAppearance.appendChild(buildAppearanceControls());
 
     // ===== 分组: 系统桌面（切换系统页面目标地址，每人 NAS 端口各异）=====
@@ -4408,18 +4206,15 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     });
 
     // ===== 统一布局：左侧分类导航 + 右侧按分类切换的卡片 pane =====
-    // [lc-1041] 重分组（按任务域聚类）：
-    //   通用=退出行为/系统桌面/更新与维护 · 外观=主题模式+亚克力/轮播图Logo(原散在通用与插件)
-    //   播放=播放器/跳过片头片尾(原在插件)/插帧/界面与浏览 · 弹幕 · 账号同步(五家不变)
-    //   网络=网络与代理(原功能开关拆出)/自定义代理/TMDB免梯子直连(原在插件) · 手柄 · 诊断 · 关于
-    //   [lc-1051] 用户要求：B站弹幕登录卡从「账号同步」移入「弹幕」分类页（登录与弹幕设置同域）。
-    //   ⚠ 外部契约: _selectCat 只被 'danmaku' 引用(lc-518 catMap), fntv-open-settings 其余走
-    //   #sec-<id> scrollIntoView —— 各卡片元素与 id 均未动, 仅换分类归属。
+    // [飞牛影视特化 v0.6.0] 按需精简：
+    //   删「通用」整页（退出行为/语言/系统桌面/更新与维护——FPK 版更新走应用中心）
+    //   外观只留「主题与外观」卡（内含亚克力透明度/背景模糊两滑块），轮播 Logo 卡移除（Logo 默认开）
+    //   播放只留「跳过片头片尾」+「界面与浏览」（仅鼠标滚轮横向滚动一行，隐藏原始播放按钮已游离）
+    //   弹幕/账号同步/网络/手柄/诊断与日志/关于 未点名 → 保留
     type Cat = { id: string; label: string; els: HTMLElement[] };
     const cats: Cat[] = [
-      { id: 'general', label: '通用', els: [sec3.el, secLang.el, secSystem.el, secUpd.el] },
-      { id: 'appearance', label: '外观', els: [secAppearance.el, secCarousel.el] },
-      { id: 'player', label: '播放', els: [sec2.el, secSkip.el, secInterp.el, secRender.el, secUX.el] },
+      { id: 'appearance', label: '外观', els: [secAppearance.el] },
+      { id: 'player', label: '播放', els: [secSkip.el, secUX.el] },
       // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
       { id: 'danmaku', label: '弹幕', els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
       { id: 'account', label: '账号同步', els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el] },
