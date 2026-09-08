@@ -989,8 +989,8 @@ html.fnos-perf.dark{
       const resp = await fetch(fullUrl, { credentials: "include", headers: { "Authx": authx }, signal: controller.signal });
       const ct = resp.headers.get("content-type") || "";
       const ms = Date.now() - t0;
-      log("[DIAG] fetchImg", label, "status", resp.status, "ct", ct.substring(0, 24), "crossOrigin", crossOrigin, "isStrm", isStrm, "ms", ms, "path", path.substring(0, 50));
       if (!resp.ok || !ct.startsWith("image/")) {
+        log("[DIAG] fetchImg \u5931\u8D25", label, "status", resp.status, "ct", ct.substring(0, 24), "isStrm", isStrm, "ms", ms, "path", path.substring(0, 50));
         try {
           const t2 = await resp.text();
           log("[DIAG] fetchImg \u975E\u56FE\u7247/\u5931\u8D25 body:", t2.substring(0, 120));
@@ -14017,7 +14017,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           }
         }
       }
-      log(`[lc-925] \u5DE6\u4E0A\u89D2\u56FE\u6807\u53CD\u8272: lum=${Math.round(lum)} \u2192 ${dark ? "\u6D45\u8272(\u6697\u5E95)" : "\u6DF1\u8272(\u4EAE\u5E95)"}, ${icons.length} \u4E2A\u5143\u7D20`);
     }
     async function applyTopLeftIconContrast() {
       if (_tlBusy) return;

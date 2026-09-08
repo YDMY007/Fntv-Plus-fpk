@@ -37,8 +37,9 @@ async function fetchImageOnce(fullUrl: string, timeoutMs: number, label: string,
     const resp = await fetch(fullUrl, { credentials: 'include', headers: { 'Authx': authx }, signal: controller.signal });
     const ct = resp.headers.get('content-type') || '';
     const ms = Date.now() - t0;
-    log('[DIAG] fetchImg', label, 'status', resp.status, 'ct', ct.substring(0, 24), 'crossOrigin', crossOrigin, 'isStrm', isStrm, 'ms', ms, 'path', path.substring(0, 50));
+    // [飞牛影视特化 v0.10.1] 成功加载不再逐条刷屏（每页 18+ 张图全 log 太吵）；仅失败时留证据
     if (!resp.ok || !ct.startsWith('image/')) {
+      log('[DIAG] fetchImg 失败', label, 'status', resp.status, 'ct', ct.substring(0, 24), 'isStrm', isStrm, 'ms', ms, 'path', path.substring(0, 50));
       try { const t = await resp.text(); log('[DIAG] fetchImg 非图片/失败 body:', t.substring(0, 120)); } catch (e) {}
       return null;
     }

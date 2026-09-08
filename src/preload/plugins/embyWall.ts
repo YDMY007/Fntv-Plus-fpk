@@ -5107,7 +5107,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         }
       }
     }
-    log(`[lc-925] 左上角图标反色: lum=${Math.round(lum)} → ${dark ? '浅色(暗底)' : '深色(亮底)'}, ${icons.length} 个元素`);
+    // [飞牛影视特化 v0.10.1] 反色成功日志已删（每次调度都打，刷屏）；失败路径的异常日志保留
   }
 
   async function applyTopLeftIconContrast(): Promise<void> {
