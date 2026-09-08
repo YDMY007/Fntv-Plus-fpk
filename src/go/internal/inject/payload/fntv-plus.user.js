@@ -118,7 +118,7 @@
     if (buf.length > 500) buf.splice(0, buf.length - 500);
     let t2 = "";
     try {
-      t2 = (/* @__PURE__ */ new Date()).toISOString().slice(11, 23);
+      t2 = (/* @__PURE__ */ new Date()).toISOString().slice(5, 23).replace("T", " ");
     } catch (_) {
     }
     buf.push(t2 + " " + line);

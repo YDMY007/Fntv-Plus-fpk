@@ -29,7 +29,7 @@ import (
 )
 
 // appVersion 与根目录 manifest 的 version 保持一致（改动版本时两处同步）。
-const appVersion = "0.18.0"
+const appVersion = "0.19.0"
 
 func main() {
 	port := flag.String("port", envOr("TRIM_SERVICE_PORT", "22350"), "监听端口")
@@ -44,6 +44,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config %s: %v", cfgPath, err)
 	}
+
+	// [v0.19.0] 前端诊断日志（client.log）按次清零：日志只保留本次运行的会话，
+	// 避免旧版本残留条目跨启动累积、在实时日志里"阴魂不散"。
+	_ = os.Remove(filepath.Join(*varDir, "client.log"))
 
 	inj, err := inject.New()
 	if err != nil {

@@ -130,7 +130,8 @@ function push(line: string): void {
   if (buf.length > 500) buf.splice(0, buf.length - 500); // 防爆内存
   let t = '';
   try {
-    t = new Date().toISOString().slice(11, 23);
+    // 带日期（MM-dd HH:mm:ss.mmm）——区分跨天/跨会话的历史条目
+    t = new Date().toISOString().slice(5, 23).replace('T', ' ');
   } catch (_) {}
   buf.push(t + ' ' + line);
   if (buf.length >= 20) flush();
