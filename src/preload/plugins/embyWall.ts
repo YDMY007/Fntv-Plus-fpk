@@ -2813,6 +2813,116 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     themeRow.style.cssText += 'margin-bottom:6px;';
     secBodyAppearance.appendChild(themeRow);
 
+    // ===== [lc-780→lc-856] 首页轮播图样式切换（外观卡）=====
+    // [网页端补回] v0.12.0 精简外观卡时把整个 buildAppearanceControls() 连函数一起删了，
+    //   这个开关就在里面 —— 结果渲染层照旧读 localStorage['fnos-carousel-style']（默认 4=立体堆叠），
+    //   但用户再也找不到切换入口（用户报障「外观里轮播图样式没了」）。按桌面版原样补回：
+    //   1=竖向轮播 2=横向轮播 3=堆叠切换 4=立体堆叠，点击后整页回首页重载生效。
+    const getCs = (): number => {
+      const v = parseInt(localStorage.getItem('fnos-carousel-style') || '4', 10);
+      return (v >= 1 && v <= 4) ? v : 4;
+    };
+    const csWrap = document.createElement('div');
+    csWrap.style.cssText = 'margin-top:14px;';
+    const csTitle = document.createElement('div');
+    csTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;margin-bottom:8px;';
+    csTitle.textContent = t('首页轮播图样式');
+    csWrap.appendChild(csTitle);
+    const csSeg = document.createElement('div');
+    csSeg.id = 'fnos-carousel-style-seg';
+    csSeg.style.cssText = 'display:flex;gap:6px;';
+    const csLabels = ['竖向轮播', '横向轮播', '堆叠切换', '立体堆叠'];
+    csLabels.forEach((lab, idx) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.style = String(idx + 1);
+      b.textContent = t(lab);
+      const active = (idx + 1) === getCs();
+      b.style.cssText = 'flex:1 1 0;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;'
+        + 'box-sizing:border-box;border:1px solid ' + (active ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-border)') + ';'
+        + 'background:' + (active ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-input-bg)') + ';'
+        + 'color:' + (active ? '#fff' : 'var(--fnos-ui-text)') + ';transition:.15s;';
+      csSeg.appendChild(b);
+    });
+    csWrap.appendChild(csSeg);
+    const csHint = document.createElement('div');
+    csHint.style.cssText = 'font-size:11px;opacity:.7;margin-top:6px;line-height:1.4;';
+    csHint.textContent = '切换样式后将自动回到首页并刷新，立即应用新样式。';
+    csWrap.appendChild(csHint);
+    const paintCs = (): void => {
+      const cur = getCs();
+      csSeg.querySelectorAll('button').forEach((btn) => {
+        const el = btn as HTMLElement;
+        const on = parseInt(el.dataset.style || '1', 10) === cur;
+        el.style.borderColor = on ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-border)';
+        el.style.background = on ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-input-bg)';
+        el.style.color = on ? '#fff' : 'var(--fnos-ui-text)';
+      });
+    };
+    csSeg.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const s = parseInt((btn as HTMLElement).dataset.style || '1', 10);
+        localStorage.setItem('fnos-carousel-style', String(s));
+        paintCs();
+        // [网页端] 入口就是裸 /v 路由（后端反代剥离 /app/fntvplus 前缀），跳同源 /v 即回首页重载；
+        //   新样式在重载后由 render.ts 从 localStorage 读取，干净生效（避免 live-rebuild 跨样式残留）。
+        try { window.location.href = (window.location.origin || '') + '/v'; }
+        catch (_) { try { window.location.reload(); } catch (__) { /* ignore */ } }
+      });
+    });
+    secBodyAppearance.appendChild(csWrap);
+
+    // ===== [lc-980] 「剧集详情页美化」开关（外观卡，与轮播样式同批被 v0.12.0 精简误删）=====
+    //   开=套用美化（沉浸底图 / 两栏布局 / 磨砂卡），关=恢复飞牛原生详情页。
+    //   语义：detailBoxless=true 表示「关闭美化走原生」，故 checked = !detailBoxless。
+    //   回填链路完好（_beautifyToggle / _beautifyPaint 见 seg('switches')），这里只需创建并暴露引用。
+    const beautifyRow = document.createElement('div');
+    beautifyRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;';
+    const beautifyTextWrap = document.createElement('div');
+    beautifyTextWrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0;';
+    const beautifyTitle = document.createElement('span');
+    beautifyTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;';
+    beautifyTitle.textContent = '剧集详情页美化';
+    const beautifyHint = document.createElement('span');
+    beautifyHint.style.cssText = 'font-size:11px;opacity:.7;line-height:1.4;';
+    beautifyHint.textContent = '沉浸底图 / 两栏布局 / 磨砂卡片；关闭即恢复飞牛原生详情页。';
+    beautifyTextWrap.appendChild(beautifyTitle);
+    beautifyTextWrap.appendChild(beautifyHint);
+    const beautifyLabel = document.createElement('label');
+    beautifyLabel.style.cssText = 'position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;flex-shrink:0;';
+    const beautifyInput = document.createElement('input');
+    beautifyInput.id = 'fnos-sw-beautify';
+    beautifyInput.type = 'checkbox';
+    beautifyInput.style.cssText = 'position:absolute;opacity:0;width:0;height:0;';
+    const beautifyTrack = document.createElement('span');
+    beautifyTrack.style.cssText = 'position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;';
+    const beautifyKnob = document.createElement('span');
+    beautifyKnob.style.cssText = 'position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);';
+    beautifyLabel.appendChild(beautifyInput);
+    beautifyLabel.appendChild(beautifyTrack);
+    beautifyLabel.appendChild(beautifyKnob);
+    beautifyRow.appendChild(beautifyTextWrap);
+    beautifyRow.appendChild(beautifyLabel);
+    secBodyAppearance.appendChild(beautifyRow);
+
+    const paintBeautify = (): void => {
+      beautifyTrack.style.background = beautifyInput.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
+      beautifyKnob.style.left = beautifyInput.checked ? '21.5px' : '2.5px';
+    };
+    beautifyInput.checked = !S.detailBoxless;
+    paintBeautify();
+    beautifyInput.addEventListener('change', () => {
+      S.detailBoxless = !beautifyInput.checked;
+      log('[开关保存] 剧集详情页美化=' + beautifyInput.checked + ' (detailBoxless=' + S.detailBoxless + ')');
+      ipcRenderer.invoke('settings:set-detail-boxless', S.detailBoxless).catch((e) => log('set-detail-boxless failed', e));
+      paintBeautify();
+      // 立即应用：关→teardown 恢复原生；开→若正在详情页立即套用
+      try { if (S.detailBoxless) teardownDetailBeautify(); else applyDetailBeautify(); } catch (_) { /* ignore */ }
+    });
+    // 暴露给设置回填（持久化设置异步 resolve 后同步勾选态并重绘）
+    _beautifyToggle = beautifyInput;
+    _beautifyPaint = paintBeautify;
+
 
     // ===== 分组: 自定义代理（让 Bangumi 每日放送、TMDB 等走用户自建代理入口）=====
     const secCustomProxy = section('自定义代理');

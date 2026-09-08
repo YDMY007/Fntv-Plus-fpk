@@ -52,6 +52,26 @@ console.log('MASK_DISPLAY=' + await page.evaluate(() => {
   const m = document.getElementById('fnos-settings-mask');
   return m ? getComputedStyle(m).display : 'no-mask';
 }));
+// 外观卡「首页轮播图样式」切换（v0.12.0 精简时误删，v0.37.0 补回）
+// 外观卡「剧集详情页美化」开关（同批被误删，一并补回）
+console.log('BEAUTIFY_TOGGLE=' + await page.evaluate(() => {
+  const el = document.getElementById('fnos-sw-beautify');
+  return el ? 'present, checked=' + el.checked : 'missing';
+}));
+console.log('CAROUSEL_STYLE_SEG=' + await page.evaluate(() => {
+  const seg = document.getElementById('fnos-carousel-style-seg');
+  if (!seg) return 'missing';
+  const cur = localStorage.getItem('fnos-carousel-style') || '4(default)';
+  return seg.querySelectorAll('button').length + ' buttons, current=' + cur;
+}));
+// 点击第 2 个（横向轮播）应写入 localStorage（放在最后：点击会触发整页跳转）
+console.log('CAROUSEL_STYLE_CLICK=' + await page.evaluate(() => {
+  const seg = document.getElementById('fnos-carousel-style-seg');
+  if (!seg) return 'no-seg';
+  const before = localStorage.getItem('fnos-carousel-style') || '4';
+  seg.querySelectorAll('button')[1].click();
+  return before + ' -> ' + (localStorage.getItem('fnos-carousel-style') || '4');
+}));
 console.log('ERRORS=' + (errs.length ? '\n' + errs.join('\n') : 'none'));
 console.log('WARN_LOGS=' + (warnLogs.length ? '\n' + warnLogs.join('\n') : 'none'));
 await browser.close();

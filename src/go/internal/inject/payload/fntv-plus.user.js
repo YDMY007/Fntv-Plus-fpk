@@ -14332,6 +14332,107 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       secBodyAppearance.style.cssText = "padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;";
       themeRow.style.cssText += "margin-bottom:6px;";
       secBodyAppearance.appendChild(themeRow);
+      const getCs = () => {
+        const v = parseInt(localStorage.getItem("fnos-carousel-style") || "4", 10);
+        return v >= 1 && v <= 4 ? v : 4;
+      };
+      const csWrap = document.createElement("div");
+      csWrap.style.cssText = "margin-top:14px;";
+      const csTitle = document.createElement("div");
+      csTitle.style.cssText = "font-weight:600;letter-spacing:.5px;margin-bottom:8px;";
+      csTitle.textContent = t("\u9996\u9875\u8F6E\u64AD\u56FE\u6837\u5F0F");
+      csWrap.appendChild(csTitle);
+      const csSeg = document.createElement("div");
+      csSeg.id = "fnos-carousel-style-seg";
+      csSeg.style.cssText = "display:flex;gap:6px;";
+      const csLabels = ["\u7AD6\u5411\u8F6E\u64AD", "\u6A2A\u5411\u8F6E\u64AD", "\u5806\u53E0\u5207\u6362", "\u7ACB\u4F53\u5806\u53E0"];
+      csLabels.forEach((lab, idx) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.dataset.style = String(idx + 1);
+        b.textContent = t(lab);
+        const active3 = idx + 1 === getCs();
+        b.style.cssText = "flex:1 1 0;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;box-sizing:border-box;border:1px solid " + (active3 ? "var(--fnos-ui-accent)" : "var(--fnos-ui-border)") + ";background:" + (active3 ? "var(--fnos-ui-accent)" : "var(--fnos-ui-input-bg)") + ";color:" + (active3 ? "#fff" : "var(--fnos-ui-text)") + ";transition:.15s;";
+        csSeg.appendChild(b);
+      });
+      csWrap.appendChild(csSeg);
+      const csHint = document.createElement("div");
+      csHint.style.cssText = "font-size:11px;opacity:.7;margin-top:6px;line-height:1.4;";
+      csHint.textContent = "\u5207\u6362\u6837\u5F0F\u540E\u5C06\u81EA\u52A8\u56DE\u5230\u9996\u9875\u5E76\u5237\u65B0\uFF0C\u7ACB\u5373\u5E94\u7528\u65B0\u6837\u5F0F\u3002";
+      csWrap.appendChild(csHint);
+      const paintCs = () => {
+        const cur = getCs();
+        csSeg.querySelectorAll("button").forEach((btn) => {
+          const el = btn;
+          const on = parseInt(el.dataset.style || "1", 10) === cur;
+          el.style.borderColor = on ? "var(--fnos-ui-accent)" : "var(--fnos-ui-border)";
+          el.style.background = on ? "var(--fnos-ui-accent)" : "var(--fnos-ui-input-bg)";
+          el.style.color = on ? "#fff" : "var(--fnos-ui-text)";
+        });
+      };
+      csSeg.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const s = parseInt(btn.dataset.style || "1", 10);
+          localStorage.setItem("fnos-carousel-style", String(s));
+          paintCs();
+          try {
+            window.location.href = (window.location.origin || "") + "/v";
+          } catch (_) {
+            try {
+              window.location.reload();
+            } catch (__) {
+            }
+          }
+        });
+      });
+      secBodyAppearance.appendChild(csWrap);
+      const beautifyRow = document.createElement("div");
+      beautifyRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;";
+      const beautifyTextWrap = document.createElement("div");
+      beautifyTextWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;";
+      const beautifyTitle = document.createElement("span");
+      beautifyTitle.style.cssText = "font-weight:600;letter-spacing:.5px;";
+      beautifyTitle.textContent = "\u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316";
+      const beautifyHint = document.createElement("span");
+      beautifyHint.style.cssText = "font-size:11px;opacity:.7;line-height:1.4;";
+      beautifyHint.textContent = "\u6C89\u6D78\u5E95\u56FE / \u4E24\u680F\u5E03\u5C40 / \u78E8\u7802\u5361\u7247\uFF1B\u5173\u95ED\u5373\u6062\u590D\u98DE\u725B\u539F\u751F\u8BE6\u60C5\u9875\u3002";
+      beautifyTextWrap.appendChild(beautifyTitle);
+      beautifyTextWrap.appendChild(beautifyHint);
+      const beautifyLabel = document.createElement("label");
+      beautifyLabel.style.cssText = "position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;flex-shrink:0;";
+      const beautifyInput = document.createElement("input");
+      beautifyInput.id = "fnos-sw-beautify";
+      beautifyInput.type = "checkbox";
+      beautifyInput.style.cssText = "position:absolute;opacity:0;width:0;height:0;";
+      const beautifyTrack = document.createElement("span");
+      beautifyTrack.style.cssText = "position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;";
+      const beautifyKnob = document.createElement("span");
+      beautifyKnob.style.cssText = "position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);";
+      beautifyLabel.appendChild(beautifyInput);
+      beautifyLabel.appendChild(beautifyTrack);
+      beautifyLabel.appendChild(beautifyKnob);
+      beautifyRow.appendChild(beautifyTextWrap);
+      beautifyRow.appendChild(beautifyLabel);
+      secBodyAppearance.appendChild(beautifyRow);
+      const paintBeautify = () => {
+        beautifyTrack.style.background = beautifyInput.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
+        beautifyKnob.style.left = beautifyInput.checked ? "21.5px" : "2.5px";
+      };
+      beautifyInput.checked = !S.detailBoxless;
+      paintBeautify();
+      beautifyInput.addEventListener("change", () => {
+        S.detailBoxless = !beautifyInput.checked;
+        log6("[\u5F00\u5173\u4FDD\u5B58] \u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316=" + beautifyInput.checked + " (detailBoxless=" + S.detailBoxless + ")");
+        ipcRenderer.invoke("settings:set-detail-boxless", S.detailBoxless).catch((e) => log6("set-detail-boxless failed", e));
+        paintBeautify();
+        try {
+          if (S.detailBoxless) teardownDetailBeautify();
+          else applyDetailBeautify();
+        } catch (_) {
+        }
+      });
+      _beautifyToggle = beautifyInput;
+      _beautifyPaint = paintBeautify;
       const secCustomProxy = section("\u81EA\u5B9A\u4E49\u4EE3\u7406");
       const secBodyCustomProxy = secCustomProxy.body;
       secBodyCustomProxy.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
