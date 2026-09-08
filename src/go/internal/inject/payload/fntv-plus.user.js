@@ -462,6 +462,9 @@
           }
           if (channel === "tmdb:logo") return apiPost("/app/fntvplus/api/bridge/tmdb/logo", args[0] || {});
           if (channel === "tmdb:show") return apiPost("/app/fntvplus/api/bridge/tmdb/show", args[0] || {});
+          if (channel === "tmdb:season-episodes") {
+            return apiPost("/app/fntvplus/api/bridge/tmdb/season-episodes", args[0] || {});
+          }
           if (channel === "tmdb:update-ip") {
             return apiPost("/app/fntvplus/api/bridge/tmdb/update-ip", { force: true });
           }

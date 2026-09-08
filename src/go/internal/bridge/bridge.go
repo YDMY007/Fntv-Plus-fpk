@@ -68,6 +68,7 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/img", b.handleTMDBImage)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/logo", b.tmdbLogo)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/show", b.tmdbShow)
+	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/season-episodes", b.tmdbSeasonEpisodes)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/update-ip", b.tmdbUpdateIP)
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/credentials", b.traktCredsHandler())
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/status", b.traktStatusHandler())
@@ -276,6 +277,7 @@ func (b *Bridge) handleTMDBImage(w http.ResponseWriter, r *http.Request) {
 /* ========== Trakt ========== */
 
 const traktAPI = "https://api.trakt.tv"
+const apiBaseTMDB = "https://api.themoviedb.org/3"
 const traktAuth = "https://auth.trakt.tv"
 
 func (b *Bridge) traktClientID() string  { return getSetting(b.cfg, "trakt_client_id") }
@@ -842,76 +844,6 @@ func (b *Bridge) tmdbLogo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": len(paths) > 0, "logoPaths": paths})
-}
-
-// tmdbShow {tmdbId?, title?, year?, mediaType, seasonNumber?, force} → {ok, data, fetchedAt}。
-// 精简移植桌面版 tmdbSync：详情（+ 季集列表）+ 抓取时间戳。
-func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
-	if b.tmdbAPIKey() == "" {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "未配置 TMDB API Key"})
-		return
-	}
-	var req struct {
-		TmdbID       int64  `json:"tmdbId"`
-		Title        string `json:"title"`
-		Year         string `json:"year"`
-		MediaType    string `json:"mediaType"`
-		SeasonNumber *int64 `json:"seasonNumber"`
-		Force        bool   `json:"force"`
-	}
-	_ = json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req)
-	mt := req.MediaType
-	if mt != "movie" && mt != "tv" {
-		mt = "tv"
-	}
-	id := req.TmdbID
-	if id <= 0 && req.Title != "" {
-		params := map[string]string{"query": req.Title}
-		if req.Year != "" {
-			if mt == "movie" {
-				params["year"] = req.Year
-			} else {
-				params["first_air_date_year"] = req.Year
-			}
-		}
-		st, out, err := b.tmdbGet("/search/"+mt, params)
-		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error()})
-			return
-		}
-		if st != http.StatusOK {
-			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": fmt.Sprintf("search %d", st)})
-			return
-		}
-		results, _ := out["results"].([]any)
-		if len(results) == 0 {
-			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "搜索无结果"})
-			return
-		}
-		first, _ := results[0].(map[string]any)
-		id = toInt64(first["id"])
-	}
-	if id <= 0 {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "缺少 tmdbId/title"})
-		return
-	}
-	st, data, err := b.tmdbGet("/"+mt+"/"+fmt.Sprintf("%d", id), nil)
-	if err != nil || st != http.StatusOK {
-		msg := fmt.Sprintf("details %d", st)
-		if err != nil {
-			msg = err.Error()
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": msg})
-		return
-	}
-	// 剧集 + 指定季 → 附 season 集列表
-	if mt == "tv" && req.SeasonNumber != nil && *req.SeasonNumber > 0 {
-		_, season, err := b.tmdbGet("/tv/"+fmt.Sprintf("%d", id)+"/season/"+fmt.Sprintf("%d", *req.SeasonNumber), nil)
-		if err == nil && season != nil {
-			data["season"] = season
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": data, "fetchedAt": time.Now().UnixMilli()})
 }
 
 /* ========== Bangumi / 豆瓣 ========== */
