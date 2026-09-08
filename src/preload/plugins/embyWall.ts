@@ -3510,72 +3510,55 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       });
     });
 
-    // 日志状态文字放在 body 内，避免占用 footer 高度导致左右 footer 不齐
-    const logStatus = document.createElement('div');
-    logStatus.style.cssText = 'font-size:11px;color:var(--fnos-ui-sub);margin-top:6px;min-height:14px;';
-    secDebugBody.appendChild(logStatus);
+    // [飞牛影视特化 v0.10.0] 原 logStatus 状态行随四按钮一并移除（实时日志视图自带状态展示）
 
-    // ===== 底部操作栏：日志文件（独立 footer，与左侧检查更新按钮对齐）=====
+    // ===== [飞牛影视特化 v0.10.0] 实时日志查看器：原「日志文件/报错日志/导出日志/MPV日志」四按钮
+    //   按需移除（桌面版走主进程开文件，网页端无意义）；改为内嵌轮询视图，数据源为注入后端的
+    //   /app/fntvplus/api/logs（合并后端+前端两路）。左下角悬浮「日志」按钮同步移除，入口收敛到这里。
     const logFooter = document.createElement('div');
     logFooter.style.cssText = 'padding:10px 12px;flex-shrink:0;';
     const logDivider = document.createElement('div');
     logDivider.style.cssText = 'height:1px;background:var(--fnos-ui-border);margin:0 0 8px;';
     logFooter.appendChild(logDivider);
     const logRow = document.createElement('div');
-    logRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
-    const openLogBtn = mkBtn('日志文件', true);
-    const openErrLogBtn = mkBtn('报错日志', true);
-    const exportLogBtn = mkBtn('导出日志文件', true);
-    const openMpvLogBtn = mkBtn('MPV 播放器日志', true);
-    logRow.appendChild(openLogBtn);
-    logRow.appendChild(openErrLogBtn);
-    logRow.appendChild(exportLogBtn);
-    logRow.appendChild(openMpvLogBtn);
+    logRow.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
+    const liveAuto = document.createElement('input');
+    liveAuto.type = 'checkbox';
+    liveAuto.checked = true;
+    liveAuto.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:var(--fnos-ui-accent);';
+    const liveAutoLabel = document.createElement('label');
+    liveAutoLabel.style.cssText = 'display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--fnos-ui-text);font-size:12px;font-weight:500;';
+    liveAutoLabel.appendChild(liveAuto);
+    liveAutoLabel.appendChild(document.createTextNode(t('自动刷新（5 秒）')));
+    const liveBtn = mkBtn('刷新', true);
+    logRow.appendChild(liveAutoLabel);
+    logRow.appendChild(liveBtn);
     logFooter.appendChild(logRow);
+    const livePre = document.createElement('pre');
+    livePre.style.cssText = 'margin:8px 0 0;padding:10px;border-radius:8px;background:var(--fnos-ui-input-bg);'
+      + 'color:var(--fnos-ui-text);font-size:11px;line-height:1.5;max-height:300px;overflow:auto;'
+      + 'white-space:pre-wrap;word-break:break-all;';
+    livePre.textContent = '加载中…';
+    logFooter.appendChild(livePre);
     secDebug.el.appendChild(logFooter);
 
-    openLogBtn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      ipcRenderer.invoke('settings:open-log').then((r: any) => {
-        if (!r || !r.ok) {
-          logStatus.textContent = '日志文件打开失败：' + ((r && r.error) || '未知');
-        } else {
-          logStatus.textContent = '';
-        }
-      }).catch(() => {});
-    });
-    openErrLogBtn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      ipcRenderer.invoke('settings:open-error-log').then((r: any) => {
-        if (!r || !r.ok) {
-          logStatus.textContent = '报错日志打开失败：' + ((r && r.error) || '未知');
-        } else {
-          logStatus.textContent = '';
-        }
-      }).catch(() => {});
-    });
-    exportLogBtn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      ipcRenderer.invoke('settings:export-log').then((r: any) => {
-        if (r && r.ok) {
-          logStatus.textContent = '已导出日志：' + (r.savedPath || '');
-        } else if (r && r.error && r.error !== '已取消') {
-          logStatus.textContent = '导出失败：' + (r.error || '未知');
-        } else {
-          logStatus.textContent = '';
-        }
-      }).catch(() => {});
-    });
-    openMpvLogBtn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      ipcRenderer.invoke('settings:open-mpv-log').then((r: any) => {
-        if (!r || !r.ok) {
-          logStatus.textContent = 'MPV 日志打开失败：' + ((r && r.error) || '未知');
-        } else {
-          logStatus.textContent = '';
-        }
-      }).catch(() => {});
-    });
+    const fetchLiveLog = (): void => {
+      fetch('/app/fntvplus/api/logs?lines=300', { credentials: 'include' })
+        .then((r) => r.text())
+        .then((txt) => {
+          const stick = livePre.scrollTop + livePre.clientHeight >= livePre.scrollHeight - 30;
+          livePre.textContent = txt || '(空)';
+          if (stick) livePre.scrollTop = livePre.scrollHeight;
+        })
+        .catch((e) => { livePre.textContent = '日志读取失败: ' + e; });
+    };
+    liveBtn.addEventListener('click', (e: Event) => { e.stopPropagation(); fetchLiveLog(); });
+    fetchLiveLog();
+    // 面板可能随 SPA 重建，先清旧定时器再挂新的，避免轮询泄漏
+    try {
+      if ((window as any).__fntvLiveLogTimer) clearInterval((window as any).__fntvLiveLogTimer);
+      (window as any).__fntvLiveLogTimer = window.setInterval(() => { if (liveAuto.checked) fetchLiveLog(); }, 5000);
+    } catch (_) {}
 
     // ===== 插件面板：跳过片头片尾（smart_skip 插件，控制面从 MPV 菜单抽到此处）=====
     const secSkip = section('跳过片头片尾');

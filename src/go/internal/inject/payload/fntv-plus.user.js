@@ -12550,72 +12550,51 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
           ipcRenderer.invoke("settings:set-debug-components", cur).catch((err) => log("set-debug-components failed", err));
         });
       });
-      const logStatus = document.createElement("div");
-      logStatus.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);margin-top:6px;min-height:14px;";
-      secDebugBody.appendChild(logStatus);
       const logFooter = document.createElement("div");
       logFooter.style.cssText = "padding:10px 12px;flex-shrink:0;";
       const logDivider = document.createElement("div");
       logDivider.style.cssText = "height:1px;background:var(--fnos-ui-border);margin:0 0 8px;";
       logFooter.appendChild(logDivider);
       const logRow = document.createElement("div");
-      logRow.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;";
-      const openLogBtn = mkBtn("\u65E5\u5FD7\u6587\u4EF6", true);
-      const openErrLogBtn = mkBtn("\u62A5\u9519\u65E5\u5FD7", true);
-      const exportLogBtn = mkBtn("\u5BFC\u51FA\u65E5\u5FD7\u6587\u4EF6", true);
-      const openMpvLogBtn = mkBtn("MPV \u64AD\u653E\u5668\u65E5\u5FD7", true);
-      logRow.appendChild(openLogBtn);
-      logRow.appendChild(openErrLogBtn);
-      logRow.appendChild(exportLogBtn);
-      logRow.appendChild(openMpvLogBtn);
+      logRow.style.cssText = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;";
+      const liveAuto = document.createElement("input");
+      liveAuto.type = "checkbox";
+      liveAuto.checked = true;
+      liveAuto.style.cssText = "width:16px;height:16px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
+      const liveAutoLabel = document.createElement("label");
+      liveAutoLabel.style.cssText = "display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--fnos-ui-text);font-size:12px;font-weight:500;";
+      liveAutoLabel.appendChild(liveAuto);
+      liveAutoLabel.appendChild(document.createTextNode(t("\u81EA\u52A8\u5237\u65B0\uFF085 \u79D2\uFF09")));
+      const liveBtn = mkBtn("\u5237\u65B0", true);
+      logRow.appendChild(liveAutoLabel);
+      logRow.appendChild(liveBtn);
       logFooter.appendChild(logRow);
+      const livePre = document.createElement("pre");
+      livePre.style.cssText = "margin:8px 0 0;padding:10px;border-radius:8px;background:var(--fnos-ui-input-bg);color:var(--fnos-ui-text);font-size:11px;line-height:1.5;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;";
+      livePre.textContent = "\u52A0\u8F7D\u4E2D\u2026";
+      logFooter.appendChild(livePre);
       secDebug.el.appendChild(logFooter);
-      openLogBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ipcRenderer.invoke("settings:open-log").then((r) => {
-          if (!r || !r.ok) {
-            logStatus.textContent = "\u65E5\u5FD7\u6587\u4EF6\u6253\u5F00\u5931\u8D25\uFF1A" + (r && r.error || "\u672A\u77E5");
-          } else {
-            logStatus.textContent = "";
-          }
-        }).catch(() => {
+      const fetchLiveLog = () => {
+        fetch("/app/fntvplus/api/logs?lines=300", { credentials: "include" }).then((r) => r.text()).then((txt) => {
+          const stick = livePre.scrollTop + livePre.clientHeight >= livePre.scrollHeight - 30;
+          livePre.textContent = txt || "(\u7A7A)";
+          if (stick) livePre.scrollTop = livePre.scrollHeight;
+        }).catch((e) => {
+          livePre.textContent = "\u65E5\u5FD7\u8BFB\u53D6\u5931\u8D25: " + e;
         });
-      });
-      openErrLogBtn.addEventListener("click", (e) => {
+      };
+      liveBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        ipcRenderer.invoke("settings:open-error-log").then((r) => {
-          if (!r || !r.ok) {
-            logStatus.textContent = "\u62A5\u9519\u65E5\u5FD7\u6253\u5F00\u5931\u8D25\uFF1A" + (r && r.error || "\u672A\u77E5");
-          } else {
-            logStatus.textContent = "";
-          }
-        }).catch(() => {
-        });
+        fetchLiveLog();
       });
-      exportLogBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ipcRenderer.invoke("settings:export-log").then((r) => {
-          if (r && r.ok) {
-            logStatus.textContent = "\u5DF2\u5BFC\u51FA\u65E5\u5FD7\uFF1A" + (r.savedPath || "");
-          } else if (r && r.error && r.error !== "\u5DF2\u53D6\u6D88") {
-            logStatus.textContent = "\u5BFC\u51FA\u5931\u8D25\uFF1A" + (r.error || "\u672A\u77E5");
-          } else {
-            logStatus.textContent = "";
-          }
-        }).catch(() => {
-        });
-      });
-      openMpvLogBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ipcRenderer.invoke("settings:open-mpv-log").then((r) => {
-          if (!r || !r.ok) {
-            logStatus.textContent = "MPV \u65E5\u5FD7\u6253\u5F00\u5931\u8D25\uFF1A" + (r && r.error || "\u672A\u77E5");
-          } else {
-            logStatus.textContent = "";
-          }
-        }).catch(() => {
-        });
-      });
+      fetchLiveLog();
+      try {
+        if (window.__fntvLiveLogTimer) clearInterval(window.__fntvLiveLogTimer);
+        window.__fntvLiveLogTimer = window.setInterval(() => {
+          if (liveAuto.checked) fetchLiveLog();
+        }, 5e3);
+      } catch (_) {
+      }
       const secSkip = section("\u8DF3\u8FC7\u7247\u5934\u7247\u5C3E");
       secSkip.el.id = "sec-skip";
       const skipBody = secSkip.body;
@@ -14593,41 +14572,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
 
   // src/web-entry.ts
   installDiag();
-  function ensureLogButton() {
-    try {
-      if (document.getElementById("fntv-log-btn")) return;
-      if (!document.body) return;
-      const b = document.createElement("div");
-      b.id = "fntv-log-btn";
-      b.textContent = "\u65E5\u5FD7";
-      b.title = "\u5F71\u89C6 Plus \u8BBE\u7F6E / \u5B9E\u65F6\u65E5\u5FD7";
-      const s = b.style;
-      s.position = "fixed";
-      s.left = "8px";
-      s.bottom = "8px";
-      s.zIndex = "2147483646";
-      s.padding = "2px 9px";
-      s.borderRadius = "10px";
-      s.fontSize = "11px";
-      s.lineHeight = "16px";
-      s.background = "rgba(0,0,0,.35)";
-      s.color = "#fff";
-      s.cursor = "pointer";
-      s.opacity = ".3";
-      s.transition = "opacity .2s";
-      s.userSelect = "none";
-      b.addEventListener("mouseenter", () => b.style.opacity = "1");
-      b.addEventListener("mouseleave", () => b.style.opacity = ".3");
-      b.addEventListener("click", () => {
-        try {
-          window.open("/app/fntvplus/admin/", "_blank");
-        } catch (_) {
-        }
-      });
-      document.body.appendChild(b);
-    } catch (_) {
-    }
-  }
   function boot() {
     try {
       runHooks("onReady" /* OnReady */);
@@ -14635,7 +14579,6 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
     } catch (e) {
       console.error("[fntv-web] boot failed", e);
     }
-    ensureLogButton();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
