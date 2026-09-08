@@ -12947,6 +12947,8 @@ html.dark #${COVER_ID} .bc-skel::after{background:linear-gradient(90deg,transpar
       const secAppearance = section("\u5916\u89C2");
       const secBodyAppearance = secAppearance.body;
       secBodyAppearance.style.cssText = "padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;";
+      themeRow.style.cssText += "margin-bottom:6px;";
+      secBodyAppearance.appendChild(themeRow);
       secBodyAppearance.appendChild(buildAppearanceControls());
       const secSystem = section("\u7CFB\u7EDF\u684C\u9762");
       const secBodySystem = secSystem.body;

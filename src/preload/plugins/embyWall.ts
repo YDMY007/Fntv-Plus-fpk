@@ -3939,10 +3939,12 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     secBodyAbout.appendChild(aboutLink);
 
     // ===== 分组: 外观（独立标签页；原侧栏"亚克力透明度/背景模糊"滑块迁入设置面板）=====
-    // [飞牛影视特化 v0.6.0] 卡内只留两个滑块：主题模式三选一行移除（跟随已持久化偏好）
+    // [飞牛影视特化 v0.6.0] 卡内：主题模式三选一（用户要求保留）+ 亚克力透明度/背景模糊两滑块
     const secAppearance = section('外观');
     const secBodyAppearance = secAppearance.body;
     secBodyAppearance.style.cssText = 'padding:8px 12px 12px;flex:1 1 auto;display:flex;flex-direction:column;';
+    themeRow.style.cssText += 'margin-bottom:6px;';
+    secBodyAppearance.appendChild(themeRow);
     secBodyAppearance.appendChild(buildAppearanceControls());
 
     // ===== 分组: 系统桌面（切换系统页面目标地址，每人 NAS 端口各异）=====
