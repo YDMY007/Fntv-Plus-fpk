@@ -14,15 +14,19 @@
 package bridge
 
 import (
+	"context"
 	"crypto/md5"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -64,6 +68,7 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/img", b.handleTMDBImage)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/logo", b.tmdbLogo)
 	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/show", b.tmdbShow)
+	mux.HandleFunc("/app/fntvplus/api/bridge/tmdb/update-ip", b.tmdbUpdateIP)
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/credentials", b.traktCredsHandler())
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/status", b.traktStatusHandler())
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/device/start", b.traktDeviceStart)
@@ -247,7 +252,7 @@ func (b *Bridge) handleTMDBImage(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "仅支持 image.tmdb.org/t/p/ 路径"})
 		return
 	}
-	resp, err := b.client.Get(raw)
+	resp, err := b.tmdbClient().Get(raw)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error()})
 		return
@@ -550,8 +555,8 @@ func (b *Bridge) traktSyncWatched(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body, _ := json.Marshal(map[string]any{
-		"tags":                  map[string]any{"type": []string{"Movie", "TV"}},
-		"sort_type":             "DESC", "sort_column": "create_time",
+		"tags":      map[string]any{"type": []string{"Movie", "TV"}},
+		"sort_type": "DESC", "sort_column": "create_time",
 		"exclude_grouped_video": 1, "page": 1, "page_size": 200,
 	})
 	list, err := b.callFnOSJSON(http.MethodPost, "/v/api/v1/item/list", json.RawMessage(body), req.Cookie)
@@ -589,10 +594,134 @@ func (b *Bridge) traktSyncWatched(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-/* ========== TMDB API（logo / show 详情）========== */
+/* ========== TMDB API（logo / show 详情 / 免梯子直连）========== */
 
 // tmdbAPIKey 设置面板填的 TMDB API Key（v3）。
 func (b *Bridge) tmdbAPIKey() string { return getSetting(b.cfg, "tmdbApiKey") }
+
+// tmdbDirectOn 「免梯子直连」开关是否开启（兼容 "1"/"true" 两种存法）。
+func (b *Bridge) tmdbDirectOn() bool {
+	v := strings.ToLower(getSetting(b.cfg, "tmdbDirect"))
+	return v == "1" || v == "true"
+}
+
+// tmdbDirectIPs 读取存的直连 IP {api, img}。
+func (b *Bridge) tmdbDirectIPs() (apiIP, imgIP string) {
+	raw := getSetting(b.cfg, "tmdb_direct_ip")
+	if raw == "" {
+		return "", ""
+	}
+	var ips struct {
+		API string `json:"api"`
+		Img string `json:"img"`
+	}
+	_ = json.Unmarshal([]byte(raw), &ips)
+	return ips.API, ips.Img
+}
+
+// tmdbClient 返回带「免梯子直连」的 HTTP 客户端：开启且存有 IP 时，
+// TLS 连到 IP、SNI/证书校验仍用域名（CheckTMDB 的 IP 是官方反代，证书合法）。
+func (b *Bridge) tmdbClient() *http.Client {
+	if !b.tmdbDirectOn() {
+		return b.client
+	}
+	apiIP, imgIP := b.tmdbDirectIPs()
+	if apiIP == "" && imgIP == "" {
+		return b.client
+	}
+	dialer := &net.Dialer{Timeout: 15 * time.Second}
+	tr := &http.Transport{
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ip := host
+			if host == "api.themoviedb.org" && apiIP != "" {
+				ip = apiIP
+			} else if host == "image.tmdb.org" && imgIP != "" {
+				ip = imgIP
+			}
+			tlsCfg := &tls.Config{ServerName: host} // SNI/校验用域名
+			rawConn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip, port))
+			if err != nil {
+				return nil, err
+			}
+			return tls.Client(rawConn, tlsCfg), nil
+		},
+	}
+	return &http.Client{Timeout: 20 * time.Second, Transport: tr}
+}
+
+// tmdbUpdateIP {force}：拉 CheckTMDB hosts 片段 → 抠 api/image 两域最新 IPv4 → 存直连配置。
+// force=true（手动点「更新 IP」）强制覆盖；自动刷新语义下尊重手动值（此处仅手动入口）。
+func (b *Bridge) tmdbUpdateIP(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Force *bool `json:"force"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 16*1024)).Decode(&req)
+	force := req.Force == nil || *req.Force
+
+	const ipURL = "https://raw.githubusercontent.com/cnwikee/CheckTMDB/refs/heads/main/Tmdb_host_ipv4"
+	req2, _ := http.NewRequest(http.MethodGet, ipURL, nil)
+	req2.Header.Set("User-Agent", "Fntv-Plus-Web/0.15.0 (https://github.com/YDMY007/Fntv-Plus)")
+	// raw.githubusercontent.com 国内可能被墙：若用户配了自定义代理则走代理
+	if proxy := getSetting(b.cfg, "customProxy"); proxy != "" {
+		if pu, err := url.Parse(proxy); err == nil && pu.Scheme != "" {
+			tr := &http.Transport{Proxy: http.ProxyURL(pu)}
+			client := &http.Client{Timeout: 20 * time.Second, Transport: tr}
+			resp, err := client.Do(req2)
+			if err != nil {
+				writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "拉取 CheckTMDB 失败（raw.githubusercontent.com 在国内可能被墙，请手动填 IP 或先开梯子）：" + err.Error()})
+				return
+			}
+			data, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+			_ = resp.Body.Close()
+			b.saveDirectIPs(w, string(data), force)
+			return
+		}
+	}
+	resp, err := b.client.Do(req2)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "拉取 CheckTMDB 失败（raw.githubusercontent.com 在国内可能被墙，请手动填 IP 或先开梯子）：" + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	b.saveDirectIPs(w, string(data), force)
+}
+
+// saveDirectIPs 解析 hosts 片段并持久化直连 IP。
+func (b *Bridge) saveDirectIPs(w http.ResponseWriter, text string, force bool) {
+	apiIP := pickHostIP(text, "api.themoviedb.org")
+	imgIP := pickHostIP(text, "image.tmdb.org")
+	if apiIP == "" && imgIP == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "未能从 CheckTMDB 解析出 IP（可能返回格式变化）"})
+		return
+	}
+	curAPI, curImg := b.tmdbDirectIPs()
+	nextAPI, nextImg := apiIP, imgIP
+	if !force { // 非强制：尊重手动值，仅补齐未设字段
+		if curAPI != "" {
+			nextAPI = curAPI
+		}
+		if curImg != "" {
+			nextImg = curImg
+		}
+	}
+	ipJSON, _ := json.Marshal(map[string]any{"api": nextAPI, "img": nextImg})
+	_ = b.cfg.SetSetting("tmdb_direct_ip", string(ipJSON))
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "api": nextAPI, "img": nextImg})
+}
+
+// pickHostIP 从 hosts 片段文本抠指定域名的 IPv4。
+func pickHostIP(text, host string) string {
+	re := regexp.MustCompile(`(\d{1,3}(?:\.\d{1,3}){3})\s+` + strings.ReplaceAll(host, ".", `.`) + `\b`)
+	if m := re.FindStringSubmatch(text); len(m) > 1 {
+		return m[1]
+	}
+	return ""
+}
 
 func (b *Bridge) tmdbGet(path string, params map[string]string) (int, map[string]any, error) {
 	u, _ := url.Parse("https://api.themoviedb.org/3" + path)
@@ -605,7 +734,7 @@ func (b *Bridge) tmdbGet(path string, params map[string]string) (int, map[string
 	u.RawQuery = q.Encode()
 	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	req.Header.Set("Accept", "application/json")
-	resp, err := b.client.Do(req)
+	resp, err := b.tmdbClient().Do(req)
 	if err != nil {
 		return 0, nil, err
 	}

@@ -449,6 +449,9 @@
           }
           if (channel === "tmdb:logo") return apiPost("/app/fntvplus/api/bridge/tmdb/logo", args[0] || {});
           if (channel === "tmdb:show") return apiPost("/app/fntvplus/api/bridge/tmdb/show", args[0] || {});
+          if (channel === "tmdb:update-ip") {
+            return apiPost("/app/fntvplus/api/bridge/tmdb/update-ip", { force: true });
+          }
           if (channel === "tmdb:update-ip") return Promise.resolve(void 0);
           if (channel === "bangumi:calendar") {
             return fetch("/app/fntvplus/api/bridge/bangumi/calendar").then((r) => r.json()).catch(() => []);
