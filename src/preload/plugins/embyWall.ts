@@ -2670,31 +2670,50 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     _beautifyToggle = beautifyInput;
     _beautifyPaint = paintBeautify;
 
-    // ===== [v0.56.0] 「每日放送」设置组（外观卡）：显示开关 + 数据刷新间隔 + 立即刷新 =====
-    const hotWrap = document.createElement('div');
-    hotWrap.style.cssText = 'margin-top:18px;display:flex;flex-direction:column;gap:8px;';
-    const hotTitle = document.createElement('span');
-    hotTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;';
-    hotTitle.textContent = '每日放送';
-    hotWrap.appendChild(hotTitle);
+    // ===== [v0.60.0] 「每日放送」独立卡：显示开关（胶囊自绘）+ 数据刷新间隔 + 立即刷新 =====
+    const secDaily = section('每日放送');
+    const secBodyDaily = secDaily.body;
+    secBodyDaily.style.cssText = 'padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;gap:12px;';
 
-    // 行1：显示开关（写 localStorage fnos-show-daily + 事件通知浮层实时显隐）
+    // 行1：显示开关（胶囊 track+knob 自绘，与「剧集详情页美化」同款；原生 checkbox 深色主题显示异常）
     const hotShowRow = document.createElement('div');
     hotShowRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;';
-    const hotShowLabel = document.createElement('span');
-    hotShowLabel.style.cssText = 'font-size:11.5px;color:var(--fnos-ui-text);';
-    hotShowLabel.textContent = t('在首页显示每日放送入口');
+    const hotShowTextWrap = document.createElement('div');
+    hotShowTextWrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0;';
+    const hotShowTitle = document.createElement('span');
+    hotShowTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;';
+    hotShowTitle.textContent = t('在首页显示每日放送入口');
+    const hotShowHint = document.createElement('span');
+    hotShowHint.style.cssText = 'font-size:11px;opacity:.7;line-height:1.4;';
+    hotShowHint.textContent = t('关闭即隐藏右下角的「每日放送」浮窗按钮。');
+    hotShowTextWrap.appendChild(hotShowTitle);
+    hotShowTextWrap.appendChild(hotShowHint);
+    const hotShowLabel = document.createElement('label');
+    hotShowLabel.style.cssText = 'position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;flex-shrink:0;';
     const hotShowInput = document.createElement('input');
     hotShowInput.type = 'checkbox';
-    hotShowInput.style.cssText = 'width:18px;height:18px;cursor:pointer;accent-color:var(--fnos-ui-accent);';
+    hotShowInput.style.cssText = 'position:absolute;opacity:0;width:0;height:0;';
+    const hotShowTrack = document.createElement('span');
+    hotShowTrack.style.cssText = 'position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;';
+    const hotShowKnob = document.createElement('span');
+    hotShowKnob.style.cssText = 'position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);';
+    hotShowLabel.appendChild(hotShowInput);
+    hotShowLabel.appendChild(hotShowTrack);
+    hotShowLabel.appendChild(hotShowKnob);
+    const paintHotShow = (): void => {
+      hotShowTrack.style.background = hotShowInput.checked ? 'var(--fnos-ui-accent)' : 'rgba(140,140,160,.45)';
+      hotShowKnob.style.left = hotShowInput.checked ? '21.5px' : '2.5px';
+    };
     try { hotShowInput.checked = localStorage.getItem('fnos-show-daily') !== '0'; } catch (_) { hotShowInput.checked = true; }
+    paintHotShow();
     hotShowInput.addEventListener('change', () => {
       try { localStorage.setItem('fnos-show-daily', hotShowInput.checked ? '1' : '0'); } catch (_) { /* ignore */ }
+      paintHotShow();
       try { window.dispatchEvent(new CustomEvent('fntv:daily-toggle')); } catch (_) { /* ignore */ }
     });
+    hotShowRow.appendChild(hotShowTextWrap);
     hotShowRow.appendChild(hotShowLabel);
-    hotShowRow.appendChild(hotShowInput);
-    hotWrap.appendChild(hotShowRow);
+    secBodyDaily.appendChild(hotShowRow);
 
     // 行2：数据刷新间隔（1-7 天；数据本地持久化，未到期展开浮层直接用缓存）
     const hotIntervalRow = document.createElement('div');
@@ -2716,7 +2735,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     });
     hotIntervalRow.appendChild(hotIntervalLabel);
     hotIntervalRow.appendChild(hotIntervalSel);
-    hotWrap.appendChild(hotIntervalRow);
+    secBodyDaily.appendChild(hotIntervalRow);
 
     // 行3：立即刷新（清空本地缓存并强制重拉当前源）
     const hotRefreshBtn = mkBtn('立即刷新数据', true);
@@ -2726,13 +2745,12 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       hotRefreshBtn.textContent = '已触发 ✓';
       setTimeout(() => { hotRefreshBtn.textContent = '立即刷新数据'; }, 1500);
     });
-    hotWrap.appendChild(hotRefreshBtn);
+    secBodyDaily.appendChild(hotRefreshBtn);
 
     const hotHint = document.createElement('div');
     hotHint.style.cssText = 'font-size:10px;color:var(--fnos-ui-sub);line-height:1.5;';
     hotHint.textContent = t('数据保存在本机，超过刷新间隔后展开浮层才会重新拉取。');
-    hotWrap.appendChild(hotHint);
-    secBodyAppearance.appendChild(hotWrap);
+    secBodyDaily.appendChild(hotHint);
 
 
     // ===== 分组: 自定义代理（让 Bangumi 每日放送、TMDB 等走用户自建代理入口）=====
@@ -2930,7 +2948,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     //   弹幕=4卡 · 账号与网络=四家同步+自定义代理+TMDB直连(第三方服务/代理同域)
     //   诊断与日志=调试开关+组件日志+实时日志 · 关于
     const cats: Cat[] = [
-      { id: 'appearance', label: '外观', els: [secAppearance.el, secUX.el] },
+      { id: 'appearance', label: '外观', els: [secAppearance.el, secDaily.el, secUX.el] },
       { id: 'player', label: '播放', els: [secSkip.el] },
       // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
       { id: 'danmaku', label: '弹幕', els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },

@@ -14517,38 +14517,57 @@ html.fntv-boot-hide #root{visibility:hidden}
       });
       _beautifyToggle = beautifyInput;
       _beautifyPaint = paintBeautify;
-      const hotWrap = document.createElement("div");
-      hotWrap.style.cssText = "margin-top:18px;display:flex;flex-direction:column;gap:8px;";
-      const hotTitle = document.createElement("span");
-      hotTitle.style.cssText = "font-weight:600;letter-spacing:.5px;";
-      hotTitle.textContent = "\u6BCF\u65E5\u653E\u9001";
-      hotWrap.appendChild(hotTitle);
+      const secDaily = section("\u6BCF\u65E5\u653E\u9001");
+      const secBodyDaily = secDaily.body;
+      secBodyDaily.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;gap:12px;";
       const hotShowRow = document.createElement("div");
       hotShowRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px;";
-      const hotShowLabel = document.createElement("span");
-      hotShowLabel.style.cssText = "font-size:11.5px;color:var(--fnos-ui-text);";
-      hotShowLabel.textContent = t("\u5728\u9996\u9875\u663E\u793A\u6BCF\u65E5\u653E\u9001\u5165\u53E3");
+      const hotShowTextWrap = document.createElement("div");
+      hotShowTextWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;";
+      const hotShowTitle = document.createElement("span");
+      hotShowTitle.style.cssText = "font-weight:600;letter-spacing:.5px;";
+      hotShowTitle.textContent = t("\u5728\u9996\u9875\u663E\u793A\u6BCF\u65E5\u653E\u9001\u5165\u53E3");
+      const hotShowHint = document.createElement("span");
+      hotShowHint.style.cssText = "font-size:11px;opacity:.7;line-height:1.4;";
+      hotShowHint.textContent = t("\u5173\u95ED\u5373\u9690\u85CF\u53F3\u4E0B\u89D2\u7684\u300C\u6BCF\u65E5\u653E\u9001\u300D\u6D6E\u7A97\u6309\u94AE\u3002");
+      hotShowTextWrap.appendChild(hotShowTitle);
+      hotShowTextWrap.appendChild(hotShowHint);
+      const hotShowLabel = document.createElement("label");
+      hotShowLabel.style.cssText = "position:relative;display:inline-block;width:42px;height:23px;cursor:pointer;flex-shrink:0;";
       const hotShowInput = document.createElement("input");
       hotShowInput.type = "checkbox";
-      hotShowInput.style.cssText = "width:18px;height:18px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
+      hotShowInput.style.cssText = "position:absolute;opacity:0;width:0;height:0;";
+      const hotShowTrack = document.createElement("span");
+      hotShowTrack.style.cssText = "position:absolute;inset:0;border-radius:23px;background:rgba(140,140,160,.45);transition:.2s;";
+      const hotShowKnob = document.createElement("span");
+      hotShowKnob.style.cssText = "position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);";
+      hotShowLabel.appendChild(hotShowInput);
+      hotShowLabel.appendChild(hotShowTrack);
+      hotShowLabel.appendChild(hotShowKnob);
+      const paintHotShow = () => {
+        hotShowTrack.style.background = hotShowInput.checked ? "var(--fnos-ui-accent)" : "rgba(140,140,160,.45)";
+        hotShowKnob.style.left = hotShowInput.checked ? "21.5px" : "2.5px";
+      };
       try {
         hotShowInput.checked = localStorage.getItem("fnos-show-daily") !== "0";
       } catch (_) {
         hotShowInput.checked = true;
       }
+      paintHotShow();
       hotShowInput.addEventListener("change", () => {
         try {
           localStorage.setItem("fnos-show-daily", hotShowInput.checked ? "1" : "0");
         } catch (_) {
         }
+        paintHotShow();
         try {
           window.dispatchEvent(new CustomEvent("fntv:daily-toggle"));
         } catch (_) {
         }
       });
+      hotShowRow.appendChild(hotShowTextWrap);
       hotShowRow.appendChild(hotShowLabel);
-      hotShowRow.appendChild(hotShowInput);
-      hotWrap.appendChild(hotShowRow);
+      secBodyDaily.appendChild(hotShowRow);
       const hotIntervalRow = document.createElement("div");
       hotIntervalRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px;";
       const hotIntervalLabel = document.createElement("span");
@@ -14576,7 +14595,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       });
       hotIntervalRow.appendChild(hotIntervalLabel);
       hotIntervalRow.appendChild(hotIntervalSel);
-      hotWrap.appendChild(hotIntervalRow);
+      secBodyDaily.appendChild(hotIntervalRow);
       const hotRefreshBtn = mkBtn("\u7ACB\u5373\u5237\u65B0\u6570\u636E", true);
       hotRefreshBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -14589,12 +14608,11 @@ html.fntv-boot-hide #root{visibility:hidden}
           hotRefreshBtn.textContent = "\u7ACB\u5373\u5237\u65B0\u6570\u636E";
         }, 1500);
       });
-      hotWrap.appendChild(hotRefreshBtn);
+      secBodyDaily.appendChild(hotRefreshBtn);
       const hotHint = document.createElement("div");
       hotHint.style.cssText = "font-size:10px;color:var(--fnos-ui-sub);line-height:1.5;";
       hotHint.textContent = t("\u6570\u636E\u4FDD\u5B58\u5728\u672C\u673A\uFF0C\u8D85\u8FC7\u5237\u65B0\u95F4\u9694\u540E\u5C55\u5F00\u6D6E\u5C42\u624D\u4F1A\u91CD\u65B0\u62C9\u53D6\u3002");
-      hotWrap.appendChild(hotHint);
-      secBodyAppearance.appendChild(hotWrap);
+      secBodyDaily.appendChild(hotHint);
       const secCustomProxy = section("\u81EA\u5B9A\u4E49\u4EE3\u7406");
       const secBodyCustomProxy = secCustomProxy.body;
       secBodyCustomProxy.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
@@ -14788,7 +14806,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         }
       })();
       const cats = [
-        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secUX.el] },
+        { id: "appearance", label: "\u5916\u89C2", els: [secAppearance.el, secDaily.el, secUX.el] },
         { id: "player", label: "\u64AD\u653E", els: [secSkip.el] },
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
