@@ -5,6 +5,28 @@ import { log } from '../log';
 // 由 scripts/embywall-split.js 从 embyWall.ts 整段抽取；改实现请改这里，不要在入口文件里补。
 
 /* ========== 鉴权拉取图片→blob URL(绕开<img>无法带Authx头的问题) ========== */
+// [网页端 v0.47.0] 全局并发闸门：轮播刷新瞬间几十张图（主图+海报+logo）同时 fetch——浏览器对
+// 同域 HTTP/1.1 只有 ~6 个并发连接，排队请求叠加超时窗口、fnOS 服务端也被瞬时并发打满，
+// 导致大批图片超时/失败（症状：刷新后海报大部分不显示、个别显示）。限制同时在网的图片请求数，
+// 其余排队依次拉取；桌面版同文件共用，同样受益。
+let _imgActive = 0;
+const _imgQueue: Array<() => void> = [];
+const IMG_MAX_CONCURRENT = 5;
+
+async function imgGate<T>(fn: () => Promise<T>): Promise<T> {
+  if (_imgActive >= IMG_MAX_CONCURRENT) {
+    await new Promise<void>((resolve) => _imgQueue.push(resolve));
+  }
+  _imgActive++;
+  try {
+    return await fn();
+  } finally {
+    _imgActive--;
+    const next = _imgQueue.shift();
+    if (next) next();
+  }
+}
+
 // [DIAG] 增强：label=来源说明, isStrm=是否网盘STRM；记录耗时、识别跨域(网盘/远程直链)、失败给出明确日志
 export async function fetchImageAuth(fullUrl: string, opts?: { label?: string; isStrm?: boolean; timeoutMs?: number }): Promise<string | null> {
   const label = opts?.label || 'img';
@@ -14,10 +36,12 @@ export async function fetchImageAuth(fullUrl: string, opts?: { label?: string; i
   if (!fullUrl) { if (isStrm) log('[DIAG] fetchImg 跳过(空URL) label=', label, 'isStrm=true'); return null; }
   // [lc-992] strm/远程源易瞬断(网盘限流、Authx 偶发失效、偶发 429)：失败/超时重试 1 次(更短超时)，
   //   提高出图率、降低「卡加载」；同源图片不重试(本就快，重试只加倍耗时且无收益)。
-  const first = await fetchImageOnce(fullUrl, timeoutMs, label, isStrm);
-  if (first || !isStrm) return first;
-  log('[DIAG] fetchImg STRm 首次失败, 重试 1 次 label=', label);
-  return await fetchImageOnce(fullUrl, Math.min(timeoutMs, 6000), label, isStrm);
+  return imgGate(async () => {
+    const first = await fetchImageOnce(fullUrl, timeoutMs, label, isStrm);
+    if (first || !isStrm) return first;
+    log('[DIAG] fetchImg STRm 首次失败, 重试 1 次 label=', label);
+    return await fetchImageOnce(fullUrl, Math.min(timeoutMs, 6000), label, isStrm);
+  });
 }
 
 /** 单次带鉴权拉图→blob URL(绕开<img>无法带Authx头的问题)。[lc-992] 从 fetchImageAuth 抽出，便于 strm 重试。 */

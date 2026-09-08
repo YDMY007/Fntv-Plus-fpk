@@ -4022,6 +4022,22 @@ html.fnos-perf.dark{
   }
 
   // src/preload/plugins/embyWall/carousel/images.ts
+  var _imgActive = 0;
+  var _imgQueue = [];
+  var IMG_MAX_CONCURRENT = 5;
+  async function imgGate(fn) {
+    if (_imgActive >= IMG_MAX_CONCURRENT) {
+      await new Promise((resolve2) => _imgQueue.push(resolve2));
+    }
+    _imgActive++;
+    try {
+      return await fn();
+    } finally {
+      _imgActive--;
+      const next = _imgQueue.shift();
+      if (next) next();
+    }
+  }
   async function fetchImageAuth(fullUrl, opts) {
     var _a;
     const label = (opts == null ? void 0 : opts.label) || "img";
@@ -4031,10 +4047,12 @@ html.fnos-perf.dark{
       if (isStrm) log6("[DIAG] fetchImg \u8DF3\u8FC7(\u7A7AURL) label=", label, "isStrm=true");
       return null;
     }
-    const first = await fetchImageOnce(fullUrl, timeoutMs, label, isStrm);
-    if (first || !isStrm) return first;
-    log6("[DIAG] fetchImg STRm \u9996\u6B21\u5931\u8D25, \u91CD\u8BD5 1 \u6B21 label=", label);
-    return await fetchImageOnce(fullUrl, Math.min(timeoutMs, 6e3), label, isStrm);
+    return imgGate(async () => {
+      const first = await fetchImageOnce(fullUrl, timeoutMs, label, isStrm);
+      if (first || !isStrm) return first;
+      log6("[DIAG] fetchImg STRm \u9996\u6B21\u5931\u8D25, \u91CD\u8BD5 1 \u6B21 label=", label);
+      return await fetchImageOnce(fullUrl, Math.min(timeoutMs, 6e3), label, isStrm);
+    });
   }
   async function fetchImageOnce(fullUrl, timeoutMs, label, isStrm) {
     const t0 = Date.now();
