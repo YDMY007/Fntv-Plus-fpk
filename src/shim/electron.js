@@ -331,8 +331,10 @@ const ipcRenderer = {
         .catch(() => null);
     }
     if (channel === 'bangumi:sync-progress') {
+      // [v0.50.0] 形状变更：{guid, percentage, item}——item 由前端直连 play/info 解析好传入，
+      // 后端不再自查 fnOS（document.cookie 拿不到 httpOnly 会话 token，恒未登录）。
       return apiPost('/app/fntvplus/api/bridge/bangumi/sync-progress', {
-        guid: args[0], percentage: args[1], cookie: document.cookie,
+        guid: args[0], percentage: args[1], item: args[2] || null,
       });
     }
     if (channel === 'douban:enrich-one') return Promise.resolve(null);

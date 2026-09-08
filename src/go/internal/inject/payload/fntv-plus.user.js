@@ -458,25 +458,25 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   }
   function loadSettings() {
     try {
-      return JSON.parse(localStorage.getItem(LS_KEY2) || "{}");
+      return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
     } catch {
       return {};
     }
   }
   function saveSettings(s) {
     try {
-      localStorage.setItem(LS_KEY2, JSON.stringify(s));
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
     } catch {
     }
   }
-  var AUTHX_KEY, AUTHX_SECRET, LS_KEY2, shimExports, SETTINGS_KEY_MAP, ipcRenderer, shell;
+  var AUTHX_KEY, AUTHX_SECRET, LS_KEY, shimExports, SETTINGS_KEY_MAP, ipcRenderer, shell;
   var init_electron = __esm({
     "src/shim/electron.js"() {
       init_diag();
       init_md5();
       AUTHX_KEY = "NDzZTVxnRKP8Z0jXg1VAMonaG8akvh";
       AUTHX_SECRET = "16CCEB3D-AB42-077D-36A1-F355324E4237";
-      LS_KEY2 = "fntv:electron-settings";
+      LS_KEY = "fntv:electron-settings";
       shimExports = { ipcRenderer: null, shell: null };
       try {
         if (typeof window !== "undefined") {
@@ -630,7 +630,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             return apiPost("/app/fntvplus/api/bridge/bangumi/sync-progress", {
               guid: args[0],
               percentage: args[1],
-              cookie: document.cookie
+              item: args[2] || null
             });
           }
           if (channel === "douban:enrich-one") return Promise.resolve(null);
@@ -779,6 +779,176 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     }
   });
 
+  // src/preload/web/playSync.ts
+  init_electron();
+
+  // src/preload/core/logger.ts
+  init_electron();
+  var preloadLogger = {
+    debug: (...args) => {
+      try {
+        ipcRenderer.invoke("log-message", "debug", ...args);
+      } catch (error) {
+        if (false) {
+          console.debug(...args);
+        }
+      }
+    },
+    info: (...args) => {
+      try {
+        ipcRenderer.invoke("log-message", "info", ...args);
+      } catch (error) {
+        if (false) {
+          console.info(...args);
+        }
+      }
+    },
+    warn: (...args) => {
+      try {
+        ipcRenderer.invoke("log-message", "warn", ...args);
+      } catch (error) {
+        if (false) {
+          console.warn(...args);
+        }
+      }
+    },
+    error: (...args) => {
+      try {
+        ipcRenderer.invoke("log-message", "error", ...args);
+      } catch (error) {
+        if (false) {
+          console.error(...args);
+        }
+      }
+    },
+    log: (...args) => {
+      try {
+        ipcRenderer.invoke("log-message", "info", ...args);
+      } catch (error) {
+        if (false) {
+          console.log(...args);
+        }
+      }
+    },
+    // 方便的方法别名
+    d: (...args) => preloadLogger.debug(...args),
+    // debug简写
+    i: (...args) => preloadLogger.info(...args),
+    // info简写
+    w: (...args) => preloadLogger.warn(...args),
+    // warn简写
+    e: (...args) => preloadLogger.error(...args)
+    // error简写
+  };
+  var logger_default = preloadLogger;
+
+  // src/preload/web/playSync.ts
+  var log2 = logger_default.component("play-sync");
+  var marked = /* @__PURE__ */ new Set();
+  var missed = /* @__PURE__ */ new Set();
+  var SYNCABLE = ["Movie", "Episode", "TvSeries", "TV"];
+  var _lastFire = 0;
+  async function fetchPlayInfo(guid) {
+    try {
+      const path = "/v/api/v1/play/info";
+      const payload = { item_guid: guid };
+      const authx = await ipcRenderer.invoke("fnos-gen-authx", path, payload);
+      const resp = await fetch(location.origin + path, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Authx": authx, "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) return null;
+      const j = await resp.json();
+      return j && j.data && j.data.item ? j.data.item : null;
+    } catch {
+      return null;
+    }
+  }
+  function handleRecord(body) {
+    try {
+      if (!body || typeof body !== "object") return;
+      const guid = String(body.item_guid || body.itemGuid || "");
+      const ts = Number(body.ts || 0);
+      const duration = Number(body.duration || 0);
+      if (!guid || !(ts > 0) || !(duration > 0)) return;
+      const percentage = Math.min(100, ts / duration * 100);
+      if (percentage < 5) return;
+      if (marked.has(guid) || missed.has(guid)) return;
+      const now = Date.now();
+      if (now - _lastFire < 3e3) return;
+      _lastFire = now;
+      void (async () => {
+        const item = await fetchPlayInfo(guid);
+        if (!item) {
+          missed.add(guid);
+          return;
+        }
+        const type = String(item.type || "");
+        if (!SYNCABLE.includes(type)) {
+          missed.add(guid);
+          return;
+        }
+        try {
+          const r = await ipcRenderer.invoke("bangumi:sync-progress", guid, percentage, item);
+          if (r && r.ok && String(r.message || "").includes("\u5DF2\u6807\u8BB0")) {
+            marked.add(guid);
+            log2.info("[play-sync]", String(r.message), `\uFF08${Math.floor(percentage)}%\uFF09`);
+          } else if (r && !r.ok) {
+            const msg = String(r && r.message || "");
+            if (msg.indexOf("\u672A\u8FBE\u9608\u503C") === -1 && msg.indexOf("\u672A\u5F00\u542F") === -1 && msg.indexOf("Token") === -1) {
+              missed.add(guid);
+            }
+          }
+        } catch {
+        }
+      })();
+    } catch {
+    }
+  }
+  function installPlayRecordHook() {
+    try {
+      const origFetch = window.fetch;
+      window.fetch = function(input, init) {
+        try {
+          const url = typeof input === "string" ? input : input && input.url || "";
+          if (init && String(init.method || "").toUpperCase() === "POST" && String(url).indexOf("/v/api/v1/play/record") !== -1 && init.body) {
+            try {
+              handleRecord(typeof init.body === "string" ? JSON.parse(init.body) : init.body);
+            } catch {
+            }
+          }
+        } catch {
+        }
+        return origFetch.call(this, input, init);
+      };
+      const XOpen = XMLHttpRequest.prototype.open;
+      const XSend = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        try {
+          this.__fntvMethod = String(method || "");
+          this.__fntvUrl = String(url || "");
+        } catch {
+        }
+        return XOpen.apply(this, [method, url, ...rest]);
+      };
+      XMLHttpRequest.prototype.send = function(body) {
+        try {
+          if (body && typeof body === "string" && this.__fntvMethod === "POST" && String(this.__fntvUrl || "").indexOf("/v/api/v1/play/record") !== -1) {
+            handleRecord(JSON.parse(body));
+          }
+        } catch {
+        }
+        return XSend.apply(this, [body]);
+      };
+      log2.info("[play-sync] play/record \u62E6\u622A\u5DF2\u6302\u8F7D\uFF08\u7F51\u9875\u7AEF Bangumi \u540C\u6B65\u89E6\u53D1\u5668\uFF09");
+    } catch (e) {
+      logger_default.error("[play-sync] \u6302\u8F7D\u5931\u8D25", String(e));
+    }
+  }
+  installPlayRecordHook();
+
   // src/preload/core/hooks.ts
   var HookType = /* @__PURE__ */ ((HookType2) => {
     HookType2["OnReady"] = "onReady";
@@ -807,7 +977,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   }
 
   // src/preload/core/i18n.ts
-  var LS_KEY = "fntv-lang";
+  var LS_KEY2 = "fntv-lang";
   var EN = {
     // 自动连播卡（autoplayNext.ts）
     "UP NEXT": "UP NEXT",
@@ -1083,7 +1253,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   function getLang() {
     if (cachedLang) return cachedLang;
     try {
-      const v = localStorage.getItem(LS_KEY);
+      const v = localStorage.getItem(LS_KEY2);
       if (v === "zh" || v === "en") {
         cachedLang = v;
         return cachedLang;
@@ -1107,68 +1277,8 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     return interpolate(out, params);
   }
 
-  // src/preload/core/logger.ts
-  init_electron();
-  var preloadLogger = {
-    debug: (...args) => {
-      try {
-        ipcRenderer.invoke("log-message", "debug", ...args);
-      } catch (error) {
-        if (false) {
-          console.debug(...args);
-        }
-      }
-    },
-    info: (...args) => {
-      try {
-        ipcRenderer.invoke("log-message", "info", ...args);
-      } catch (error) {
-        if (false) {
-          console.info(...args);
-        }
-      }
-    },
-    warn: (...args) => {
-      try {
-        ipcRenderer.invoke("log-message", "warn", ...args);
-      } catch (error) {
-        if (false) {
-          console.warn(...args);
-        }
-      }
-    },
-    error: (...args) => {
-      try {
-        ipcRenderer.invoke("log-message", "error", ...args);
-      } catch (error) {
-        if (false) {
-          console.error(...args);
-        }
-      }
-    },
-    log: (...args) => {
-      try {
-        ipcRenderer.invoke("log-message", "info", ...args);
-      } catch (error) {
-        if (false) {
-          console.log(...args);
-        }
-      }
-    },
-    // 方便的方法别名
-    d: (...args) => preloadLogger.debug(...args),
-    // debug简写
-    i: (...args) => preloadLogger.info(...args),
-    // info简写
-    w: (...args) => preloadLogger.warn(...args),
-    // warn简写
-    e: (...args) => preloadLogger.error(...args)
-    // error简写
-  };
-  var logger_default = preloadLogger;
-
   // src/preload/plugins/a11y.ts
-  var log2 = logger_default;
+  var log3 = logger_default;
   var MODAL_IDS = [
     ["fnos-settings-panel", "\u8BBE\u7F6E\u9762\u677F"],
     ["play-choice-modal", "\u64AD\u653E\u65B9\u5F0F\u5F39\u7A97"],
@@ -1227,7 +1337,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
         if (!el.getAttribute("role")) el.setAttribute("role", "dialog");
         el.setAttribute("aria-modal", "true");
         if (!inside) focusInto(el);
-        log2.info(`[a11y] \u5F39\u5C42\u9677\u9631\u6302\u8F7D: ${id}`);
+        log3.info(`[a11y] \u5F39\u5C42\u9677\u9631\u6302\u8F7D: ${id}`);
       } else if (!overlayVisible(el) && tracked) {
         const prev = trapPrevFocus.get(el) || null;
         trapPrevFocus.delete(el);
@@ -1370,7 +1480,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
 
   // src/preload/plugins/skipInject.ts
   init_electron();
-  var log3 = logger_default;
+  var log4 = logger_default;
   var CAPTURE_API_RE = /(^|\/)(upload|saveEditDetail|getEditDetail|editDetail)(\?|$)/i;
   function captureFnosApi(url, method, body, headers) {
     try {
@@ -1404,9 +1514,9 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
         const a = typeof headers.get === "function" ? headers.get("Authx") : headers["Authx"] || headers["authx"];
         if (a) authxStr = " | Authx=" + String(a).slice(0, 120);
       }
-      log3.info(`[API\u6355\u83B7-\u9875\u9762] ${method} ${url} | body=${bodyStr.slice(0, 6e3)}${authxStr}`);
+      log4.info(`[API\u6355\u83B7-\u9875\u9762] ${method} ${url} | body=${bodyStr.slice(0, 6e3)}${authxStr}`);
     } catch (e) {
-      log3.error("[API\u6355\u83B7-\u9875\u9762] \u5904\u7406\u5F02\u5E38", String(e));
+      log4.error("[API\u6355\u83B7-\u9875\u9762] \u5904\u7406\u5F02\u5E38", String(e));
     }
   }
   var triggeredGuids = /* @__PURE__ */ new Set();
@@ -1476,7 +1586,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       void ipcRenderer.invoke("trakt:scrobble", { action: "stop", guid, progress: 100 }).catch(() => {
       });
     });
-    log3.info("[skipInject] Trakt scrobble \u5DF2\u63A5\u7EBF guid=" + guid);
+    log4.info("[skipInject] Trakt scrobble \u5DF2\u63A5\u7EBF guid=" + guid);
   }
   async function tryFillSkipData() {
     let guid = extractGuidFromUrl();
@@ -1484,32 +1594,32 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       guid = extractGuidFromDom();
     }
     if (!guid) {
-      log3.debug("\u65E0\u6CD5\u63D0\u53D6 itemGuid\uFF0C\u8DF3\u8FC7\u586B\u5145");
+      log4.debug("\u65E0\u6CD5\u63D0\u53D6 itemGuid\uFF0C\u8DF3\u8FC7\u586B\u5145");
       return;
     }
     if (triggeredGuids.has(guid)) {
       return;
     }
     triggeredGuids.add(guid);
-    log3.info(`[skipInject] \u68C0\u6D4B\u5230\u64AD\u653E\u9875\uFF0C\u89E6\u53D1\u586B\u5145 guid=${guid}`);
+    log4.info(`[skipInject] \u68C0\u6D4B\u5230\u64AD\u653E\u9875\uFF0C\u89E6\u53D1\u586B\u5145 guid=${guid}`);
     try {
       const result = await ipcRenderer.invoke("skip:fetch-and-fill", { guid });
       if (result.filled) {
-        log3.info(`[skipInject] \u2705 \u586B\u5145\u6210\u529F source=${result.source} start=${result.skipStart}s end=${result.skipEnd}s`);
+        log4.info(`[skipInject] \u2705 \u586B\u5145\u6210\u529F source=${result.source} start=${result.skipStart}s end=${result.skipEnd}s`);
       } else {
-        log3.info(`[skipInject] \u23ED \u65E0\u9700\u586B\u5145\u6216\u65E0\u6570\u636E source=${result.source} msg=${result.message || ""}`);
+        log4.info(`[skipInject] \u23ED \u65E0\u9700\u586B\u5145\u6216\u65E0\u6570\u636E source=${result.source} msg=${result.message || ""}`);
       }
       wireScrobble(guid);
       if (result.recapStart && result.recapEnd && result.recapEnd > result.recapStart) {
         installRecapButton(guid, result.recapStart, result.recapEnd);
       }
     } catch (e) {
-      log3.error("[skipInject] fetch-and-fill IPC \u8C03\u7528\u5931\u8D25:", e);
+      log4.error("[skipInject] fetch-and-fill IPC \u8C03\u7528\u5931\u8D25:", e);
     }
   }
   function installRecapButton(guid, recapStart, recapEnd) {
     if (document.getElementById("fntv-recap-btn")) return;
-    log3.info(`[skipInject] recap \u533A\u95F4 ${recapStart}-${recapEnd}s\uFF0C\u5B89\u88C5\u8DF3\u8FC7\u524D\u60C5\u6309\u94AE`);
+    log4.info(`[skipInject] recap \u533A\u95F4 ${recapStart}-${recapEnd}s\uFF0C\u5B89\u88C5\u8DF3\u8FC7\u524D\u60C5\u6309\u94AE`);
     const btn = document.createElement("button");
     btn.id = "fntv-recap-btn";
     btn.setAttribute("data-fnos-ui", "1");
@@ -1560,10 +1670,10 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (p && typeof p.catch === "function") p.catch(() => {
           });
         } catch (e) {
-          log3.warn("[skipInject] recap seek \u5931\u8D25:", String(e).substring(0, 80));
+          log4.warn("[skipInject] recap seek \u5931\u8D25:", String(e).substring(0, 80));
         }
       }
-      log3.info(`[skipInject] \u8DF3\u8FC7\u524D\u60C5 \u2192 ${recapEnd}s (guid=${guid})`);
+      log4.info(`[skipInject] \u8DF3\u8FC7\u524D\u60C5 \u2192 ${recapEnd}s (guid=${guid})`);
       removeBtn();
     });
     document.body.appendChild(btn);
@@ -1576,7 +1686,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       const v = document.querySelector("video");
       if (!v) return;
       if (v.currentTime >= recapEnd - 0.5) {
-        log3.info("[skipInject] \u5DF2\u8D8A\u8FC7 recap \u7EC8\u70B9\uFF0C\u64A4\u6309\u94AE");
+        log4.info("[skipInject] \u5DF2\u8D8A\u8FC7 recap \u7EC8\u70B9\uFF0C\u64A4\u6309\u94AE");
         removeBtn();
       }
     }, 1e3);
@@ -1613,7 +1723,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             const parsed = JSON.parse(typeof init.body === "string" ? init.body : "");
             const guid = tryExtractGuidFromRequestBody(parsed);
             if (guid) {
-              log3.info(`[skipInject] fetch \u62E6\u622A\u5230 guid=${guid} url=${url.slice(0, 80)}`);
+              log4.info(`[skipInject] fetch \u62E6\u622A\u5230 guid=${guid} url=${url.slice(0, 80)}`);
               interceptedGuid = guid;
             }
           }
@@ -1621,7 +1731,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
         }
       }
       if (externalPlayActive && url.includes("/play/info")) {
-        log3.info("[skipInject] \u5916\u90E8\u64AD\u653E\u6D41\u7A0B: \u62E6\u622A play/info(\u9759\u9ED8), \u963B\u6B62\u539F\u751F\u64AD\u653E\u5668\u542F\u52A8");
+        log4.info("[skipInject] \u5916\u90E8\u64AD\u653E\u6D41\u7A0B: \u62E6\u622A play/info(\u9759\u9ED8), \u963B\u6B62\u539F\u751F\u64AD\u653E\u5668\u542F\u52A8");
         return new Response(JSON.stringify({ success: true, data: null, message: "" }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
@@ -1634,7 +1744,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           const ct = ((_b = (_a = resp.headers) == null ? void 0 : _a.get) == null ? void 0 : _b.call(_a, "content-type")) || "";
           if (ct.includes("json")) {
             const txt = await resp.clone().text();
-            log3.info(`[API\u6355\u83B7-\u9875\u9762][\u54CD\u5E94] ${method} ${url} | resp=${txt.slice(0, 6e3)}`);
+            log4.info(`[API\u6355\u83B7-\u9875\u9762][\u54CD\u5E94] ${method} ${url} | resp=${txt.slice(0, 6e3)}`);
           }
         } catch {
         }
@@ -1657,7 +1767,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           const parsed = JSON.parse(typeof body === "string" ? body : "");
           const guid = tryExtractGuidFromRequestBody(parsed);
           if (guid) {
-            log3.info(`[skipInject] XHR \u62E6\u622A\u5230 guid=${guid} url=${url.slice(0, 80)}`);
+            log4.info(`[skipInject] XHR \u62E6\u622A\u5230 guid=${guid} url=${url.slice(0, 80)}`);
             interceptedGuid = guid;
           }
         } catch {
@@ -1859,7 +1969,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   });
 
   // src/preload/plugins/customLogo.ts
-  var log4 = logger_default;
+  var log5 = logger_default;
   var STORAGE_KEY = "fntvLogo.custom";
   var CUSTOM_DATA_KEY = "fntvLogo.customData";
   var MAX_UPLOAD_BYTES = 1.5 * 1024 * 1024;
@@ -1900,7 +2010,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       _presetCache.set(p.id, uri);
       return uri;
     } catch (e) {
-      log4.warn("[customLogo] \u9884\u8BBE\u8BFB\u53D6\u5931\u8D25:", p.file, String(e).substring(0, 80));
+      log5.warn("[customLogo] \u9884\u8BBE\u8BFB\u53D6\u5931\u8D25:", p.file, String(e).substring(0, 80));
       return "";
     }
   }
@@ -1918,7 +2028,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
     } catch (e) {
-      log4.warn("[customLogo] \u6301\u4E45\u5316\u5931\u8D25", String(e).substring(0, 80));
+      log5.warn("[customLogo] \u6301\u4E45\u5316\u5931\u8D25", String(e).substring(0, 80));
     }
   }
   function resolveLogoSrc(choice) {
@@ -2295,7 +2405,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     if (anchor.parentElement.querySelector("#fntv-logo-ctrl")) return true;
     anchor.parentElement.insertBefore(buildCard2(), anchor.nextSibling);
     refreshCard();
-    log4.info("[customLogo] \u8BBE\u7F6E\u5361\u7247\u5DF2\u6CE8\u5165");
+    log5.info("[customLogo] \u8BBE\u7F6E\u5361\u7247\u5DF2\u6CE8\u5165");
     return true;
   }
   function handle() {
@@ -2426,7 +2536,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
 
   // src/preload/plugins/danmakuWeb.ts
   init_electron();
-  var log5 = logger_default;
+  var log6 = logger_default;
   var loadedGuids = /* @__PURE__ */ new Set();
   var GUID_RE2 = /\/v\/(?:movie|tv|video)(?:\/(?:season|episode))?\/([a-f0-9]{32})/i;
   var LS_KEY5 = "fntv_danmaku_enabled";
@@ -2473,7 +2583,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     el.textContent = css;
     (document.head || document.documentElement).appendChild(el);
     _headerStyleInjected = true;
-    log5.info("[danmakuWeb] \u64AD\u653E\u9875\u9876\u90E8\u6807\u9898\u680F\u7F8E\u5316 CSS \u5DF2\u6CE8\u5165");
+    log6.info("[danmakuWeb] \u64AD\u653E\u9875\u9876\u90E8\u6807\u9898\u680F\u7F8E\u5316 CSS \u5DF2\u6CE8\u5165");
   }
   function resetHeaderHideTimer() {
     if (!isPlayerPage()) return;
@@ -2490,7 +2600,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     document.addEventListener("mousemove", resetHeaderHideTimer, { passive: true });
     document.addEventListener("touchstart", resetHeaderHideTimer, { passive: true });
     setTimeout(resetHeaderHideTimer, 600);
-    log5.info("[danmakuWeb] \u64AD\u653E\u9875\u6807\u9898\u680F\u81EA\u52A8\u9690\u85CF\u5DF2\u542F\u7528 (" + HEADER_HIDE_DELAY + "ms)");
+    log6.info("[danmakuWeb] \u64AD\u653E\u9875\u6807\u9898\u680F\u81EA\u52A8\u9690\u85CF\u5DF2\u542F\u7528 (" + HEADER_HIDE_DELAY + "ms)");
   }
   var _fsFixBound = false;
   function applyVideoFullscreenClass() {
@@ -2526,7 +2636,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     setTimeout(tryObservePlayerClass, 3e3);
     window.addEventListener("resize", update, { passive: true });
     applyVideoFullscreenClass();
-    log5.info("[danmakuWeb] \u64AD\u653E\u5668\u5168\u5C4F\u53BB\u5706\u89D2\u68C0\u6D4B\u5DF2\u542F\u7528 (MutationObserver+xgplayer-fullscreen)");
+    log6.info("[danmakuWeb] \u64AD\u653E\u5668\u5168\u5C4F\u53BB\u5706\u89D2\u68C0\u6D4B\u5DF2\u542F\u7528 (MutationObserver+xgplayer-fullscreen)");
   }
   var videoEl = null;
   var canvas = null;
@@ -2682,7 +2792,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       if (detailsWrap && detailsWrap.parentElement !== bar2) bar2.appendChild(detailsWrap);
       if (styleWrap && styleWrap.parentElement !== bar2) bar2.appendChild(styleWrap);
       if (!controlsPlaced) {
-        log5.info("[danmakuWeb] \u5F39\u5E55\u5F00\u5173\u5DF2\u6CE8\u5165\u63A7\u5236\u680F(" + String(bar2.className).slice(0, 40) + ")");
+        log6.info("[danmakuWeb] \u5F39\u5E55\u5F00\u5173\u5DF2\u6CE8\u5165\u63A7\u5236\u680F(" + String(bar2.className).slice(0, 40) + ")");
         controlsPlaced = true;
       }
     } else {
@@ -2764,7 +2874,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       return;
     }
     if (inflight) {
-      log5.info("[danmakuWeb] \u5DF2\u6709\u5F39\u5E55\u8BF7\u6C42\u5728\u9014\uFF0C\u8DF3\u8FC7\u91CD\u590D\u62C9\u53D6");
+      log6.info("[danmakuWeb] \u5DF2\u6709\u5F39\u5E55\u8BF7\u6C42\u5728\u9014\uFF0C\u8DF3\u8FC7\u91CD\u590D\u62C9\u53D6");
       return;
     }
     const cached = guidCache.get(guid);
@@ -2773,7 +2883,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       meta = cached.meta;
       loadedGuids.add(guid);
       renderDirty = true;
-      log5.info("[danmakuWeb] \u4F1A\u8BDD\u7F13\u5B58\u547D\u4E2D " + items.length + " \u6761 guid=" + guid);
+      log6.info("[danmakuWeb] \u4F1A\u8BDD\u7F13\u5B58\u547D\u4E2D " + items.length + " \u6761 guid=" + guid);
       if (enabled2) startRender();
       return;
     }
@@ -2786,7 +2896,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     try {
       const res = await ipcRenderer.invoke("danmaku:prepare", { guid });
       if (guid !== currentGuid) {
-        log5.info("[danmakuWeb] \u4E22\u5F03\u8FC7\u671F\u5F39\u5E55\u54CD\u5E94(\u5DF2\u5207\u96C6) guid=" + guid);
+        log6.info("[danmakuWeb] \u4E22\u5F03\u8FC7\u671F\u5F39\u5E55\u54CD\u5E94(\u5DF2\u5207\u96C6) guid=" + guid);
         return;
       }
       if (res && res.ok && Array.isArray(res.items) && res.items.length) {
@@ -2803,7 +2913,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         loadedGuids.add(guid);
         guidCachePut(guid, { items, meta });
         renderDirty = true;
-        log5.info(`[danmakuWeb] \u83B7\u53D6\u5F39\u5E55 ${items.length} \u6761 title="${res.title}" ep=${res.ep} movie=${res.isMovie}`);
+        log6.info(`[danmakuWeb] \u83B7\u53D6\u5F39\u5E55 ${items.length} \u6761 title="${res.title}" ep=${res.ep} movie=${res.isMovie}`);
         if (enabled2) startRender();
       } else {
         meta = {
@@ -2816,11 +2926,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
           count: 0,
           error: (res == null ? void 0 : res.error) || "\u7A7A"
         };
-        log5.info("[danmakuWeb] \u65E0\u5F39\u5E55: " + ((res == null ? void 0 : res.error) || "\u7A7A"));
+        log6.info("[danmakuWeb] \u65E0\u5F39\u5E55: " + ((res == null ? void 0 : res.error) || "\u7A7A"));
         loadedGuids.add(guid);
       }
     } catch (e) {
-      log5.error("[danmakuWeb] \u83B7\u53D6\u5F39\u5E55\u5931\u8D25:", e);
+      log6.error("[danmakuWeb] \u83B7\u53D6\u5F39\u5E55\u5931\u8D25:", e);
     } finally {
       inflight = false;
       loading = false;
@@ -2850,7 +2960,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       } catch {
       }
       if (guid === currentGuid && (inflight || items.length)) return;
-      log5.info("[danmakuWeb] play/info \u9884\u53D6\u5F39\u5E55 guid=" + guid);
+      log6.info("[danmakuWeb] play/info \u9884\u53D6\u5F39\u5E55 guid=" + guid);
       void prepareAndLoad(guid);
     };
     const origFetch = window.fetch;
@@ -3994,7 +4104,7 @@ html.fnos-perf.dark{
     } catch (e) {
     }
   }
-  function log6(...a) {
+  function log7(...a) {
     if (!getLogEnabled()) return;
     emitLog(LOG_TAG + " " + a.join(" "));
   }
@@ -4044,13 +4154,13 @@ html.fnos-perf.dark{
     const isStrm = !!(opts == null ? void 0 : opts.isStrm);
     const timeoutMs = (_a = opts == null ? void 0 : opts.timeoutMs) != null ? _a : isStrm ? 8e3 : 15e3;
     if (!fullUrl) {
-      if (isStrm) log6("[DIAG] fetchImg \u8DF3\u8FC7(\u7A7AURL) label=", label, "isStrm=true");
+      if (isStrm) log7("[DIAG] fetchImg \u8DF3\u8FC7(\u7A7AURL) label=", label, "isStrm=true");
       return null;
     }
     return imgGate(async () => {
       const first = await fetchImageOnce(fullUrl, timeoutMs, label, isStrm);
       if (first || !isStrm) return first;
-      log6("[DIAG] fetchImg STRm \u9996\u6B21\u5931\u8D25, \u91CD\u8BD5 1 \u6B21 label=", label);
+      log7("[DIAG] fetchImg STRm \u9996\u6B21\u5931\u8D25, \u91CD\u8BD5 1 \u6B21 label=", label);
       return await fetchImageOnce(fullUrl, Math.min(timeoutMs, 6e3), label, isStrm);
     });
   }
@@ -4069,10 +4179,10 @@ html.fnos-perf.dark{
       const ct = resp.headers.get("content-type") || "";
       const ms = Date.now() - t0;
       if (!resp.ok || !ct.startsWith("image/")) {
-        log6("[DIAG] fetchImg \u5931\u8D25", label, "status", resp.status, "ct", ct.substring(0, 24), "isStrm", isStrm, "ms", ms, "path", path.substring(0, 50));
+        log7("[DIAG] fetchImg \u5931\u8D25", label, "status", resp.status, "ct", ct.substring(0, 24), "isStrm", isStrm, "ms", ms, "path", path.substring(0, 50));
         try {
           const t2 = await resp.text();
-          log6("[DIAG] fetchImg \u975E\u56FE\u7247/\u5931\u8D25 body:", t2.substring(0, 120));
+          log7("[DIAG] fetchImg \u975E\u56FE\u7247/\u5931\u8D25 body:", t2.substring(0, 120));
         } catch (e) {
         }
         return null;
@@ -4081,8 +4191,8 @@ html.fnos-perf.dark{
       return URL.createObjectURL(blob);
     } catch (e) {
       const ms = Date.now() - t0;
-      if (e && e.name === "AbortError") log6("[DIAG] fetchImg \u8D85\u65F6(\u88AB abort) label=", label, "isStrm", isStrm, "timeoutMs", timeoutMs, "ms", ms);
-      else log6("[DIAG]  fetchImg err", label, "isStrm", isStrm, "ms", ms, String(e).substring(0, 120));
+      if (e && e.name === "AbortError") log7("[DIAG] fetchImg \u8D85\u65F6(\u88AB abort) label=", label, "isStrm", isStrm, "timeoutMs", timeoutMs, "ms", ms);
+      else log7("[DIAG]  fetchImg err", label, "isStrm", isStrm, "ms", ms, String(e).substring(0, 120));
       return null;
     } finally {
       clearTimeout(to);
@@ -4221,7 +4331,7 @@ html.fnos-perf.dark{
       const json = await resp.json();
       const d = json && json.data || {};
       const strmTag = detectStrmOrCloud(d);
-      if (strmTag) log6("[DIAG] item", id, "\u7591\u4F3C\u6765\u6E90:", strmTag, "| \u5019\u9009\u8DEF\u5F84=", String(d.path || d.file_path || "").substring(0, 90));
+      if (strmTag) log7("[DIAG] item", id, "\u7591\u4F3C\u6765\u6E90:", strmTag, "| \u5019\u9009\u8DEF\u5F84=", String(d.path || d.file_path || "").substring(0, 90));
       const pickImg2 = (v, preferLargest = false) => {
         let s = "";
         const extract = (it) => {
@@ -4276,7 +4386,7 @@ html.fnos-perf.dark{
       const g = d.genres || d.genre || d.types || d.categories || d.tags;
       if (Array.isArray(g)) genres = g.map((x) => typeof x === "string" ? x : (x == null ? void 0 : x.name) || (x == null ? void 0 : x.Name) || (x == null ? void 0 : x.title) || "").filter(Boolean);
       else if (typeof g === "string" && g.trim()) genres = g.split(/[,，/、|]/).map((s) => s.trim()).filter(Boolean);
-      log6("[lc-572] item genres:", JSON.stringify(genres), "(raw=", JSON.stringify(g).substring(0, 100), ")");
+      log7("[lc-572] item genres:", JSON.stringify(genres), "(raw=", JSON.stringify(g).substring(0, 100), ")");
       return {
         backdrop,
         poster,
@@ -5561,13 +5671,13 @@ html.fnos-perf.dark{
       const r = await ipcRenderer2.invoke("media:season-guid", id);
       if (r && r.ok && r.guid) {
         const href = "/v/" + kind + "/season/" + r.guid;
-        log6("[lc-772] More -> \u4E09\u7EA7\u5B63\u9875", href);
+        log7("[lc-772] More -> \u4E09\u7EA7\u5B63\u9875", href);
         _seasonHrefCache.set(id, href);
         return href;
       }
-      log6("[lc-772] More -> \u65E0\u5B63\u5B50\u7EA7, \u56DE\u9000\u4E8C\u7EA7", fallback, r && r.error ? r.error : "");
+      log7("[lc-772] More -> \u65E0\u5B63\u5B50\u7EA7, \u56DE\u9000\u4E8C\u7EA7", fallback, r && r.error ? r.error : "");
     } catch (e) {
-      log6("[lc-772] More -> \u53D6\u5B63\u5931\u8D25, \u56DE\u9000\u4E8C\u7EA7", String(e).substring(0, 90));
+      log7("[lc-772] More -> \u53D6\u5B63\u5931\u8D25, \u56DE\u9000\u4E8C\u7EA7", String(e).substring(0, 90));
     }
     _seasonHrefCache.set(id, fallback);
     return fallback;
@@ -5575,7 +5685,7 @@ html.fnos-perf.dark{
 
   // src/preload/plugins/embyWall/carousel/styles.ts
   function buildCarouselStyle2(container, wrapper, shows, base, rebuild) {
-    const log22 = (...a) => log6("[s2]", ...a);
+    const log22 = (...a) => log7("[s2]", ...a);
     const imgUrl = (p, w) => {
       if (!p) return "";
       if (p.startsWith("http") || p.startsWith("/v/api/")) return p + (w ? "?w=" + w : "");
@@ -5948,7 +6058,7 @@ html.fnos-perf.dark{
     log22("\u6837\u5F0F2 \u8F6E\u64AD\u6CE8\u5165\u5B8C\u6210, slides=", slides.length);
   }
   function buildCarouselStyle3(container, wrapper, shows, base, rebuild) {
-    const log32 = (...a) => log6("[s3]", ...a);
+    const log32 = (...a) => log7("[s3]", ...a);
     const imgUrl = (p, w) => {
       if (!p) return "";
       if (p.startsWith("http") || p.startsWith("/v/api/")) return p + (w ? "?w=" + w : "");
@@ -6294,7 +6404,7 @@ html.fnos-perf.dark{
     (document.head || document.documentElement).appendChild(st);
   }
   function buildCarouselStyle4(container, wrapper, shows, base, rebuild) {
-    const log42 = (...a) => log6("[s4]", ...a);
+    const log42 = (...a) => log7("[s4]", ...a);
     const imgUrl = (p, w) => {
       if (!p) return "";
       if (p.startsWith("http") || p.startsWith("/v/api/")) return p + (w ? "?w=" + w : "");
@@ -6972,7 +7082,7 @@ html.fnos-perf.dark{
           });
           const json = await resp.json();
           const desc = (((_a = json == null ? void 0 : json.data) == null ? void 0 : _a.overview) || ((_b = json == null ? void 0 : json.data) == null ? void 0 : _b.tv_overview) || ((_c = json == null ? void 0 : json.data) == null ? void 0 : _c.parent_overview) || "").trim();
-          log6("desc API:", show.title, desc ? "OK(" + desc.length + ")" : "FAIL", "code=" + (json == null ? void 0 : json.code));
+          log7("desc API:", show.title, desc ? "OK(" + desc.length + ")" : "FAIL", "code=" + (json == null ? void 0 : json.code));
           if (!desc) return;
           show.desc = desc;
           const info = infos[i];
@@ -6989,7 +7099,7 @@ html.fnos-perf.dark{
             info.insertBefore(d, btn);
           }
         } catch (e) {
-          log6("desc error:", show.title, e);
+          log7("desc error:", show.title, e);
         }
       }, i * 800);
     });
@@ -7038,7 +7148,7 @@ html.fnos-perf.dark{
         S.apiShows.length = 0;
         Array.prototype.push.apply(S.apiShows, arr);
         S.carouselLoadedButNone = arr.length === 0;
-        log6("[lc-950] \u4ECE sessionStorage \u6062\u590D\u8F6E\u64AD\u7F13\u5B58", arr.length, "\u9879(\u542B\u6A2A\u7248\u6D77\u62A5 data URL + \u7B80\u4ECB)");
+        log7("[lc-950] \u4ECE sessionStorage \u6062\u590D\u8F6E\u64AD\u7F13\u5B58", arr.length, "\u9879(\u542B\u6A2A\u7248\u6D77\u62A5 data URL + \u7B80\u4ECB)");
       }
     } catch (_) {
     }
@@ -7129,15 +7239,15 @@ html.fnos-perf.dark{
       return t2.replace(/\s+/g, " ").trim();
     };
     try {
-      log6("[lc-564] waiting for library index (retry loop, max", timeoutMs, "ms)...");
+      log7("[lc-564] waiting for library index (retry loop, max", timeoutMs, "ms)...");
       const libIndex = await waitLibIndex(timeoutMs);
-      log6("[lc-564] library index ready:", libIndex.length, "items");
+      log7("[lc-564] library index ready:", libIndex.length, "items");
       const liveCards = scrapeVisibleCards();
       const posterById = /* @__PURE__ */ new Map();
       for (const c of liveCards) {
         if (c && c.id && c.poster) posterById.set(c.id, c.poster);
       }
-      log6("[lc-565] live-page posters by id:", posterById.size, "available (for poster merge)");
+      log7("[lc-565] live-page posters by id:", posterById.size, "available (for poster merge)");
       const cards = [];
       const seen = /* @__PURE__ */ new Set();
       for (let i = 0; i < libIndex.length && cards.length < CAROUSEL_SCRAPE_CAP; i++) {
@@ -7172,10 +7282,10 @@ html.fnos-perf.dark{
         } catch (e) {
         }
       }
-      log6("[lc-565] all-page first-screen scrape done:", cards.length, "cards; order:", cards.map((c) => c.title.substring(0, 8)).join(" \u2192 "));
+      log7("[lc-565] all-page first-screen scrape done:", cards.length, "cards; order:", cards.map((c) => c.title.substring(0, 8)).join(" \u2192 "));
       return cards;
     } catch (e) {
-      log6("[lc-564] ensureLibraryIndex error:", e);
+      log7("[lc-564] ensureLibraryIndex error:", e);
       return [];
     }
   }
@@ -7209,12 +7319,12 @@ html.fnos-perf.dark{
         clog("[lc-1083] item/list \u8FD4\u56DE 0, \u515C\u5E951: scraping /v/list/all first screen...");
         newShows = await scrapeAllPageFirstScreen(18e3, (n) => updateCarouselProgress(n));
         S.diagLastShows = newShows;
-        log6("[lc-561] all-page scrape returned", newShows.length, "cards");
+        log7("[lc-561] all-page scrape returned", newShows.length, "cards");
       }
       if (newShows.length === 0) {
-        log6("[lc-561] all-page scrape 0 cards, fallback: scrape current page live DOM");
+        log7("[lc-561] all-page scrape 0 cards, fallback: scrape current page live DOM");
         newShows = scrapeVisibleCards().slice(0, 10);
-        log6("[lc-561] live-DOM fallback got", newShows.length, "cards");
+        log7("[lc-561] live-DOM fallback got", newShows.length, "cards");
         if (newShows.length > 0) updateCarouselProgress(newShows.length);
       }
       clog("[lc-561] selected", newShows.length, "carousel items, order:", newShows.map((s) => {
@@ -7227,9 +7337,9 @@ html.fnos-perf.dark{
         S.apiLoaded = true;
         S.carouselInited = false;
         S.carouselLoadedButNone = false;
-        log6("[lc-569] fetching item details for", newShows.length, "items (live-DOM landscape + API)...");
+        log7("[lc-569] fetching item details for", newShows.length, "items (live-DOM landscape + API)...");
         const domLand = scrapeLandscapeBackdrops();
-        log6("[lc-569] live landscape backdrops by id:", domLand.size, "available");
+        log7("[lc-569] live landscape backdrops by id:", domLand.size, "available");
         const detailsPromise = Promise.all(newShows.map(async (s) => {
           const fromDom = domLand.get(s.id);
           if (fromDom) s.backdrop = fromDom;
@@ -7258,7 +7368,7 @@ html.fnos-perf.dark{
         let revealAttempts = 0;
         const revealOnce = () => {
           if (S.carouselRevealed) {
-            log6("[lc-622] carousel already revealed, skip re-render");
+            log7("[lc-622] carousel already revealed, skip re-render");
             return;
           }
           const landscapeCount = newShows.filter(isLandscapeBackdrop).length;
@@ -7293,7 +7403,7 @@ html.fnos-perf.dark{
             if (x.blob) {
               x.s._backdropBlob = x.blob;
               picked.push(x.s);
-            } else log6("[lc-768] \u8DF3\u8FC7\u65E0\u6CD5\u52A0\u8F7D\u6D77\u62A5\u7684\u9879(\u7591\u4F3C STR/\u7F51\u76D8):", (x.s.title || "").substring(0, 16), x.s.strmTag || "");
+            } else log7("[lc-768] \u8DF3\u8FC7\u65E0\u6CD5\u52A0\u8F7D\u6D77\u62A5\u7684\u9879(\u7591\u4F3C STR/\u7F51\u76D8):", (x.s.title || "").substring(0, 16), x.s.strmTag || "");
           }
           if (picked.length === 0) {
             clog("[lc-768] \u5168\u90E8\u5019\u9009\u9879\u6D77\u62A5\u5747\u65E0\u6CD5\u52A0\u8F7D(\u7591\u4F3C\u5747\u4E3A STR/\u7F51\u76D8)\uFF0C\u4E3B\u9875\u663E\u793A\u300C\u6682\u672A\u652F\u6301STRM\u6D77\u62A5\u300D");
@@ -7307,7 +7417,7 @@ html.fnos-perf.dark{
           completeCarouselProgress(revealOnce, "details-ready");
         }).catch((e) => {
           clearTimeout(revealTimer);
-          log6("[lc-569] item detail fetch error:", e);
+          log7("[lc-569] item detail fetch error:", e);
           completeCarouselProgress(revealOnce, "details-error");
         });
       } else {
@@ -7375,7 +7485,7 @@ html.fnos-perf.dark{
       }
       return null;
     } catch (e) {
-      log6("resolveShowLogo err:", show && show.title || "", e);
+      log7("resolveShowLogo err:", show && show.title || "", e);
       return null;
     }
   }
@@ -7391,10 +7501,10 @@ html.fnos-perf.dark{
             const b = await fetchImageAuth(full);
             if (b) {
               swapTitleToLogo(info, b);
-              log6("fnOS logo applied:", show.title);
-            } else log6("fnOS logo fetch fail:", show.title);
+              log7("fnOS logo applied:", show.title);
+            } else log7("fnOS logo fetch fail:", show.title);
           } catch (e) {
-            log6("local logo err:", show.title, e);
+            log7("local logo err:", show.title, e);
           }
         }, i * 600);
       } else if (show.tmdbId || show.title) {
@@ -7406,7 +7516,7 @@ html.fnos-perf.dark{
             else logoArg.title = show.title;
             const r = await ipcRenderer2.invoke("tmdb:logo", logoArg);
             if (!r || !r.ok) {
-              log6("tmdb logo none:", show.title, r && r.error || "\u65E0 logo");
+              log7("tmdb logo none:", show.title, r && r.error || "\u65E0 logo");
               return;
             }
             const paths = r.logoPaths && r.logoPaths.length ? r.logoPaths : r.logoPath ? [r.logoPath] : [];
@@ -7418,26 +7528,26 @@ html.fnos-perf.dark{
                 if (!img || !img.ok || !img.dataUrl) continue;
                 if (await isPureWhitePng(img.dataUrl)) {
                   if (!whiteFallback) whiteFallback = img.dataUrl;
-                  log6("tmdb logo \u7EAF\u767D\u5019\u9009(\u7559\u4F5C\u515C\u5E95):", show.title, p);
+                  log7("tmdb logo \u7EAF\u767D\u5019\u9009(\u7559\u4F5C\u515C\u5E95):", show.title, p);
                   continue;
                 }
                 show.tmdbLogo = img.dataUrl;
                 swapTitleToLogo(info, img.dataUrl);
-                log6("tmdb logo applied:", show.title);
+                log7("tmdb logo applied:", show.title);
                 return;
               } catch (e) {
-                log6("tmdb logo candidate err:", show.title, e);
+                log7("tmdb logo candidate err:", show.title, e);
               }
             }
             if (whiteFallback) {
               show.tmdbLogo = whiteFallback;
               swapTitleToLogo(info, whiteFallback);
-              log6("tmdb logo applied(\u7EAF\u767D\u515C\u5E95):", show.title);
+              log7("tmdb logo applied(\u7EAF\u767D\u515C\u5E95):", show.title);
               return;
             }
-            log6("tmdb logo \u5168\u90E8\u5019\u9009\u4E0D\u53EF\u7528:", show.title);
+            log7("tmdb logo \u5168\u90E8\u5019\u9009\u4E0D\u53EF\u7528:", show.title);
           } catch (e) {
-            log6("tmdb logo err:", show.title, e);
+            log7("tmdb logo err:", show.title, e);
           }
         }, i * 600);
       } else if (show.logo) {
@@ -7447,7 +7557,7 @@ html.fnos-perf.dark{
             const b = await fetchImageAuth(full);
             if (b) swapTitleToLogo(info, b);
           } catch (e) {
-            log6("local logo err:", show.title, e);
+            log7("local logo err:", show.title, e);
           }
         }, i * 600);
       }
@@ -7480,17 +7590,17 @@ html.fnos-perf.dark{
         body: JSON.stringify(body)
       });
       if (!resp.ok) {
-        log6("[\u56DE\u586B] getEditDetail HTTP", resp.status, guid);
+        log7("[\u56DE\u586B] getEditDetail HTTP", resp.status, guid);
         return null;
       }
       const j = await resp.json().catch(() => null);
       if (!j || j.code !== 0) {
-        log6("[\u56DE\u586B] getEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
+        log7("[\u56DE\u586B] getEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
         return null;
       }
       return j.data || null;
     } catch (e) {
-      log6("[\u56DE\u586B] getEditDetail \u5F02\u5E38", String(e).substring(0, 120));
+      log7("[\u56DE\u586B] getEditDetail \u5F02\u5E38", String(e).substring(0, 120));
       return null;
     }
   }
@@ -7511,17 +7621,17 @@ html.fnos-perf.dark{
         body: fd
       });
       if (!resp.ok) {
-        log6("[\u56DE\u586B] upload HTTP", resp.status);
+        log7("[\u56DE\u586B] upload HTTP", resp.status);
         return null;
       }
       const j = await resp.json().catch(() => null);
       if (!j || j.code !== 0 || !((_a = j.data) == null ? void 0 : _a.hash_path)) {
-        log6("[\u56DE\u586B] upload \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
+        log7("[\u56DE\u586B] upload \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
         return null;
       }
       return j.data.hash_path;
     } catch (e) {
-      log6("[\u56DE\u586B] upload \u5F02\u5E38", String(e).substring(0, 120));
+      log7("[\u56DE\u586B] upload \u5F02\u5E38", String(e).substring(0, 120));
       return null;
     }
   }
@@ -7537,17 +7647,17 @@ html.fnos-perf.dark{
         body: JSON.stringify(body)
       });
       if (!resp.ok) {
-        log6("[\u56DE\u586B] saveEditDetail HTTP", resp.status);
+        log7("[\u56DE\u586B] saveEditDetail HTTP", resp.status);
         return false;
       }
       const j = await resp.json().catch(() => null);
       if (!j || j.code !== 0) {
-        log6("[\u56DE\u586B] saveEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
+        log7("[\u56DE\u586B] saveEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
         return false;
       }
       return true;
     } catch (e) {
-      log6("[\u56DE\u586B] saveEditDetail \u5F02\u5E38", String(e).substring(0, 120));
+      log7("[\u56DE\u586B] saveEditDetail \u5F02\u5E38", String(e).substring(0, 120));
       return false;
     }
   }
@@ -7567,13 +7677,13 @@ html.fnos-perf.dark{
         const data = await fnosGetEditDetail(origin, guid);
         if (!data) return;
         if (data.logos && String(data.logos).trim()) {
-          log6("[\u56DE\u586B] \u5DF2\u6709 logo, \u8DF3\u8FC7", guid, String(data.logos).substring(0, 80));
+          log7("[\u56DE\u586B] \u5DF2\u6709 logo, \u8DF3\u8FC7", guid, String(data.logos).substring(0, 80));
           return;
         }
         const tmdbId = extractTmdbId(data);
         const title = (data.title || "").trim();
         if (!tmdbId && !title) {
-          log6("[\u56DE\u586B] \u65E0 tmdbId \u4E14\u65E0\u6807\u9898, \u8DF3\u8FC7", guid);
+          log7("[\u56DE\u586B] \u65E0 tmdbId \u4E14\u65E0\u6807\u9898, \u8DF3\u8FC7", guid);
           return;
         }
         const logoArg = { mediaType };
@@ -7581,7 +7691,7 @@ html.fnos-perf.dark{
         else logoArg.title = title;
         const r = await ipcRenderer2.invoke("tmdb:logo", logoArg);
         if (!r || !r.ok) {
-          log6("[\u56DE\u586B] TMDB \u65E0 logo", tmdbId || title);
+          log7("[\u56DE\u586B] TMDB \u65E0 logo", tmdbId || title);
           return;
         }
         const paths = r.logoPaths && r.logoPaths.length ? r.logoPaths : r.logoPath ? [r.logoPath] : [];
@@ -7591,27 +7701,27 @@ html.fnos-perf.dark{
             const img = await ipcRenderer2.invoke("tmdb:image", url);
             if (!img || !img.ok || !img.dataUrl) continue;
             if (await isPureWhitePng(img.dataUrl)) {
-              log6("[\u56DE\u586B] \u7EAF\u767D\u8DF3\u8FC7", p);
+              log7("[\u56DE\u586B] \u7EAF\u767D\u8DF3\u8FC7", p);
               continue;
             }
             const hashPath = await uploadLogoToFnos(origin, img.dataUrl);
             if (!hashPath) {
-              log6("[\u56DE\u586B] \u4E0A\u4F20\u5931\u8D25", p);
+              log7("[\u56DE\u586B] \u4E0A\u4F20\u5931\u8D25", p);
               continue;
             }
             const saved = await saveEditDetail(origin, data, hashPath);
             if (saved) {
-              log6("[\u56DE\u586B] \u2705 \u5DF2\u5199\u56DE logo \u2192 guid=" + guid + " path=" + hashPath);
+              log7("[\u56DE\u586B] \u2705 \u5DF2\u5199\u56DE logo \u2192 guid=" + guid + " path=" + hashPath);
               return;
             }
-            log6("[\u56DE\u586B] \u4FDD\u5B58\u5931\u8D25", p);
+            log7("[\u56DE\u586B] \u4FDD\u5B58\u5931\u8D25", p);
           } catch (e) {
-            log6("[\u56DE\u586B] \u5019\u9009\u5931\u8D25", p, String(e).substring(0, 80));
+            log7("[\u56DE\u586B] \u5019\u9009\u5931\u8D25", p, String(e).substring(0, 80));
           }
         }
-        log6("[\u56DE\u586B] \u65E0\u53EF\u7528 logo", guid);
+        log7("[\u56DE\u586B] \u65E0\u53EF\u7528 logo", guid);
       } catch (e) {
-        log6("[\u56DE\u586B] err", String(e).substring(0, 120));
+        log7("[\u56DE\u586B] err", String(e).substring(0, 120));
       }
     }, 800);
   }
@@ -7685,7 +7795,7 @@ html.fnos-perf.dark{
       try {
         S.carouselResume();
       } catch (e) {
-        log6("[lc-946] resumeCarousel error: " + String(e).substring(0, 80));
+        log7("[lc-946] resumeCarousel error: " + String(e).substring(0, 80));
       }
     }
   }
@@ -7720,7 +7830,7 @@ html.fnos-perf.dark{
     );
   }
   function injectCarousel() {
-    log6("injectCarousel called, S.carouselInited=", S.carouselInited, "S.apiShows.length=", S.apiShows.length);
+    log7("injectCarousel called, S.carouselInited=", S.carouselInited, "S.apiShows.length=", S.apiShows.length);
     if (S.carouselInited) return;
     destroyCarousel();
     const p = location.pathname;
@@ -7735,16 +7845,16 @@ html.fnos-perf.dark{
     if (S.carouselWrapper && document.body.contains(S.carouselWrapper)) {
       target = S.carouselWrapper.parentElement;
       rebuild = true;
-      log6("rebuild: reusing section(parent of existing wrapper)");
+      log7("rebuild: reusing section(parent of existing wrapper)");
     } else {
       target = findMediaLibrarySection();
-      if (target) log6("media-library section found via robust search");
+      if (target) log7("media-library section found via robust search");
     }
     if (!target) {
-      log6("no target");
+      log7("no target");
       return;
     }
-    log6("target found on", location.href, rebuild ? "(rebuild)" : "(first)");
+    log7("target found on", location.href, rebuild ? "(rebuild)" : "(first)");
     if (!document.getElementById("fnos-hero-action-style")) {
       const actSt = document.createElement("style");
       actSt.id = "fnos-hero-action-style";
@@ -7805,14 +7915,14 @@ html.fnos-perf.dark{
     if (S.apiShows.length === 0) {
       if (S.carouselLoadedButNone) {
         if (!S.placeholderInited) {
-          log6("all candidates unloadable(STR/\u7F51\u76D8), showing \u6682\u672A\u652F\u6301STRM\u6D77\u62A5 tip");
+          log7("all candidates unloadable(STR/\u7F51\u76D8), showing \u6682\u672A\u652F\u6301STRM\u6D77\u62A5 tip");
           buildStrmUnsupportedTip(target);
           S.placeholderInited = true;
         }
         return;
       }
       if (!S.placeholderInited) {
-        log6("api not ready, building loading skeleton with progress count");
+        log7("api not ready, building loading skeleton with progress count");
         buildLoadingPlaceholder(target);
         S.placeholderInited = true;
       }
@@ -7822,9 +7932,9 @@ html.fnos-perf.dark{
     S.carouselProgressEl = null;
     S.carouselInited = true;
     S.carouselUpdatedAt = Date.now();
-    log6("carousel data ready at", new Date(S.carouselUpdatedAt).toLocaleString("zh-CN"));
+    log7("carousel data ready at", new Date(S.carouselUpdatedAt).toLocaleString("zh-CN"));
     const shows = S.apiShows;
-    log6("injecting", shows.length, "shows (api:", S.apiShows.length, ")");
+    log7("injecting", shows.length, "shows (api:", S.apiShows.length, ")");
     const base = location.origin;
     let currentIdx = 0;
     const infos = [];
@@ -7902,7 +8012,7 @@ html.fnos-perf.dark{
       leftEl.appendChild(imgEl);
       const pic = imgUrl(show.backdrop);
       const blob = show._backdropBlob;
-      if (shows === S.apiShows && i === 0) log6("SLIDE0 src:", (blob || pic).substring(0, 80));
+      if (shows === S.apiShows && i === 0) log7("SLIDE0 src:", (blob || pic).substring(0, 80));
       const isSlideStrm = !!show.strmTag;
       const applyLandscapeCheck = () => {
         try {
@@ -7917,7 +8027,7 @@ html.fnos-perf.dark{
       };
       if (blob) {
         imgEl.onerror = () => {
-          log6("[DIAG] \u8F6E\u64AD\u4E3B\u56FE(blob\u7F13\u5B58)\u52A0\u8F7D\u5931\u8D25:", (show.title || "").substring(0, 16));
+          log7("[DIAG] \u8F6E\u64AD\u4E3B\u56FE(blob\u7F13\u5B58)\u52A0\u8F7D\u5931\u8D25:", (show.title || "").substring(0, 16));
         };
         imgEl.src = blob;
         try {
@@ -7927,11 +8037,11 @@ html.fnos-perf.dark{
       } else if (!show._backdropIsPortrait) {
         fetchImageAuth(pic, { label: "slide#" + i + ":" + (show.title || "").substring(0, 10), isStrm: isSlideStrm }).then((b) => {
           if (!b) {
-            if (isSlideStrm) log6("[DIAG] \u8F6E\u64AD\u4E3B\u56FE fetchImageAuth \u8FD4\u56DE\u7A7A(STRM item \u6D77\u62A5\u52A0\u8F7D\u5931\u8D25):", (show.title || "").substring(0, 16), pic.substring(0, 60));
+            if (isSlideStrm) log7("[DIAG] \u8F6E\u64AD\u4E3B\u56FE fetchImageAuth \u8FD4\u56DE\u7A7A(STRM item \u6D77\u62A5\u52A0\u8F7D\u5931\u8D25):", (show.title || "").substring(0, 16), pic.substring(0, 60));
             return;
           }
           imgEl.onerror = () => {
-            log6("[DIAG] \u8F6E\u64AD\u4E3B\u56FE\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pic.substring(0, 60));
+            log7("[DIAG] \u8F6E\u64AD\u4E3B\u56FE\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pic.substring(0, 60));
           };
           imgEl.onload = applyLandscapeCheck;
           imgEl.src = b;
@@ -8001,11 +8111,11 @@ html.fnos-perf.dark{
       let _navigating = false;
       const spaNav = (href, tag) => {
         if (_navigating) {
-          log6(tag + " -> ignored, navigation in progress");
+          log7(tag + " -> ignored, navigation in progress");
           return;
         }
         _navigating = true;
-        log6(tag + " -> SPA navigate", href);
+        log7(tag + " -> SPA navigate", href);
         history.pushState({}, "", href);
         window.dispatchEvent(new PopStateEvent("popstate"));
         setTimeout(() => {
@@ -8014,7 +8124,7 @@ html.fnos-perf.dark{
           const _cc = S.carouselContainer;
           const homeGone = !!_cc && (!document.body.contains(_cc) || _cc.getBoundingClientRect().width === 0 || _cc.getBoundingClientRect().height === 0);
           if (!backBtn && !seasonRendered && !homeGone) {
-            log6(tag + " fallback -> full page nav (popstate not handled)", href);
+            log7(tag + " fallback -> full page nav (popstate not handled)", href);
             location.href = href;
           }
           _navigating = false;
@@ -8076,7 +8186,7 @@ html.fnos-perf.dark{
         pImg.src = placeholderSvg;
         pImg.style.cssText = "width:120px;height:170px;object-fit:cover;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.18);display:block;background:rgba(200,190,220,.25)";
         pImg.onerror = () => {
-          log6("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pUrl ? pUrl.substring(0, 60) : "");
+          log7("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pUrl ? pUrl.substring(0, 60) : "");
           if (pImg.src !== placeholderSvg) pImg.src = placeholderSvg;
         };
         const pUrl = imgUrl(show.poster);
@@ -8085,7 +8195,7 @@ html.fnos-perf.dark{
             if (b) pImg.src = b;
           });
         } else if (show.strmTag) {
-          log6("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u65E0 poster URL(STRM item):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag);
+          log7("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u65E0 poster URL(STRM item):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag);
         }
         const pTitle = document.createElement("div");
         pTitle.style.cssText = "font-size:11.5px;font-weight:600;color:rgba(240,236,255,.95);text-align:center;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;line-height:1.35;letter-spacing:.3px;text-shadow:0 1px 4px rgba(0,0,0,.35)";
@@ -8184,7 +8294,7 @@ html.fnos-perf.dark{
     S.carouselShows = shows;
     S.carouselBase = base;
     applyTitleLogo(base, shows, infos);
-    log6("carousel injected");
+    log7("carousel injected");
   }
 
   // src/preload/plugins/embyWall/login.ts
@@ -8242,7 +8352,7 @@ html.fnos-perf.dark{
               }
             }
             if (!username) {
-              log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u8DF3\u8FC7: \u65E0\u4FDD\u5B58\u7684\u8D26\u53F7");
+              log7("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u8DF3\u8FC7: \u65E0\u4FDD\u5B58\u7684\u8D26\u53F7");
               return;
             }
             const uInput = document.getElementById("username") || document.querySelector('input[name="username"]') || document.querySelector('input[placeholder*="\u7528\u6237\u540D"]') || document.querySelector('input[placeholder*="\u8D26\u53F7"]') || function() {
@@ -8254,10 +8364,10 @@ html.fnos-perf.dark{
               return inputs.length > 0 ? inputs[0] : null;
             }();
             if (!uInput) {
-              log6("[lc-213] /v/login \u672A\u627E\u5230\u7528\u6237\u540D\u8F93\u5165\u6846");
+              log7("[lc-213] /v/login \u672A\u627E\u5230\u7528\u6237\u540D\u8F93\u5165\u6846");
               return;
             }
-            log6(`[lc-213] /v/login \u81EA\u52A8\u586B\u5145: \u7528\u6237\u540D=${username}, \u5BC6\u7801=${password ? "\u6709" : "\u65E0(\u672A\u8BB0\u4F4F\u5BC6\u7801)"}`);
+            log7(`[lc-213] /v/login \u81EA\u52A8\u586B\u5145: \u7528\u6237\u540D=${username}, \u5BC6\u7801=${password ? "\u6709" : "\u65E0(\u672A\u8BB0\u4F4F\u5BC6\u7801)"}`);
             triggerInput(uInput, username);
             if (password && pInput) {
               triggerInput(pInput, password);
@@ -8265,20 +8375,20 @@ html.fnos-perf.dark{
                 const btn = document.querySelector('button[type="submit"]') || Array.from(document.querySelectorAll("button")).find((b) => /登录/.test(b.innerText)) || document.querySelector('input[type="submit"]');
                 if (btn) {
                   btn.click();
-                  log6("[lc-213] /v/login \u5DF2\u81EA\u52A8\u70B9\u51FB\u767B\u5F55");
+                  log7("[lc-213] /v/login \u5DF2\u81EA\u52A8\u70B9\u51FB\u767B\u5F55");
                 } else {
-                  log6("[lc-213] /v/login \u672A\u627E\u5230\u767B\u5F55\u6309\u94AE");
+                  log7("[lc-213] /v/login \u672A\u627E\u5230\u767B\u5F55\u6309\u94AE");
                 }
               }, 400);
             } else {
-              log6('[lc-213] /v/login \u4EC5\u586B\u5145\u4E86\u7528\u6237\u540D, \u5BC6\u7801\u4E3A\u7A7A(\u9700\u7528\u6237\u624B\u52A8\u8F93\u5165\u6216\u52FE\u9009"\u8BB0\u4F4F\u5BC6\u7801")');
+              log7('[lc-213] /v/login \u4EC5\u586B\u5145\u4E86\u7528\u6237\u540D, \u5BC6\u7801\u4E3A\u7A7A(\u9700\u7528\u6237\u624B\u52A8\u8F93\u5165\u6216\u52FE\u9009"\u8BB0\u4F4F\u5BC6\u7801")');
             }
           } catch (e) {
-            log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5904\u7406\u5F02\u5E38:", String(e).slice(0, 120));
+            log7("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5904\u7406\u5F02\u5E38:", String(e).slice(0, 120));
           }
         });
       } catch (e) {
-        log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5F02\u5E38:", String(e).slice(0, 120));
+        log7("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5F02\u5E38:", String(e).slice(0, 120));
       }
     }, 800);
   })();
@@ -10699,7 +10809,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           _tmdbInfoData = r.data;
           _tmdbInfoFetchedAt = r.fetchedAt || Date.now();
           _tmdbInfoError = "";
-          log6("[lc-980] TMDB \u5361\u5C31\u7EEA: " + (r.data.title || ""));
+          log7("[lc-980] TMDB \u5361\u5C31\u7EEA: " + (r.data.title || ""));
         } else {
           _tmdbInfoError = r && r.error || "TMDB \u83B7\u53D6\u5931\u8D25";
           if (_isOneLevel()) {
@@ -11438,7 +11548,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       const title = ((titleEl == null ? void 0 : titleEl.textContent) || "fnOS \u89C6\u9891").trim();
       const m = rawUrl.match(/\/v\/api\/v1\/media\/range\/([a-f0-9]{32})/i);
       if (m) {
-        log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u8D70 fnOS \u64AD\u653E\u94FE\u8DEF:", title, m[1]);
+        log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u8D70 fnOS \u64AD\u653E\u94FE\u8DEF:", title, m[1]);
         ipcRenderer.send("external-play", { kind: "fnos", id: m[1], title });
         setTimeout(() => {
           const closeBtn = modal2.querySelector(".app-layout-header-close");
@@ -11450,11 +11560,11 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       let url = rawUrl;
       if (url && url.startsWith("/")) url = location.origin + url;
       if (!url || !/^https?:\/\//i.test(url)) {
-        log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u672A\u53D6\u5230\u6709\u6548\u76F4\u94FE:", url);
+        log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u672A\u53D6\u5230\u6709\u6548\u76F4\u94FE:", url);
         alert("\u672A\u80FD\u83B7\u53D6\u89C6\u9891\u76F4\u94FE\uFF0C\u65E0\u6CD5\u5916\u90E8\u6253\u5F00");
         return;
       }
-      log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5916\u90E8\u6253\u5F00:", title, url);
+      log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5916\u90E8\u6253\u5F00:", title, url);
       ipcRenderer.send("external-play", { kind: "url", url, title });
       setTimeout(() => {
         const closeBtn = modal2.querySelector(".app-layout-header-close");
@@ -11508,7 +11618,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       });
       overlay.addEventListener("mousedown", (e) => e.stopPropagation());
       document.body.appendChild(overlay);
-      log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u5F39\u51FA\u64AD\u653E\u65B9\u5F0F\u9009\u62E9\u5F39\u7A97");
+      log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u5F39\u51FA\u64AD\u653E\u65B9\u5F0F\u9009\u62E9\u5F39\u7A97");
     }
     function ensureButton2(modal2) {
       if (modal2.querySelector(".fntv-ext-open")) return;
@@ -11561,18 +11671,18 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
             return;
           }
           const itemGuid = m[1];
-          log6("[\u64AD\u653E\u9875 MPV] \u6253\u5F00 item:", itemGuid);
+          log7("[\u64AD\u653E\u9875 MPV] \u6253\u5F00 item:", itemGuid);
           ipcRenderer.send("play-movie", { id: itemGuid, token: "", sourceIndex: 0, player: "mpv" });
         });
         bar2.appendChild(btn);
-        log6("[\u64AD\u653E\u9875 MPV] \u63A7\u5236\u680F\u6309\u94AE\u5DF2\u6CE8\u5165");
+        log7("[\u64AD\u653E\u9875 MPV] \u63A7\u5236\u680F\u6309\u94AE\u5DF2\u6CE8\u5165");
       } catch (e) {
       }
     };
     const mpvObs = new MutationObserver(mpvBtnInjected);
     mpvObs.observe(document.body, { childList: true, subtree: true });
     mpvBtnInjected();
-    log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u6CE8\u5165(\u81EA\u52A8\u5F39\u7A97\u9009\u62E9 + \u6807\u9898\u680F\u5916\u90E8\u6253\u5F00\u6309\u94AE)");
+    log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u6CE8\u5165(\u81EA\u52A8\u5F39\u7A97\u9009\u62E9 + \u6807\u9898\u680F\u5916\u90E8\u6253\u5F00\u6309\u94AE)");
   }
 
   // src/preload/plugins/embyWall/detail/epBackfill.ts
@@ -11904,10 +12014,10 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       } else {
         setBtn(btn, "\u2713 \u6570\u636E\u5DF2\u6700\u65B0", "\u6BCF\u96C6\u6807\u9898/\u7B80\u4ECB\u90FD\u4E0E TMDB \u4E00\u81F4\uFF0C\u65E0\u9700\u8865\u5168\u3002");
       }
-      log6("[epBackfill] \u5B8C\u6210 S" + seasonNumber + " total=" + stats.total + " filled=" + stats.filled + " fallback=" + stats.upgraded + " unchanged=" + stats.unchanged + " unmatched=" + stats.unmatched + " failed=" + stats.failed);
+      log7("[epBackfill] \u5B8C\u6210 S" + seasonNumber + " total=" + stats.total + " filled=" + stats.filled + " fallback=" + stats.upgraded + " unchanged=" + stats.unchanged + " unmatched=" + stats.unmatched + " failed=" + stats.failed);
     } catch (e) {
       const msg = String(e && e.message || e).substring(0, 80);
-      log6("[epBackfill] \u5931\u8D25: " + msg);
+      log7("[epBackfill] \u5931\u8D25: " + msg);
       if (btn.isConnected) {
         setBtn(btn, "\u26A0 " + msg, msg);
         btn.style.color = "var(--fnos-ui-warn,#b06a3a)";
@@ -11946,7 +12056,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
   setOnShowsReady(injectCarousel);
   function handle3() {
     const base = location.origin;
-    log6("handle start");
+    log7("handle start");
     try {
       if (localStorage.getItem("fntv-perf-mode") === "1") {
         document.documentElement.classList.add("fnos-perf");
@@ -12010,13 +12120,13 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       if (location.pathname !== _lastPath) {
         _lastPath = location.pathname;
         syncTvPageClass();
-        log6("[TV\u7C7B\u540C\u6B65]", location.pathname, "isTv=", isFntvTvPage());
+        log7("[TV\u7C7B\u540C\u6B65]", location.pathname, "isTv=", isFntvTvPage());
       }
     }, 400);
     window.addEventListener("beforeunload", () => window.clearInterval(_tvClassTimer));
     if (!isFntvTvPage()) return;
     document.documentElement.classList.add("fnos-tv-page");
-    const logNav = (label) => log6("NAV", label, location.href);
+    const logNav = (label) => log7("NAV", label, location.href);
     logNav("init");
     injectUiThemeStyle();
     applyUiTheme();
@@ -12158,7 +12268,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         else if (r === "skip") skippedCount++;
       }
       if (_whitewashPasses % 20 === 1 || fixedCount > 0) {
-        log6("whitewash pass", _whitewashPasses, "fixed", fixedCount, "skipped-overlay", skippedCount);
+        log7("whitewash pass", _whitewashPasses, "fixed", fixedCount, "skipped-overlay", skippedCount);
       }
     };
     let _rcPasses = 0;
@@ -12208,7 +12318,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         if (_roundedCheck(all[i])) fixedCount++;
       }
       if (_rcPasses % 20 === 1 || fixedCount > 0) {
-        log6("rounded-corner pass", _rcPasses, "fixed-fullscreen", fixedCount);
+        log7("rounded-corner pass", _rcPasses, "fixed-fullscreen", fixedCount);
       }
     };
     setTimeout(_globalRoundedCornerEnforcer, 800);
@@ -12238,7 +12348,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
             if (_roundedCheck(sub[i])) fixed++;
           }
         }
-        if (fixed > 0) log6("rounded-corner incremental fixed", fixed);
+        if (fixed > 0) log7("rounded-corner incremental fixed", fixed);
       }, 200);
     });
     _rcObs.observe(document.body, { childList: true, subtree: true });
@@ -12267,7 +12377,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         const batch = _pendingClear.splice(0, _pendingClear.length);
         let fixed = 0;
         for (const root of batch) fixed += _whitewashSubtree(root);
-        if (fixed > 0) log6("whitewash incremental fixed", fixed);
+        if (fixed > 0) log7("whitewash incremental fixed", fixed);
         _forceDatePickerDark();
       }, 200);
     });
@@ -12545,22 +12655,22 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       const swNas = addToggle("NAS \u672C\u5730\u7F51\u76D8\u4EE3\u7406", secBodyNet);
       const swWheel = addToggle("\u9F20\u6807\u6EDA\u8F6E\u6A2A\u5411\u6EDA\u52A8", secBodyUX);
       swProxy.addEventListener("change", () => {
-        log6("[\u5F00\u5173\u4FDD\u5B58] swProxy=" + swProxy.checked);
-        ipcRenderer.invoke("settings:set-download-proxy", swProxy.checked).catch((e) => log6("set-download-proxy failed", e));
+        log7("[\u5F00\u5173\u4FDD\u5B58] swProxy=" + swProxy.checked);
+        ipcRenderer.invoke("settings:set-download-proxy", swProxy.checked).catch((e) => log7("set-download-proxy failed", e));
       });
       swHide.addEventListener("change", () => {
-        log6("[\u5F00\u5173\u4FDD\u5B58] swHide=" + swHide.checked);
-        ipcRenderer.invoke("settings:set-hide-play", swHide.checked).catch((e) => log6("set-hide-play failed", e));
+        log7("[\u5F00\u5173\u4FDD\u5B58] swHide=" + swHide.checked);
+        ipcRenderer.invoke("settings:set-hide-play", swHide.checked).catch((e) => log7("set-hide-play failed", e));
       });
       swNas.addEventListener("change", () => {
-        log6("[\u5F00\u5173\u4FDD\u5B58] swNas=" + swNas.checked);
-        ipcRenderer.invoke("settings:set-nas-proxy", swNas.checked).catch((e) => log6("set-nas-proxy failed", e));
+        log7("[\u5F00\u5173\u4FDD\u5B58] swNas=" + swNas.checked);
+        ipcRenderer.invoke("settings:set-nas-proxy", swNas.checked).catch((e) => log7("set-nas-proxy failed", e));
       });
       swWheel.checked = S.wheelHScrollEnabled;
       swWheel.addEventListener("change", () => {
         S.wheelHScrollEnabled = swWheel.checked;
-        log6("[\u5F00\u5173\u4FDD\u5B58] swWheel=" + swWheel.checked);
-        ipcRenderer.invoke("settings:set-wheel-hscroll", swWheel.checked).catch((e) => log6("set-wheel-hscroll failed", e));
+        log7("[\u5F00\u5173\u4FDD\u5B58] swWheel=" + swWheel.checked);
+        ipcRenderer.invoke("settings:set-wheel-hscroll", swWheel.checked).catch((e) => log7("set-wheel-hscroll failed", e));
         wheelToScroll();
       });
       const themeRow = document.createElement("div");
@@ -12676,7 +12786,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       const applyShaderConfig = () => {
         var _a, _b;
         const iccOn = (_b = (_a = iccToggleBtn.textContent) == null ? void 0 : _a.includes("\u5F00")) != null ? _b : false;
-        ipcRenderer.invoke("settings:set-mpv-shader-config", { shader: shaderSel.value, icc: iccOn }).catch((err) => log6("set-mpv-shader-config failed", err));
+        ipcRenderer.invoke("settings:set-mpv-shader-config", { shader: shaderSel.value, icc: iccOn }).catch((err) => log7("set-mpv-shader-config failed", err));
       };
       const renderIccBtn = (on) => {
         iccToggleBtn.textContent = on ? "ICC \u6821\u8272\uFF1A\u5F00" : "ICC \u6821\u8272\uFF1A\u5173";
@@ -12731,7 +12841,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           e.stopPropagation();
           overlay._defaultPlayer = mode;
           refreshDefaultPlayer();
-          ipcRenderer.invoke("settings:set-default-player", mode).catch((err) => log6("set-default-player failed", err));
+          ipcRenderer.invoke("settings:set-default-player", mode).catch((err) => log7("set-default-player failed", err));
         });
         defGrid.appendChild(b);
         defEls.push(b);
@@ -12792,7 +12902,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       secBodyBili.appendChild(biliSearchRow);
       secBodyBili.appendChild(biliFold.fold);
       swMpvBiliSearch.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-mpv-bili-search-enabled", swMpvBiliSearch.checked).catch((err) => log6("set-mpv-bili-search-enabled failed", err));
+        ipcRenderer.invoke("settings:set-mpv-bili-search-enabled", swMpvBiliSearch.checked).catch((err) => log7("set-mpv-bili-search-enabled failed", err));
       });
       const aggRow = document.createElement("div");
       aggRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;margin-top:4px;gap:10px;";
@@ -12810,7 +12920,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       biliFoldBody.appendChild(aggRow);
       aggInput.addEventListener("change", () => {
         const v = parseInt(aggInput.value, 10);
-        ipcRenderer.invoke("settings:set-mpv-bili-aggregate-threshold", isNaN(v) ? 0 : v).catch((err) => log6("set-mpv-bili-aggregate-threshold failed", err));
+        ipcRenderer.invoke("settings:set-mpv-bili-aggregate-threshold", isNaN(v) ? 0 : v).catch((err) => log7("set-mpv-bili-aggregate-threshold failed", err));
       });
       const secBangumi = section("Bangumi \u767B\u5F55");
       const secBodyBangumi = secBangumi.body;
@@ -12865,7 +12975,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       bangumiSyncRow.appendChild(swBangumiSync);
       secBodyBangumi.appendChild(bangumiSyncRow);
       swBangumiSync.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-bangumi-sync-enabled", swBangumiSync.checked).catch((err) => log6("set-bangumi-sync-enabled failed", err));
+        ipcRenderer.invoke("settings:set-bangumi-sync-enabled", swBangumiSync.checked).catch((err) => log7("set-bangumi-sync-enabled failed", err));
       });
       const bangumiThrRow = document.createElement("div");
       bangumiThrRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-radius:6px;transition:background .12s;";
@@ -12882,7 +12992,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       secBodyBangumi.appendChild(bangumiThrRow);
       bangumiThresholdInput.addEventListener("change", () => {
         const v = Number(bangumiThresholdInput.value) || 80;
-        ipcRenderer.invoke("settings:set-bangumi-sync-threshold", v).catch((err) => log6("set-bangumi-sync-threshold failed", err));
+        ipcRenderer.invoke("settings:set-bangumi-sync-threshold", v).catch((err) => log7("set-bangumi-sync-threshold failed", err));
       });
       const bangumiHintBottom = document.createElement("div");
       bangumiHintBottom.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);margin-top:10px;line-height:1.5;";
@@ -13226,7 +13336,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       };
       const swDouban = addDoubanToggle("\u542F\u7528\u8C46\u74E3\u540C\u6B65");
       swDouban.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-douban-enabled", swDouban.checked).catch((err) => log6("set-douban-enabled failed", err));
+        ipcRenderer.invoke("settings:set-douban-enabled", swDouban.checked).catch((err) => log7("set-douban-enabled failed", err));
       });
       const doubanBtns = document.createElement("div");
       doubanBtns.style.cssText = "display:flex;gap:6px;margin-top:6px;";
@@ -13647,7 +13757,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         const payload = { blockTypes, blacklist };
         if (_danTimer) clearTimeout(_danTimer);
         _danTimer = setTimeout(() => {
-          ipcRenderer.invoke("settings:set-bili-danmaku-style", payload).catch((err) => log6("set-bili-danmaku-style failed", err));
+          ipcRenderer.invoke("settings:set-bili-danmaku-style", payload).catch((err) => log7("set-bili-danmaku-style failed", err));
         }, 300);
       }
       for (const bt of BLOCK_TYPES) {
@@ -13841,7 +13951,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       danFoldBody.appendChild(biliFolderBtn);
       biliFolderBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        ipcRenderer.invoke("bili:open-danmaku-folder").catch((err) => log6("bili:open-danmaku-folder failed", err));
+        ipcRenderer.invoke("bili:open-danmaku-folder").catch((err) => log7("bili:open-danmaku-folder failed", err));
       });
       const secDiag = section("\u8BCA\u65AD\u4FE1\u606F");
       const diagBody = secDiag.body;
@@ -13940,7 +14050,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       debugTarget = secDebugBody;
       const swDebug = addDebugToggle("\u542F\u7528\u8C03\u8BD5\u65E5\u5FD7\uFF08\u8BE6\u7EC6\u6A21\u5F0F\uFF09");
       swDebug.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-debug-enabled", swDebug.checked).catch((err) => log6("set-debug-enabled failed", err));
+        ipcRenderer.invoke("settings:set-debug-enabled", swDebug.checked).catch((err) => log7("set-debug-enabled failed", err));
       });
       const dbgFold = mkFold("\u7EC4\u4EF6\u65E5\u5FD7\uFF08\u6309\u7EC4\u4EF6\u5355\u72EC\u63A7\u5236\uFF09");
       secDebugBody.appendChild(dbgFold.fold);
@@ -13967,7 +14077,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           debugComps.forEach(([k]) => {
             cur[k] = !!swDebugComps[k].checked;
           });
-          ipcRenderer.invoke("settings:set-debug-components", cur).catch((err) => log6("set-debug-components failed", err));
+          ipcRenderer.invoke("settings:set-debug-components", cur).catch((err) => log7("set-debug-components failed", err));
         });
       });
       const logFooter = document.createElement("div");
@@ -14031,7 +14141,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       skipRow.appendChild(swSkip);
       skipBody.appendChild(skipRow);
       swSkip.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-smart-skip-enabled", swSkip.checked).catch((err) => log6("set-smart-skip-enabled failed", err));
+        ipcRenderer.invoke("settings:set-smart-skip-enabled", swSkip.checked).catch((err) => log7("set-smart-skip-enabled failed", err));
       });
       ipcRenderer.invoke("settings:get-smart-skip-enabled").then((v) => {
         swSkip.checked = !!v;
@@ -14183,8 +14293,8 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       paintBeautify();
       beautifyInput.addEventListener("change", () => {
         S.detailBoxless = !beautifyInput.checked;
-        log6("[\u5F00\u5173\u4FDD\u5B58] \u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316=" + beautifyInput.checked + " (detailBoxless=" + S.detailBoxless + ")");
-        ipcRenderer.invoke("settings:set-detail-boxless", S.detailBoxless).catch((e) => log6("set-detail-boxless failed", e));
+        log7("[\u5F00\u5173\u4FDD\u5B58] \u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316=" + beautifyInput.checked + " (detailBoxless=" + S.detailBoxless + ")");
+        ipcRenderer.invoke("settings:set-detail-boxless", S.detailBoxless).catch((e) => log7("set-detail-boxless failed", e));
         paintBeautify();
         try {
           if (S.detailBoxless) teardownDetailBeautify();
@@ -14800,18 +14910,18 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         try {
           s = await ipcRenderer.invoke("settings:get");
         } catch (err) {
-          log6("SETTINGS refresh failed: settings:get invoke error", err);
+          log7("SETTINGS refresh failed: settings:get invoke error", err);
           return;
         }
         if (!s || typeof s !== "object") {
-          log6("SETTINGS refresh failed: settings:get returned", s);
+          log7("SETTINGS refresh failed: settings:get returned", s);
           return;
         }
         const seg2 = (name, fn) => {
           try {
             fn();
           } catch (err) {
-            log6(`SETTINGS refresh segment [${name}] failed`, err);
+            log7(`SETTINGS refresh segment [${name}] failed`, err);
           }
         };
         seg2("switches", () => {
@@ -14826,7 +14936,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           }
           swWheel.checked = !!s.wheelHScroll;
           S.wheelHScrollEnabled = !!s.wheelHScroll;
-          log6("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
+          log7("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
         });
         seg2("players", () => {
           mpvPath.textContent = s.mpvPath || "\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09";
@@ -14906,7 +15016,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
             dmApiStatus.style.color = dmApiInput.value ? "var(--fnos-ui-sub)" : "var(--fnos-ui-warn)";
           }
         });
-        log6("SETTINGS refresh done: bangumiSyncEnabled=" + String(s.bangumiSyncEnabled) + " swChecked=" + String(swBangumiSync.checked) + " token=" + (s.bangumiToken ? "set" : "none"));
+        log7("SETTINGS refresh done: bangumiSyncEnabled=" + String(s.bangumiSyncEnabled) + " swChecked=" + String(swBangumiSync.checked) + " token=" + (s.bangumiToken ? "set" : "none"));
       };
       document.addEventListener("click", (ev) => {
         if (overlay.style.display !== "flex") return;
@@ -15006,7 +15116,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
             el.style.setProperty("background-color", "transparent", "important");
             el.style.setProperty("backdrop-filter", "none", "important");
             el.style.setProperty("-webkit-backdrop-filter", "none", "important");
-            log6("[lc-875] top-nav transparentized:", (el.className || el.tagName).slice(0, 60));
+            log7("[lc-875] top-nav transparentized:", (el.className || el.tagName).slice(0, 60));
             break;
           }
         }
@@ -15031,13 +15141,13 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           if (!drawer2) return;
           if (drawer2.classList.contains("drawer-open")) {
             animateCloseDrawer(drawer2);
-            log6("BURGER -> CLOSE (anim)");
+            log7("BURGER -> CLOSE (anim)");
           } else {
             openDrawer(drawer2);
-            log6("BURGER -> OPEN (anim)");
+            log7("BURGER -> OPEN (anim)");
           }
         }, true);
-        log6("BURGER click-hook installed (capture+stop)");
+        log7("BURGER click-hook installed (capture+stop)");
       }
       const drawer = document.querySelector('.fixed.inset-0[class*="lg:!hidden"]');
       if (drawer && !drawer.dataset.maskHooked) {
@@ -15052,10 +15162,10 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           e.stopImmediatePropagation();
           if (drawer.classList.contains("drawer-open")) {
             animateCloseDrawer(drawer);
-            log6("MASK -> CLOSED (anim)");
+            log7("MASK -> CLOSED (anim)");
           }
         }, true);
-        log6("MASK click-close-hook installed (capture+stop)");
+        log7("MASK click-close-hook installed (capture+stop)");
       }
       applyTopNavTransparent();
       scheduleTopLeftIconContrast(500);
@@ -15255,7 +15365,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         paintTopLeftIcons(icons, lum);
         _tlLastApply = Date.now();
       } catch (e) {
-        log6("[lc-925] \u5DE6\u4E0A\u89D2\u53CD\u8272\u5F02\u5E38: " + String(e).substring(0, 80));
+        log7("[lc-925] \u5DE6\u4E0A\u89D2\u53CD\u8272\u5F02\u5E38: " + String(e).substring(0, 80));
       } finally {
         _tlBusy = false;
       }
@@ -15295,7 +15405,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         }))
       };
       console.log("[fntvTopLeftIconDiag]", JSON.stringify(info, null, 2));
-      log6("[fntvTopLeftIconDiag] " + JSON.stringify(info));
+      log7("[fntvTopLeftIconDiag] " + JSON.stringify(info));
       return info;
     };
     ensureBurgerVisible();
@@ -15351,7 +15461,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       }
       info.seasonTitleCandidates = cand;
       console.log("[fntvDumpSeasonDOM]", JSON.stringify(info, null, 2));
-      log6("[fntvDumpSeasonDOM] " + JSON.stringify(info));
+      log7("[fntvDumpSeasonDOM] " + JSON.stringify(info));
       return info;
     };
     const injectRefreshButton = () => {
@@ -15403,7 +15513,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         location.reload();
       });
       (_b = anchorEl.parentNode) == null ? void 0 : _b.insertBefore(btn, anchorEl.nextSibling);
-      log6("Refresh button injected after anchor (burger/\u9996\u9875)");
+      log7("Refresh button injected after anchor (burger/\u9996\u9875)");
     };
     injectRefreshButton();
     [1e3, 3e3, 6e3].forEach((t2) => setTimeout(injectRefreshButton, t2));
@@ -15423,11 +15533,11 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     const hideStaleViews = () => {
       const vw = window.innerWidth, vh = window.innerHeight;
       if (document.querySelector("video")) {
-        log6("hideStaleViews: SKIP \u2014 <video> present, avoid hiding video page");
+        log7("hideStaleViews: SKIP \u2014 <video> present, avoid hiding video page");
         return;
       }
       if (document.querySelector('.videoPlayer, .playerPage, #videoPlayer, [data-itemtype="Video"]')) {
-        log6("hideStaleViews: SKIP \u2014 video container present");
+        log7("hideStaleViews: SKIP \u2014 video container present");
         return;
       }
       const candidates = [];
@@ -15456,12 +15566,12 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         for (let i = 0; i < views.length - 1; i++) {
           const _v = views[i];
           if (!_lastHasDetail && _v.querySelector('[data-id="details"], .fnos-season-2col, .card-root')) {
-            log6("hideStaleViews: SKIP \u2014 \u89C6\u56FE\u542B\u771F\u5B9E\u8BE6\u60C5\u5185\u5BB9, \u907F\u514D\u767D\u5C4F | class=", _v.className.slice(0, 40));
+            log7("hideStaleViews: SKIP \u2014 \u89C6\u56FE\u542B\u771F\u5B9E\u8BE6\u60C5\u5185\u5BB9, \u907F\u514D\u767D\u5C4F | class=", _v.className.slice(0, 40));
             continue;
           }
           if (getComputedStyle(_v).display !== "none") {
             _v.style.display = "none";
-            log6("hideStaleViews: hid stacked view", i + 1, "/", views.length, "| class=", _v.className.slice(0, 40));
+            log7("hideStaleViews: hid stacked view", i + 1, "/", views.length, "| class=", _v.className.slice(0, 40));
           }
         }
       }
@@ -15470,7 +15580,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       const d = document.querySelector('.fixed.inset-0[class*="lg:!hidden"]');
       if (d && d.classList.contains("drawer-open")) {
         animateCloseDrawer(d);
-        log6("NAV -> DRAWER CLOSED (anim)");
+        log7("NAV -> DRAWER CLOSED (anim)");
       }
     };
     const ensureHomepageEnhanced = () => {
@@ -15491,7 +15601,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           S.carouselInited = true;
           S.carouselRevealed = true;
           resumeCarousel();
-          log6("[lc-950] wrapper \u4ECD\u6302\u8F7D, \u76F4\u63A5 resume(\u96F6\u91CD\u8F7D, \u6D77\u62A5\u4FDD\u7559)");
+          log7("[lc-950] wrapper \u4ECD\u6302\u8F7D, \u76F4\u63A5 resume(\u96F6\u91CD\u8F7D, \u6D77\u62A5\u4FDD\u7559)");
           return;
         }
         const target = findMediaLibrarySection();
@@ -15502,7 +15612,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
             S.carouselInited = true;
             S.carouselRevealed = true;
             resumeCarousel();
-            log6("[lc-950] \u590D\u7528\u6E38\u79BB wrapper \u6302\u56DE\u65B0 section(\u96F6\u91CD\u8F7D, \u6D77\u62A5/\u7B80\u4ECB\u4FDD\u7559)");
+            log7("[lc-950] \u590D\u7528\u6E38\u79BB wrapper \u6302\u56DE\u65B0 section(\u96F6\u91CD\u8F7D, \u6D77\u62A5/\u7B80\u4ECB\u4FDD\u7559)");
             return;
           } catch (_) {
           }
@@ -15529,20 +15639,20 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           }
           const heads = document.querySelectorAll("strong,h2,h3").length;
           const known = document.querySelectorAll(".relative.flex.flex-col.gap-6 > div").length;
-          log6("[lc-939] ensureHomepageEnhanced: \u91CD\u8BD5 6 \u6B21\u4ECD\u672A\u627E\u5230\u5A92\u4F53\u5E93\u533A\u5757, \u653E\u5F03\u91CD\u5EFA; diag headings=" + heads + " knownLayoutDivs=" + known + " pathname=" + location.pathname);
+          log7("[lc-939] ensureHomepageEnhanced: \u91CD\u8BD5 6 \u6B21\u4ECD\u672A\u627E\u5230\u5A92\u4F53\u5E93\u533A\u5757, \u653E\u5F03\u91CD\u5EFA; diag headings=" + heads + " knownLayoutDivs=" + known + " pathname=" + location.pathname);
           return;
         }
         const diagShows = (S.apiShows || []).slice(0, 12).map((s) => ({ t: (s.title || "").substring(0, 8), hasBlob: !!s._backdropBlob, portrait: !!s._backdropIsPortrait, back: !!s.backdrop }));
-        log6("[lc-939] ensureHomepageEnhanced \u91CD\u5EFA\u524D S.apiShows.len=", S.apiShows.length, "sample=", JSON.stringify(diagShows));
+        log7("[lc-939] ensureHomepageEnhanced \u91CD\u5EFA\u524D S.apiShows.len=", S.apiShows.length, "sample=", JSON.stringify(diagShows));
         injectCarousel();
-        log6("ensureHomepageEnhanced: \u5DF2\u5F3A\u5236\u91CD\u6CE8\u5165\u8F6E\u64AD(\u8FD4\u56DE\u9996\u9875\u4E0D\u518D\u89E6\u53D1 backdrop \u7F51\u7EDC\u91CD\u62C9/\u5237\u65B0)");
+        log7("ensureHomepageEnhanced: \u5DF2\u5F3A\u5236\u91CD\u6CE8\u5165\u8F6E\u64AD(\u8FD4\u56DE\u9996\u9875\u4E0D\u518D\u89E6\u53D1 backdrop \u7F51\u7EDC\u91CD\u62C9/\u5237\u65B0)");
       };
       rebuild();
       if (S.apiShows.length === 0) {
         S.apiLoaded = false;
         S.carouselRevealed = false;
         fetchShowsViaIPC(location.origin).then(() => {
-        }).catch((e) => log6("[lc-939] ensureHomepageEnhanced \u91CD\u65B0\u62C9\u53D6\u5F02\u5E38:", e));
+        }).catch((e) => log7("[lc-939] ensureHomepageEnhanced \u91CD\u65B0\u62C9\u53D6\u5F02\u5E38:", e));
       }
     };
     try {
@@ -15612,7 +15722,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       window.addEventListener("hashchange", () => logNav("hashchange"));
       setTimeout(hideStaleViews, 1500);
     } catch (e) {
-      log6("NAV hook err", String(e).substring(0, 60));
+      log7("NAV hook err", String(e).substring(0, 60));
     }
     if (isDetailPage()) {
       backfillDetailLogo();
@@ -15637,15 +15747,15 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     injectCarousel();
     fetchShowsViaIPC(base).then(() => {
       if (S.apiShows.length === 0) {
-        log6("API empty");
+        log7("API empty");
         return;
       }
-      log6("got", S.apiShows.length, "shows from API (carousel revealed by fetchShowsViaIPC)");
+      log7("got", S.apiShows.length, "shows from API (carousel revealed by fetchShowsViaIPC)");
       if (!S.carouselInited && S.carouselRevealed) {
         S.carouselInited = false;
         injectCarousel();
       }
-    }).catch((e) => log6("fetch error:", e));
+    }).catch((e) => log7("fetch error:", e));
     function refreshCarouselPosters() {
       if (S.apiLoading) return;
       if (document.hidden) return;
@@ -15653,15 +15763,15 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       S.apiLoaded = false;
       S.carouselRevealed = false;
       const base2 = location.origin;
-      log6("carousel refresh: re-fetching");
+      log7("carousel refresh: re-fetching");
       fetchShowsViaIPC(base2).then(() => {
         if (S.apiShows.length === 0) return;
-        log6("carousel refresh: got", S.apiShows.length, "shows");
+        log7("carousel refresh: got", S.apiShows.length, "shows");
         if (!S.carouselInited && S.carouselRevealed) {
           S.carouselInited = false;
           injectCarousel();
         }
-      }).catch((e) => log6("carousel refresh error:", e));
+      }).catch((e) => log7("carousel refresh error:", e));
     }
     const CAROUSEL_REFRESH_MS = 10 * 60 * 1e3;
     setInterval(refreshCarouselPosters, CAROUSEL_REFRESH_MS);
@@ -15670,7 +15780,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       if (document.hidden) return;
       const vid = document.querySelector("video");
       if (vid && !vid.paused) return;
-      log6("[lc-932] \u5B9A\u65F6\u6574\u9875\u91CD\u8F7D(\u6BCF 10 \u5206\u949F)");
+      log7("[lc-932] \u5B9A\u65F6\u6574\u9875\u91CD\u8F7D(\u6BCF 10 \u5206\u949F)");
       try {
         location.reload();
       } catch (_) {
@@ -15694,12 +15804,12 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         _moHits = 0;
       }
       if (++_moHits > 40) {
-        if (_moHits === 41) log6("[web] MutationObserver \u89E6\u53D1\u98CE\u66B4(>40/s)\uFF0C\u672C\u79D2\u8DF3\u8FC7\u8F6E\u64AD\u91CD\u5EFA\uFF0C\u9632\u81EA\u6FC0\u5361\u6B7B");
+        if (_moHits === 41) log7("[web] MutationObserver \u89E6\u53D1\u98CE\u66B4(>40/s)\uFF0C\u672C\u79D2\u8DF3\u8FC7\u8F6E\u64AD\u91CD\u5EFA\uFF0C\u9632\u81EA\u6FC0\u5361\u6B7B");
         return;
       }
       if (!_isHomePath()) return;
       if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
-        log6("carousel lost, re-inject");
+        log7("carousel lost, re-inject");
         destroyCarousel();
         S.carouselContainer = null;
         S.carouselInited = false;
@@ -15710,7 +15820,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       wheelToScroll();
       if (!_isHomePath()) return;
       if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
-        log6("watchdog: carousel lost");
+        log7("watchdog: carousel lost");
         destroyCarousel();
         S.carouselContainer = null;
         S.carouselInited = false;
@@ -15779,7 +15889,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       // [lc-984] 清晰度胶囊诊断: 标题后没出现胶囊时跑它, 看原生角标是否被文本启发式命中、标题 p 是谁
       epResolution: () => epResolutionDiag()
     };
-    log6("[lc-940][DIAG] window._fntvDiag \u5DF2\u66B4\u9732, \u4F7F\u7528: _fntvDiag.rebuildSnapshot() / _fntvDiag.dumpBackdropState()");
+    log7("[lc-940][DIAG] window._fntvDiag \u5DF2\u66B4\u9732, \u4F7F\u7528: _fntvDiag.rebuildSnapshot() / _fntvDiag.dumpBackdropState()");
     const _syncVideoActiveClass = () => {
       const hasVideo = !!document.querySelector("video");
       document.documentElement.classList.toggle("fnos-video-active", hasVideo);
@@ -18206,8 +18316,8 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       const ref = findReferenceButton();
       if (ref) ref.removeAttribute("data-mpv-btn");
     } else {
-      const marked = document.querySelector("button[data-mpv-btn]");
-      if (marked && marked.offsetParent !== null) marked.removeAttribute("data-mpv-btn");
+      const marked2 = document.querySelector("button[data-mpv-btn]");
+      if (marked2 && marked2.offsetParent !== null) marked2.removeAttribute("data-mpv-btn");
     }
     const referenceButton = findReferenceButton();
     if (!referenceButton || referenceButton.hasAttribute("data-mpv-btn")) return;
@@ -18528,9 +18638,9 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     if (!b) return;
     wired = true;
     wireBar(b, v);
-    log7("\u8FDB\u5EA6\u6761\u5DF2\u5B9A\u4F4D\u5E76\u63A5\u7EBF: " + (b.className || b.tagName).toString().slice(0, 80));
+    log8("\u8FDB\u5EA6\u6761\u5DF2\u5B9A\u4F4D\u5E76\u63A5\u7EBF: " + (b.className || b.tagName).toString().slice(0, 80));
   }
-  function log7(msg) {
+  function log8(msg) {
     try {
       console.info("[previewThumb]", msg);
     } catch {

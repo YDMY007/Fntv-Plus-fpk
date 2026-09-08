@@ -6,6 +6,7 @@
 // 例外不挂载：titlebar（桌面窗口控制浮条）、dialogUI（主进程对话框系统）。
 
 import { installDiag } from './preload/web/diag';
+import './preload/web/playSync'; // 模块体自装（拦截 play/record → Bangumi 同步触发器）
 
 import './preload/plugins/a11y';
 import './preload/plugins/animeLib';

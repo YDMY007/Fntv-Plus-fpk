@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"regexp"
 	"strings"
 	"sync"
@@ -394,16 +395,23 @@ func (b *Bridge) bangumiReq(method, path string, token string, body any) (int, m
 	return resp.StatusCode, out, nil
 }
 
-// bangumiSyncProgress {guid, percentage, cookie}：播放进度 → Bangumi 标记（在看/看过）。
+// bangumiSyncProgress {guid, percentage, item}：播放进度 → Bangumi 标记（在看/看过）。
 // 忠实移植 syncOnProgress：TV → 搜索条目 → 定位集 → 标集看过；Movie → 标条目看过/在看。
+// [v0.50.0] 入参变更：item 由前端直连 play/info 解析好后传入（原先后端自查 play/info，
+// 但后端转发只有 document.cookie，fnOS 会话 token 为 httpOnly 拿不到 → 恒未登录，lc-057 同款断链）。
+// 开关/阈值由后端读 settings 检查（bangumiSyncEnabled / bangumiSyncThreshold）。
 func (b *Bridge) bangumiSyncProgress(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		GUID       string  `json:"guid"`
-		Percentage float64 `json:"percentage"`
-		Cookie     string  `json:"cookie"`
+		GUID       string         `json:"guid"`
+		Percentage float64        `json:"percentage"`
+		Item       map[string]any `json:"item"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 256*1024)).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad json")
+		return
+	}
+	if getSetting(b.cfg, "bangumiSyncEnabled") != "1" {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "Bangumi 同步未开启"})
 		return
 	}
 	token := getSetting(b.cfg, "bangumiToken")
@@ -411,19 +419,17 @@ func (b *Bridge) bangumiSyncProgress(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "未配置 Bangumi Token"})
 		return
 	}
-	if req.Percentage < 0 {
-		req.Percentage = 0
+	threshold := 80.0
+	if th, perr := strconv.ParseFloat(strings.TrimSpace(getSetting(b.cfg, "bangumiSyncThreshold")), 64); perr == nil && th > 0 && th <= 100 {
+		threshold = th
 	}
-	body, _ := json.Marshal(map[string]any{"item_guid": req.GUID})
-	pr, err := b.callFnOSJSON(http.MethodPost, "/v/api/v1/play/info", body, req.Cookie)
-	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "读取播放信息失败: " + err.Error()})
+	if req.Percentage < threshold {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "进度未达阈值"})
 		return
 	}
-	data, _ := pr["data"].(map[string]any)
-	item, _ := data["item"].(map[string]any)
+	item := req.Item
 	if item == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "读取播放信息失败"})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "缺少条目信息"})
 		return
 	}
 	isEpisode := strings.EqualFold(fmt.Sprintf("%v", item["type"]), "Episode")
