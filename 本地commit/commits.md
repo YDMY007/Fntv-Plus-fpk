@@ -49,3 +49,4 @@
 | lc-038 | 2026-09-08 | v0.27.0 冰块图标去白框：内切 7% 裁剪+自绘 22% 圆角透明边，四角 alpha=0 验证通过，预览 docs/ice-cube-cropped-preview.png |
 | lc-039 | 2026-09-08 | v0.28.0 修 TMDB 卡数据不全：忠实移植 fetchShowDetails（append_to_response 聚合+include_image_language）+ normalizeShow 完整形状（评分/类型/演职员/主创/外链/预告/平台/推荐/上下集）+ 长标题递进搜索 + tmdb:season-episodes 双语分集 |
 | lc-040 | 2026-09-08 | v0.29.0 修桌面图标缓存残留：图标文件版本化改名 fntv_v2_64/256.png（fnOS 桌面按路径缓存，同名不失效），双入口统一引用；设置入口也换冰块图 |
+| lc-041 | 2026-09-08 | v0.30.0 全插件挂载+通道全覆盖：25 插件全挂（对齐桌面）；fs/path 垫片；shim 113 通道 0 缺口（审计脚本验证） |
