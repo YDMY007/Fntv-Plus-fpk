@@ -27,6 +27,110 @@ function genAuthx(url, data) {
 
 const LS_KEY = 'fntv:electron-settings';
 
+/* ── 观影记录：前端直连 fnOS API 的全库钻取（与桌面版 getWatchedItems 同逻辑）──
+ * 此前走后端 /bridge/douban/watched 转发，但后端请求只能携带前端 document.cookie——
+ * fnOS 会话凭证（Trim-MC-token）为 httpOnly 时拿不到 → 后端请求未登录 → 空列表。
+ * 改为前端直连：credentials:'include' 自动带全部会话 cookie（含 httpOnly）+ 本地 genAuthx
+ * 签名，与海报 fetchItemPoster 同款已验证鉴权路径。 */
+function fnosApi(method, path, body) {
+  const headers = { 'Authx': genAuthx(path, body) };
+  if (body) headers['Content-Type'] = 'application/json';
+  return fetch(location.origin + path, {
+    method,
+    credentials: 'include',
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  }).then((r) => r.json());
+}
+
+async function fnosAnalyzeItem(it) {
+  const empty = { totalRuntimeMs: 0, progress: 0, anyWatch: false, started: false, lastPlayed: 0 };
+  const lp = it.watched_ts > 0 ? it.watched_ts * 1000 : 0;
+  const type = String(it.type || '').toLowerCase();
+  if (type === 'movie') {
+    const totalSec = it.duration > 0 ? it.duration : (it.runtime > 0 ? it.runtime * 60 : 0);
+    if (it.watched === 1) return { totalRuntimeMs: totalSec * 1000, progress: 1, anyWatch: true, started: false, lastPlayed: lp };
+    if (it.watched_ts > 0) return { totalRuntimeMs: totalSec * 1000, progress: 0, anyWatch: true, started: true, lastPlayed: lp };
+    return empty;
+  }
+  let totalSec = 0, totalEp = 0, watchedEp = 0;
+  const addLeaf = (leaf) => {
+    if (leaf.duration > 0) totalSec += leaf.duration;
+    else if (leaf.runtime > 0) totalSec += leaf.runtime * 60;
+    totalEp++;
+    if (leaf.watched === 1) watchedEp++;
+  };
+  try {
+    const ch = await fnosApi('POST', '/v/api/v1/item/list', { parent_guid: it.guid, exclude_folder: 1, sort_column: 'sort_title', sort_type: 'ASC' });
+    const cl = (ch && ch.data && Array.isArray(ch.data.list)) ? ch.data.list : [];
+    for (const c of cl) {
+      const ct = String(c.type || '').toLowerCase();
+      if (ct === 'episode' || ct === 'movie') addLeaf(c);
+      else {
+        try {
+          const eps = await fnosApi('GET', '/v/api/v1/episode/list/' + c.guid);
+          ((eps && Array.isArray(eps.data)) ? eps.data : []).forEach(addLeaf);
+        } catch (e) { /* 单季失败忽略 */ }
+      }
+    }
+  } catch (e) { /* ignore */ }
+  if (totalEp === 0) { // 兜底：单层剧集结构
+    try {
+      const eps = await fnosApi('GET', '/v/api/v1/episode/list/' + it.guid);
+      ((eps && Array.isArray(eps.data)) ? eps.data : []).forEach(addLeaf);
+    } catch (e) { /* ignore */ }
+  }
+  const rtMs = totalSec > 0 ? totalSec * 1000 : (it.runtime > 0 ? it.runtime * 60000 : 0);
+  if (it.watched === 1 || (totalEp > 0 && watchedEp === totalEp)) {
+    return { totalRuntimeMs: rtMs, progress: 1, anyWatch: true, started: false, lastPlayed: lp };
+  }
+  if (watchedEp > 0) {
+    return { totalRuntimeMs: rtMs, progress: totalEp > 0 ? watchedEp / totalEp : 0, anyWatch: true, started: true, lastPlayed: lp };
+  }
+  return empty;
+}
+
+async function collectWatchedItemsFrontend() {
+  try {
+    const resp = await fnosApi('POST', '/v/api/v1/item/list', { parent_guid: '', exclude_folder: 1, sort_column: 'sort_title', sort_type: 'ASC' });
+    const list = (resp && resp.data && Array.isArray(resp.data.list)) ? resp.data.list : [];
+    if (!list.length) return { items: [], libraryTotal: 0, note: '库列表为空或未登录' };
+    const total = resp.data.total;
+    const libraryTotal = (typeof total === 'number' && total > list.length) ? total : list.length;
+    // 6 并发钻取（与桌面版 mapLimit(list, 6) 一致）
+    const results = new Array(list.length);
+    let cursor = 0;
+    const workers = new Array(6).fill(0).map(async () => {
+      while (cursor < list.length) {
+        const idx = cursor++;
+        const a = await fnosAnalyzeItem(list[idx]);
+        results[idx] = { it: list[idx], a };
+      }
+    });
+    await Promise.all(workers);
+    const items = results
+      .filter((p) => p && p.a.anyWatch)
+      .map((p) => {
+        const it = p.it, a = p.a;
+        return {
+          guid: it.guid || '', parent_guid: it.parent_guid || '',
+          douban_id: it.douban_id || '', title: it.title || '',
+          tv_title: it.tv_title || '', parent_title: it.parent_title || '',
+          type: it.type || '', category: '', genres: [],
+          air_date: it.air_date || '', release_date: it.release_date || '',
+          watched: it.watched || 0, started: a.started ? 1 : 0,
+          last_played: a.lastPlayed, progress: a.progress,
+          total_runtime_ms: a.totalRuntimeMs,
+          fnos_rating: it.vote_average || 0,
+          tmdb_rating: 0, tmdb_votes: 0, douban_rating: 0, douban_votes: 0,
+        };
+      });
+    return { items, libraryTotal };
+  } catch (e) {
+    return { items: [], libraryTotal: 0, note: String((e && e.message) || e) };
+  }
+}
+
 // [v0.34.0] 浏览器全局兜底：部分桌面插件在模块顶层用 __dirname / require('electron')，
 // esbuild 无法静态转换全局引用 → 运行时 ReferenceError 导致整个 IIFE 中断（页面静默变原生）。
 // require('electron') 返回本垫片命名空间；__dirname 给出无害占位。
@@ -216,10 +320,8 @@ const ipcRenderer = {
       return apiPost('/app/fntvplus/api/bridge/douban/status', {}).then((s) => ({ loggedIn: !!s.loggedIn, note: s.note }));
     }
     if (channel === 'douban:get-watched-items') {
-      // 忠实移植：后端钻取全库（季→集进度分析），返回桌面版同形状 { items, libraryTotal }
-      return apiPost('/app/fntvplus/api/bridge/douban/watched', {
-        cookie: document.cookie, force: !!args[0],
-      });
+      // 观影记录主数据：前端直连 fnOS API 全库钻取（鉴权同源可靠，见上方 collectWatchedItemsFrontend 注释）
+      return collectWatchedItemsFrontend();
     }
     if (channel === 'douban:enrich-one') {
       // 单条补全：TMDB 分类/类型/评分 + 豆瓣评分（item 无 guid 时静默 null）

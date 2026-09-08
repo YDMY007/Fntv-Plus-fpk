@@ -335,6 +335,113 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     const signStr = [AUTHX_KEY, String(url), nonce, timestamp, md5(dataJson), AUTHX_SECRET].join("_");
     return "nonce=" + nonce + "&timestamp=" + timestamp + "&sign=" + md5(signStr);
   }
+  function fnosApi(method, path, body) {
+    const headers = { "Authx": genAuthx(path, body) };
+    if (body) headers["Content-Type"] = "application/json";
+    return fetch(location.origin + path, {
+      method,
+      credentials: "include",
+      headers,
+      body: body ? JSON.stringify(body) : void 0
+    }).then((r) => r.json());
+  }
+  async function fnosAnalyzeItem(it) {
+    const empty = { totalRuntimeMs: 0, progress: 0, anyWatch: false, started: false, lastPlayed: 0 };
+    const lp = it.watched_ts > 0 ? it.watched_ts * 1e3 : 0;
+    const type = String(it.type || "").toLowerCase();
+    if (type === "movie") {
+      const totalSec2 = it.duration > 0 ? it.duration : it.runtime > 0 ? it.runtime * 60 : 0;
+      if (it.watched === 1) return { totalRuntimeMs: totalSec2 * 1e3, progress: 1, anyWatch: true, started: false, lastPlayed: lp };
+      if (it.watched_ts > 0) return { totalRuntimeMs: totalSec2 * 1e3, progress: 0, anyWatch: true, started: true, lastPlayed: lp };
+      return empty;
+    }
+    let totalSec = 0, totalEp = 0, watchedEp = 0;
+    const addLeaf = (leaf) => {
+      if (leaf.duration > 0) totalSec += leaf.duration;
+      else if (leaf.runtime > 0) totalSec += leaf.runtime * 60;
+      totalEp++;
+      if (leaf.watched === 1) watchedEp++;
+    };
+    try {
+      const ch = await fnosApi("POST", "/v/api/v1/item/list", { parent_guid: it.guid, exclude_folder: 1, sort_column: "sort_title", sort_type: "ASC" });
+      const cl = ch && ch.data && Array.isArray(ch.data.list) ? ch.data.list : [];
+      for (const c of cl) {
+        const ct = String(c.type || "").toLowerCase();
+        if (ct === "episode" || ct === "movie") addLeaf(c);
+        else {
+          try {
+            const eps = await fnosApi("GET", "/v/api/v1/episode/list/" + c.guid);
+            (eps && Array.isArray(eps.data) ? eps.data : []).forEach(addLeaf);
+          } catch (e) {
+          }
+        }
+      }
+    } catch (e) {
+    }
+    if (totalEp === 0) {
+      try {
+        const eps = await fnosApi("GET", "/v/api/v1/episode/list/" + it.guid);
+        (eps && Array.isArray(eps.data) ? eps.data : []).forEach(addLeaf);
+      } catch (e) {
+      }
+    }
+    const rtMs = totalSec > 0 ? totalSec * 1e3 : it.runtime > 0 ? it.runtime * 6e4 : 0;
+    if (it.watched === 1 || totalEp > 0 && watchedEp === totalEp) {
+      return { totalRuntimeMs: rtMs, progress: 1, anyWatch: true, started: false, lastPlayed: lp };
+    }
+    if (watchedEp > 0) {
+      return { totalRuntimeMs: rtMs, progress: totalEp > 0 ? watchedEp / totalEp : 0, anyWatch: true, started: true, lastPlayed: lp };
+    }
+    return empty;
+  }
+  async function collectWatchedItemsFrontend() {
+    try {
+      const resp = await fnosApi("POST", "/v/api/v1/item/list", { parent_guid: "", exclude_folder: 1, sort_column: "sort_title", sort_type: "ASC" });
+      const list = resp && resp.data && Array.isArray(resp.data.list) ? resp.data.list : [];
+      if (!list.length) return { items: [], libraryTotal: 0, note: "\u5E93\u5217\u8868\u4E3A\u7A7A\u6216\u672A\u767B\u5F55" };
+      const total = resp.data.total;
+      const libraryTotal = typeof total === "number" && total > list.length ? total : list.length;
+      const results = new Array(list.length);
+      let cursor2 = 0;
+      const workers = new Array(6).fill(0).map(async () => {
+        while (cursor2 < list.length) {
+          const idx = cursor2++;
+          const a = await fnosAnalyzeItem(list[idx]);
+          results[idx] = { it: list[idx], a };
+        }
+      });
+      await Promise.all(workers);
+      const items2 = results.filter((p) => p && p.a.anyWatch).map((p) => {
+        const it = p.it, a = p.a;
+        return {
+          guid: it.guid || "",
+          parent_guid: it.parent_guid || "",
+          douban_id: it.douban_id || "",
+          title: it.title || "",
+          tv_title: it.tv_title || "",
+          parent_title: it.parent_title || "",
+          type: it.type || "",
+          category: "",
+          genres: [],
+          air_date: it.air_date || "",
+          release_date: it.release_date || "",
+          watched: it.watched || 0,
+          started: a.started ? 1 : 0,
+          last_played: a.lastPlayed,
+          progress: a.progress,
+          total_runtime_ms: a.totalRuntimeMs,
+          fnos_rating: it.vote_average || 0,
+          tmdb_rating: 0,
+          tmdb_votes: 0,
+          douban_rating: 0,
+          douban_votes: 0
+        };
+      });
+      return { items: items2, libraryTotal };
+    } catch (e) {
+      return { items: [], libraryTotal: 0, note: String(e && e.message || e) };
+    }
+  }
   function settingKey(suffix) {
     return SETTINGS_KEY_MAP[suffix] || String(suffix).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
   }
@@ -513,10 +620,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             return apiPost("/app/fntvplus/api/bridge/douban/status", {}).then((s) => ({ loggedIn: !!s.loggedIn, note: s.note }));
           }
           if (channel === "douban:get-watched-items") {
-            return apiPost("/app/fntvplus/api/bridge/douban/watched", {
-              cookie: document.cookie,
-              force: !!args[0]
-            });
+            return collectWatchedItemsFrontend();
           }
           if (channel === "douban:enrich-one") {
             if (!args[0] || !args[0].guid) return Promise.resolve(null);
