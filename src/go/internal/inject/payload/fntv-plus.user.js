@@ -715,6 +715,9 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (channel === "settings:test-custom-proxy") {
             return apiPost("/app/fntvplus/api/bridge/proxy/test", { proxyUrl: args[1] });
           }
+          if (channel === "settings:diag-danmu-api") {
+            return apiPost("/app/fntvplus/api/bridge/danmu/diag", args[0] || {});
+          }
           if (channel === "settings:test-danmu-api") return apiPost("/app/fntvplus/api/bridge/danmu/test", { base: args[0] });
           if (channel === "play-movie" || channel === "external-play" || channel === "pause" || channel === "media:control") {
             return Promise.resolve(void 0);
@@ -14808,6 +14811,44 @@ html.fntv-boot-hide #root{visibility:hidden}
       dmApiSaveBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         dmApiSave();
+      });
+      const dmApiDiagBtn = mkBtn("\u8FD0\u884C\u5206\u5C42\u8BCA\u65AD", true);
+      dmApiBtns.appendChild(dmApiDiagBtn);
+      let dmApiDiagPre = null;
+      dmApiDiagBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        dmApiDiagBtn.disabled = true;
+        dmApiDiagBtn.textContent = "\u8BCA\u65AD\u4E2D\u2026";
+        dmApiStatus.textContent = t("\u6B63\u5728\u9010\u5C42\u8BCA\u65AD\uFF08DNS/TCP/TLS/\u670D\u52A1\u5E94\u7B54\uFF09\u2026");
+        dmApiStatus.style.color = "var(--fnos-ui-sub)";
+        try {
+          const r = await ipcRenderer.invoke("settings:diag-danmu-api", {
+            base: dmApiInput.value.trim(),
+            timeoutMs: 8e3,
+            repeats: 3,
+            keyword: "\u6D4B\u8BD5"
+          });
+          if (!dmApiDiagPre) {
+            dmApiDiagPre = document.createElement("pre");
+            dmApiDiagPre.setAttribute("data-fnos-ui", "1");
+            dmApiDiagPre.style.cssText = "font-size:10.5px;line-height:1.55;text-align:left;background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:8px 10px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:6px 0 0;";
+            dmApiFoldBody.appendChild(dmApiDiagPre);
+          }
+          const lines = [String(r.summary || "")];
+          for (const st of r.steps || []) {
+            const mark = st.state === "ok" ? "\u2713" : st.state === "warn" ? "\u26A0" : st.state === "fail" ? "\u2717" : "\uFF0D";
+            lines.push(mark + " " + st.label + "\uFF08" + st.ms + "ms\uFF09: " + st.detail);
+            if (st.hint) lines.push("   \u21B3 " + st.hint);
+          }
+          dmApiDiagPre.textContent = lines.join("; ");
+          dmApiStatus.textContent = r.summary || "\u8BCA\u65AD\u5B8C\u6210";
+        } catch (err) {
+          dmApiStatus.textContent = "\u8BCA\u65AD\u5931\u8D25: " + (err && err.message || err);
+          dmApiStatus.style.color = "var(--fnos-ui-warn)";
+        } finally {
+          dmApiDiagBtn.disabled = false;
+          dmApiDiagBtn.textContent = "\u8FD0\u884C\u5206\u5C42\u8BCA\u65AD";
+        }
       });
       dmApiTestBtn.addEventListener("click", (e) => {
         e.stopPropagation();

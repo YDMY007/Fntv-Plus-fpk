@@ -2113,6 +2113,45 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       dmApiSave();
     });
     dmApiSaveBtn.addEventListener('click', (e: Event) => { e.stopPropagation(); dmApiSave(); });
+    // [v0.80.0] 分层诊断：把「连不上」逐层归因（地址形态/DNS/TCP/TLS/服务应答），结果就地展示
+    const dmApiDiagBtn = mkBtn('运行分层诊断', true);
+    dmApiBtns.appendChild(dmApiDiagBtn);
+    let dmApiDiagPre: HTMLElement | null = null;
+    dmApiDiagBtn.addEventListener('click', async (e: Event) => {
+      e.stopPropagation();
+      dmApiDiagBtn.disabled = true;
+      dmApiDiagBtn.textContent = '诊断中…';
+      dmApiStatus.textContent = t('正在逐层诊断（DNS/TCP/TLS/服务应答）…');
+      dmApiStatus.style.color = 'var(--fnos-ui-sub)';
+      try {
+        const r: any = await ipcRenderer.invoke('settings:diag-danmu-api', {
+          base: dmApiInput.value.trim(), timeoutMs: 8000, repeats: 3, keyword: '测试',
+        });
+        if (!dmApiDiagPre) {
+          dmApiDiagPre = document.createElement('pre');
+          dmApiDiagPre.setAttribute('data-fnos-ui', '1');
+          dmApiDiagPre.style.cssText = 'font-size:10.5px;line-height:1.55;text-align:left;background:var(--fnos-ui-input-bg);'
+            + 'border:1px solid var(--fnos-ui-border);border-radius:7px;padding:8px 10px;max-height:220px;overflow:auto;'
+            + 'white-space:pre-wrap;word-break:break-all;margin:6px 0 0;';
+          dmApiFoldBody.appendChild(dmApiDiagPre);
+        }
+        const lines: string[] = [String(r.summary || '')];
+        for (const st of (r.steps || [])) {
+          const mark = st.state === 'ok' ? '✓' : st.state === 'warn' ? '⚠' : st.state === 'fail' ? '✗' : '－';
+          lines.push(mark + ' ' + st.label + '（' + st.ms + 'ms）: ' + st.detail);
+          if (st.hint) lines.push('   ↳ ' + st.hint);
+        }
+        dmApiDiagPre.textContent = lines.join('; ');
+        dmApiStatus.textContent = r.summary || '诊断完成';
+      } catch (err) {
+        dmApiStatus.textContent = '诊断失败: ' + ((err && err.message) || err);
+        dmApiStatus.style.color = 'var(--fnos-ui-warn)';
+      } finally {
+        dmApiDiagBtn.disabled = false;
+        dmApiDiagBtn.textContent = '运行分层诊断';
+      }
+    });
+
     dmApiTestBtn.addEventListener('click', (e: Event) => {
       e.stopPropagation();
       dmApiStatus.textContent = t('正在测试连接…');

@@ -428,6 +428,10 @@ const ipcRenderer = {
     if (channel === 'settings:test-custom-proxy') {
       return apiPost('/app/fntvplus/api/bridge/proxy/test', { proxyUrl: args[1] });
     }
+    if (channel === 'settings:diag-danmu-api') {
+      // [v0.80.0] 分层诊断：{base, timeoutMs, repeats, keyword} → 逐层归因报告（后端从 NAS 发出，与实际弹幕拉取同网络位置）
+      return apiPost('/app/fntvplus/api/bridge/danmu/diag', args[0] || {});
+    }
     if (channel === 'settings:test-danmu-api') return apiPost('/app/fntvplus/api/bridge/danmu/test', { base: args[0] });
 
     /* ── 播放/媒体（网页端由原生 UI 承担；外部播放器不可用）── */
