@@ -146,7 +146,8 @@ func (b *Bridge) danmuSearchAnimes(title string, season int64) []map[string]any 
 			if err != nil || j == nil {
 				continue
 			}
-			if succ, _ := j["success"].(bool); succ {
+			// 桌面同语义：success 明确为 false 才算失败（服务正常响应 success=true 或无此字段）
+			if succ, ok := j["success"].(bool); ok && !succ {
 				break // success=false：服务异常
 			}
 			list, _ := j["animes"].([]any)
