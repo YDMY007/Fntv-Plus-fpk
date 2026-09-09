@@ -118,7 +118,7 @@ export function applyLogoToDom(choice?: LogoChoice): void {
     img.id = 'tb-logo';
     img.alt = '飞牛影视';
     img.draggable = false;
-    img.style.cssText = 'height:30px;width:auto;object-fit:contain;display:block;position:fixed;top:72px;left:50%;'
+    img.style.cssText = 'height:30px;width:auto;object-fit:contain;display:block;position:fixed;top:40px;left:50%;'
       + 'transform:translate(-50%,-50%);z-index:99998;opacity:.96;pointer-events:none';
     document.body.appendChild(img);
     if (!(window as any).__fntvLogoGuard) {
