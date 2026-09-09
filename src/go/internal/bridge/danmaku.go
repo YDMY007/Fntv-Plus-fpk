@@ -116,7 +116,7 @@ func (b *Bridge) danmakuGetJSON(rawURL string) (int, map[string]any, error) {
 	}
 	req.Header.Set("User-Agent", biliUA)
 	req.Header.Set("Referer", "https://www.bilibili.com/")
-	if ck := strings.TrimSpace(getSetting(b.cfg, "biliCookie")); ck != "" {
+	if ck := strings.TrimSpace(getSetting(b.cfg, "bili_cookie")); ck != "" {
 		req.Header.Set("Cookie", ck)
 	}
 	resp, err := client.Do(req)
@@ -162,7 +162,7 @@ func (b *Bridge) biliSearchVideos(title string, limit int) []map[string]any {
 
 // cookieStatusOf 登录态摘要（渲染端「来源详情→登录状态」显示用；有 cookie 即 valid）。
 func cookieStatusOf(cfg *config.Config) string {
-	if strings.TrimSpace(getSetting(cfg, "biliCookie")) != "" {
+	if strings.TrimSpace(getSetting(cfg, "bili_cookie")) != "" {
 		return "valid"
 	}
 	return "missing"
@@ -206,7 +206,7 @@ func (b *Bridge) biliSearchPGC(title string, seasonNum int64, seasonType string)
 	Sim   float64
 } {
 	// 桌面同语义：无登录态 Cookie 跳过官方番剧搜索（匿名 media_bangumi 必返回 0，白打两次请求）
-	if strings.TrimSpace(getSetting(b.cfg, "biliCookie")) == "" {
+	if strings.TrimSpace(getSetting(b.cfg, "bili_cookie")) == "" {
 		return nil
 	}
 	type cand struct {
@@ -305,7 +305,7 @@ func (b *Bridge) biliFetchDanmakuXML(cid int64) []map[string]any {
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/x/v1/dm/list.so?oid=%d", biliWebAPI, cid), nil)
 	req.Header.Set("User-Agent", biliUA)
 	req.Header.Set("Referer", "https://www.bilibili.com/")
-	if ck := strings.TrimSpace(getSetting(b.cfg, "biliCookie")); ck != "" {
+	if ck := strings.TrimSpace(getSetting(b.cfg, "bili_cookie")); ck != "" {
 		req.Header.Set("Cookie", ck)
 	}
 	resp, err := client.Do(req)
@@ -570,7 +570,7 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		if danmuReason != "" {
 			errMsg = "自建源(" + danmuReason + ")；" + errMsg
 		}
-		hasCookie := strings.TrimSpace(getSetting(b.cfg, "biliCookie")) != ""
+		hasCookie := strings.TrimSpace(getSetting(b.cfg, "bili_cookie")) != ""
 		if !hasCookie {
 			errMsg += "；未登录B站——番剧/动漫需登录态搜索，请在设置→B站弹幕登录扫码后重试"
 		}
