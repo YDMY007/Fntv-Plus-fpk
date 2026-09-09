@@ -533,6 +533,19 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
                 customProxy: typeof args[1] === "string" ? args[1].trim() : ""
               });
             }
+            if (channel === "settings:set-danmu-api") {
+              const a = args[0] || {};
+              const base = String(a.base || "").trim().replace(/\/+$/, "");
+              return apiPost("/app/fntvplus/api/settings", {
+                danmuApiEnabled: !!a.enabled,
+                danmuApiBase: base
+              }).then(() => {
+                if (a.enabled && base && !/^https?:\/\/.+/i.test(base)) {
+                  return { ok: false, error: "\u5730\u5740\u683C\u5F0F\u5E94\u4E3A http://IP:\u7AEF\u53E3\uFF08\u5982 http://192.168.1.10:9321\uFF09" };
+                }
+                return { ok: true };
+              });
+            }
             if (channel === "settings:set-dandanplay-credentials") {
               return apiPost("/app/fntvplus/api/settings", {
                 dandanplayAppId: String(args[0] || ""),
@@ -703,19 +716,6 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             return apiPost("/app/fntvplus/api/bridge/proxy/test", { proxyUrl: args[1] });
           }
           if (channel === "settings:test-danmu-api") return apiPost("/app/fntvplus/api/bridge/danmu/test", { base: args[0] });
-          if (channel === "settings:set-danmu-api") {
-            const a = args[0] || {};
-            const base = String(a.base || "").trim().replace(/\/+$/, "");
-            return apiPost("/app/fntvplus/api/settings", {
-              danmuApiEnabled: !!a.enabled,
-              danmuApiBase: base
-            }).then(() => {
-              if (a.enabled && base && !/^https?:\/\/.+/i.test(base)) {
-                return { ok: false, error: "\u5730\u5740\u683C\u5F0F\u5E94\u4E3A http://IP:\u7AEF\u53E3\uFF08\u5982 http://192.168.1.10:9321\uFF09" };
-              }
-              return { ok: true };
-            });
-          }
           if (channel === "play-movie" || channel === "external-play" || channel === "pause" || channel === "media:control") {
             return Promise.resolve(void 0);
           }

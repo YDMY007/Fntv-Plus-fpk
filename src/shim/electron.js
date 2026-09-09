@@ -219,6 +219,22 @@ const ipcRenderer = {
           customProxy: (typeof args[1] === 'string' ? args[1].trim() : ''),
         });
       }
+    if (channel === 'settings:set-danmu-api') {
+      // [v0.78.0] 复合设置：{enabled, base} → 两键 danmuApiEnabled + danmuApiBase（桌面 config 同名）。
+      // 此前无特例：通用逻辑把 args[0]（整个 payload 对象）存进 danmuApi 单键，地址键从未写入 → 无法保存。
+      const a = args[0] || {};
+      const base = String(a.base || '').trim().replace(/\/+$/, '');
+      return apiPost('/app/fntvplus/api/settings', {
+        danmuApiEnabled: !!a.enabled,
+        danmuApiBase: base,
+      }).then(() => {
+        // 桌面同语义：地址非法照样保存，但回校验结论给面板显示
+        if (a.enabled && base && !/^https?:\/\/.+/i.test(base)) {
+          return { ok: false, error: '地址格式应为 http://IP:端口（如 http://192.168.1.10:9321）' };
+        }
+        return { ok: true };
+      });
+    }
       if (channel === 'settings:set-dandanplay-credentials') {
         return apiPost('/app/fntvplus/api/settings', {
           dandanplayAppId: String(args[0] || ''),
@@ -413,22 +429,6 @@ const ipcRenderer = {
       return apiPost('/app/fntvplus/api/bridge/proxy/test', { proxyUrl: args[1] });
     }
     if (channel === 'settings:test-danmu-api') return apiPost('/app/fntvplus/api/bridge/danmu/test', { base: args[0] });
-    if (channel === 'settings:set-danmu-api') {
-      // [v0.78.0] 复合设置：{enabled, base} → 两键 danmuApiEnabled + danmuApiBase（桌面 config 同名）。
-      // 此前无特例：通用逻辑把 args[0]（整个 payload 对象）存进 danmuApi 单键，地址键从未写入 → 无法保存。
-      const a = args[0] || {};
-      const base = String(a.base || '').trim().replace(/\/+$/, '');
-      return apiPost('/app/fntvplus/api/settings', {
-        danmuApiEnabled: !!a.enabled,
-        danmuApiBase: base,
-      }).then(() => {
-        // 桌面同语义：地址非法照样保存，但回校验结论给面板显示
-        if (a.enabled && base && !/^https?:\/\/.+/i.test(base)) {
-          return { ok: false, error: '地址格式应为 http://IP:端口（如 http://192.168.1.10:9321）' };
-        }
-        return { ok: true };
-      });
-    }
 
     /* ── 播放/媒体（网页端由原生 UI 承担；外部播放器不可用）── */
     if (channel === 'play-movie' || channel === 'external-play' || channel === 'pause' || channel === 'media:control') {
