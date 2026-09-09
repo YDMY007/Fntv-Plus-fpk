@@ -2458,6 +2458,35 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     });
     secBodyAppearance.appendChild(csWrap);
 
+    // ===== [v0.91.0] 「轮播图标题替换为 Logo」开关（原 lc-041 精简误删，用户要求挂回通用卡）=====
+    //   功能本体（logo.ts 渲染链 + applyCarouselLogoNow）一直都在，只差这个入口。
+    const logoRow = document.createElement('div');
+    logoRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;';
+    const logoTextWrap = document.createElement('div');
+    logoTextWrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0;';
+    const logoTitle = document.createElement('span');
+    logoTitle.style.cssText = 'font-weight:600;letter-spacing:.5px;';
+    logoTitle.textContent = '轮播图标题替换为 Logo';
+    const logoHint = document.createElement('span');
+    logoHint.style.cssText = 'font-size:11px;opacity:.7;line-height:1.4;';
+    logoHint.textContent = '用 TMDB 透明标识替换轮播图上的文字标题；关闭即恢复文字标题。';
+    logoTextWrap.appendChild(logoTitle);
+    logoTextWrap.appendChild(logoHint);
+    logoRow.appendChild(logoTextWrap);
+    const swLogo = document.createElement('input');
+    swLogo.type = 'checkbox';
+    swLogo.style.cssText = 'width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);flex:none;';
+    logoRow.appendChild(swLogo);
+    swLogo.checked = S.carouselLogoEnabled;
+    swLogo.addEventListener('change', () => {
+      S.carouselLogoEnabled = swLogo.checked;
+      ipcRenderer.invoke('settings:set-carousel-logo', swLogo.checked).catch((err) => log('set-carousel-logo failed', err));
+      // 立即对当前已渲染轮播生效（开→拉取 logo 替换；关→还原文字标题）
+      try { applyCarouselLogoNow(); } catch (e) { log('applyCarouselLogoNow failed', e); }
+    });
+    (overlay as any)._swLogo = swLogo; // 回填引用（SETTINGS refresh 刷新用）
+    secBodyAppearance.appendChild(logoRow);
+
     // ===== [lc-980] 「剧集详情页美化」开关（外观卡，与轮播样式同批被 v0.12.0 精简误删）=====
     //   开=套用美化（沉浸底图 / 两栏布局 / 磨砂卡），关=恢复飞牛原生详情页。
     //   语义：detailBoxless=true 表示「关闭美化走原生」，故 checked = !detailBoxless。
@@ -3241,6 +3270,10 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         // [lc-418] 诊断日志：面板每次打开记录开关回填值, 便于核对"配置文件 vs 面板显示"是否一致
         log('[开关回填] swProxy=' + swProxy.checked + ' swHide=' + swHide.checked + ' swNas=' + swNas.checked
           + ' 美化=' + (!!_beautifyToggle && _beautifyToggle.checked) + ' swWheel=' + swWheel.checked);
+        // [v0.91.0] 轮播 Logo 开关回填（lc-041 精简时连回填一并移除了，现随开关补回）
+        S.carouselLogoEnabled = s.carouselLogoEnabled !== false;
+        const _swLogoRef = (overlay as any)._swLogo as HTMLInputElement | undefined;
+        if (_swLogoRef) _swLogoRef.checked = S.carouselLogoEnabled;
       });
       // [v0.82.0] seg('players') 已删（MPV/Pot 路径卡随外部播放器链一并移除，lc-078）
       seg('accounts', () => {

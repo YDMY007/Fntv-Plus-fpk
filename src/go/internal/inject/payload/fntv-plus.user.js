@@ -511,6 +511,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
         "debug-enabled": "debugEnabled",
         "debug-components": "debugComponents",
         "danmu-api": "danmuApi",
+        "carousel-logo": "carouselLogoEnabled",
         "hot-source": "hotSource"
       };
       ipcRenderer = {
@@ -8743,6 +8744,21 @@ html.fnos-perf.dark{
       img.src = dataUrl;
     });
   }
+  function applyCarouselLogoNow() {
+    if (!S.carouselInfos.length) return;
+    if (S.carouselLogoEnabled) {
+      applyTitleLogo(S.carouselBase, S.carouselShows, S.carouselInfos);
+    } else {
+      S.carouselInfos.forEach((info) => {
+        const slide = info.closest(".fnos-slide");
+        const l = slide == null ? void 0 : slide.querySelector(".fnos-logo");
+        if (l) {
+          l.style.display = "none";
+          l.src = "";
+        }
+      });
+    }
+  }
 
   // src/preload/plugins/embyWall/carousel/render.ts
   function destroyCarousel() {
@@ -15131,6 +15147,35 @@ html.fntv-boot-hide #root{visibility:hidden}
         });
       });
       secBodyAppearance.appendChild(csWrap);
+      const logoRow = document.createElement("div");
+      logoRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;";
+      const logoTextWrap = document.createElement("div");
+      logoTextWrap.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;";
+      const logoTitle = document.createElement("span");
+      logoTitle.style.cssText = "font-weight:600;letter-spacing:.5px;";
+      logoTitle.textContent = "\u8F6E\u64AD\u56FE\u6807\u9898\u66FF\u6362\u4E3A Logo";
+      const logoHint = document.createElement("span");
+      logoHint.style.cssText = "font-size:11px;opacity:.7;line-height:1.4;";
+      logoHint.textContent = "\u7528 TMDB \u900F\u660E\u6807\u8BC6\u66FF\u6362\u8F6E\u64AD\u56FE\u4E0A\u7684\u6587\u5B57\u6807\u9898\uFF1B\u5173\u95ED\u5373\u6062\u590D\u6587\u5B57\u6807\u9898\u3002";
+      logoTextWrap.appendChild(logoTitle);
+      logoTextWrap.appendChild(logoHint);
+      logoRow.appendChild(logoTextWrap);
+      const swLogo = document.createElement("input");
+      swLogo.type = "checkbox";
+      swLogo.style.cssText = "width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);flex:none;";
+      logoRow.appendChild(swLogo);
+      swLogo.checked = S.carouselLogoEnabled;
+      swLogo.addEventListener("change", () => {
+        S.carouselLogoEnabled = swLogo.checked;
+        ipcRenderer.invoke("settings:set-carousel-logo", swLogo.checked).catch((err) => log7("set-carousel-logo failed", err));
+        try {
+          applyCarouselLogoNow();
+        } catch (e) {
+          log7("applyCarouselLogoNow failed", e);
+        }
+      });
+      overlay._swLogo = swLogo;
+      secBodyAppearance.appendChild(logoRow);
       const beautifyRow = document.createElement("div");
       beautifyRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;";
       const beautifyTextWrap = document.createElement("div");
@@ -15907,6 +15952,9 @@ html.fntv-boot-hide #root{visibility:hidden}
           swWheel.checked = !!s.wheelHScroll;
           S.wheelHScrollEnabled = !!s.wheelHScroll;
           log7("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
+          S.carouselLogoEnabled = s.carouselLogoEnabled !== false;
+          const _swLogoRef = overlay._swLogo;
+          if (_swLogoRef) _swLogoRef.checked = S.carouselLogoEnabled;
         });
         seg2("accounts", () => {
           refreshBili();
