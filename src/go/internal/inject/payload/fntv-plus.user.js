@@ -1237,6 +1237,18 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     "\u7CFB\u7EDF\u684C\u9762": "System desktop",
     "\u81EA\u5B9A\u4E49\u4EE3\u7406": "Custom proxy",
     "\u8F6E\u64AD\u56FE Logo": "Carousel logo",
+    // ── 播放器内弹幕面板（danmakuWeb.ts 控制栏「弹幕」入口的 hover 弹窗）──
+    "\u5F39\u5E55\u2026": "Danmaku\u2026",
+    "\u6765\u6E90\u8BE6\u60C5": "Source details",
+    "\u5F39\u5E55\u6837\u5F0F": "Danmaku style",
+    "\u5F39\u5E55\u52A0\u8F7D\u4E2D\u2026": "Loading danmaku\u2026",
+    "\u7C97\u4F53": "Bold",
+    "\u5B57\u53F7": "Font size",
+    "\u63CF\u8FB9": "Outline",
+    "\u9634\u5F71": "Shadow",
+    "\u6EDA\u52A8\u65F6\u957F\uFF08\u8D8A\u5927\u8D8A\u6162\uFF09": "Scroll duration (larger = slower)",
+    "\u900F\u660E\u5EA6": "Opacity",
+    "\u663E\u793A\u8303\u56F4": "Display area",
     // ── 设置面板：开关 ──
     "\u4E0B\u8F7D\u4EE3\u7406": "Download proxy",
     "\u9690\u85CF\u539F\u59CB\u64AD\u653E\u6309\u94AE": "Hide original play button",
@@ -1275,8 +1287,36 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     "\u7ACB\u5373\u540C\u6B65\u89C2\u5F71\u8BB0\u5F55": "Sync watch history now",
     "\u65AD\u5F00\u8FDE\u63A5": "Disconnect",
     "\u6253\u5F00\u5F39\u5E55\u6587\u4EF6\u5939": "Open danmaku folder",
+    "\u6D4B\u8BD5\u914D\u7F6E": "Test settings",
+    "\u8D85\u65F6(ms)": "Timeout (ms)",
+    "\u91CD\u590D\u6B21\u6570": "Repeats",
+    "\u6D4B\u8BD5\u5173\u952E\u8BCD": "Probe keyword",
+    "\u7247\u540D\u6216\u5173\u952E\u8BCD": "A title you watch",
+    "\u7AEF\u5230\u7AEF\u4E09\u8DF3\uFF08\u6761\u76EE\u2192\u5206\u96C6\u2192\u5F39\u5E55\uFF09": "End-to-end chain (anime \u2192 episodes \u2192 comments)",
+    "\u8BD5\u4EE3\u7406\u65C1\u8DEF": "Try proxy fallback",
+    "\u8FD0\u884C\u5206\u5C42\u8BCA\u65AD": "Run layered diagnostics",
+    "\u660E\u7EC6\u65E5\u5FD7\uFF08\u9010\u5C42\u9644\u8BF7\u6C42\u539F\u59CB\u4FE1\u606F\uFF09": "Verbose log (per-layer request detail)",
+    "B\u7AD9\u5F39\u5E55\u641C\u7D22": "Bilibili search",
+    "\u624B\u52A8\u641C\u7D22": "Manual search",
+    "\u641C\u7D22": "Search",
+    "\u6B63\u5728\u641C\u7D22\u2026": "Searching\u2026",
+    "\u5C55\u5F00\u540E\u81EA\u52A8\u6309\u5F53\u524D\u756A\u540D\u641C\u7D22\uFF0C\u4E5F\u53EF\u6539\u5173\u952E\u8BCD\u91CD\u641C": "Searches the current title automatically when opened; edit the keyword to re-search",
+    "\u6CA1\u6709\u53EF\u7528\u7684\u641C\u7D22\u7ED3\u679C": "No usable results",
+    "\u8BF7\u8F93\u5165\u641C\u7D22\u5173\u952E\u8BCD": "Enter a keyword to search",
+    "\u641C\u7D22\u5F02\u5E38": "Search error",
+    "\u9009\u5B9A\u5931\u8D25": "Selection failed",
+    "\uFF08\u4F7F\u7528\u4E2D\uFF09": " (in use)",
+    "\u6B63\u5728\u8BCA\u65AD\u2026": "Diagnosing\u2026",
+    "\u8BCA\u65AD\u5B8C\u6210": "Diagnostics done",
+    "\u8BCA\u65AD\u5931\u8D25": "Diagnostics failed",
+    "\u5DF2\u505C\u6B62": "Stopped",
+    "\uFF08\u5DF2\u505C\u6B62\u663E\u793A\uFF1A\u672C\u8F6E\u63A2\u6D4B\u4ECD\u5728\u540E\u53F0\u8DD1\u5B8C\u5E76\u5199\u5165\u65E5\u5FD7\uFF09": "(Display stopped: this run still finishes in the background and is written to the log)",
+    "\u8FDE\u4E0D\u4E0A\u65F6\u70B9\u300C\u8FD0\u884C\u5206\u5C42\u8BCA\u65AD\u300D\uFF0C\u5B83\u9010\u5C42\u7ED9\u51FA\u6839\u56E0\u3002\u5173\u952E\u8BCD\u5EFA\u8BAE\u586B\u6B63\u5728\u770B\u7684\u7247\u540D\uFF1A\u670D\u52A1\u7AEF\u641C\u65B0\u8BCD\u8981\u56DE\u6E90\u591A\u5E73\u53F0\uFF0C\u8FDC\u6162\u4E8E\u641C\u5DF2\u7F13\u5B58\u8BCD \u2014\u2014 \u8FD9\u5C31\u662F\u300C\u65F6\u597D\u65F6\u574F\u300D\u7684\u6765\u6E90\u3002": 'When it fails, run the layered diagnostics below \u2014 it attributes the cause layer by layer. Set the keyword to a title you actually watch: a brand-new keyword makes the server fan out to upstream platforms, far slower than a cached one \u2014 the usual cause of "it works sometimes".',
     "\u5237\u65B0": "Refresh",
     "\u590D\u5236": "Copy",
+    "\u5DF2\u590D\u5236": "Copied",
+    "\u5DF2\u9009\u4E2D\uFF0C\u8BF7\u6309 Ctrl+C": "Selected \u2014 press Ctrl+C",
+    "\u590D\u5236\u5931\u8D25": "Copy failed",
     "\u65E5\u5FD7\u6587\u4EF6": "Log file",
     "\u62A5\u9519\u65E5\u5FD7": "Error log",
     "\u5BFC\u51FA\u65E5\u5FD7\u6587\u4EF6": "Export log file",
@@ -1402,7 +1442,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     "\u5DF2\u914D\u7F6E\u81EA\u5B9A\u4E49\u51ED\u8BC1": "Custom credential configured",
     "\u672A\u914D\u7F6E\uFF08\u5185\u7F6E\u5171\u4EAB\u51ED\u8BC1\u5DF2\u88AB\u5F39\u5F39play \u5C01\u7981\uFF0C\u5F39\u5E55\u6052\u300C\u65E0\u6570\u636E\u300D\uFF09": 'Not configured (the built-in shared credential is banned by dandanplay \u2014 danmaku stays "no data")',
     "\u5DF2\u5F00\u542F\u4F46\u672A\u586B\u670D\u52A1\u5730\u5740 \u2014\u2014 \u5C55\u5F00\u300C\u670D\u52A1\u5730\u5740\u4E0E\u8FDE\u901A\u6D4B\u8BD5\u300D\u586B\u5199\u540E\u70B9\u4FDD\u5B58\u3002": 'Enabled but no service address \u2014 open "Service address & connection test", fill it in and save.',
-    "\u586B\u5165 NAS \u4E0A\u90E8\u7F72\u7684 danmu_api \u670D\u52A1\u5730\u5740\uFF08\u805A\u5408\u54D4\u54E9/\u7231\u5947\u827A/\u4F18\u9177/\u817E\u8BAF\u7B49\u591A\u5E73\u53F0\u5F39\u5E55\uFF0C\u5BC6\u5EA6\u901A\u5E38\u9AD8\u4E8E\u5355\u6E90 B\u7AD9\uFF09\u3002\u5F00\u542F\u540E\u4F5C\u4E3A\u5F39\u5E55\u4F18\u9009\u6E90\uFF0C\u672A\u547D\u4E2D\u6216\u672A\u542F\u7528\u65F6\u81EA\u52A8\u964D\u7EA7\u5230\u5185\u7F6E B\u7AD9 \u5F39\u5E55\u83B7\u53D6\u3002\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002": "Enter the address of the danmu_api service deployed on your NAS (aggregates Bilibili / iQiyi / Youku / Tencent and more, usually denser than Bilibili alone). When on it becomes the preferred danmaku source and falls back to the built-in Bilibili fetch on a miss or when disabled. Takes effect on next MPV play.",
+    "\u586B\u5165 NAS \u4E0A\u90E8\u7F72\u7684 danmu_api \u670D\u52A1\u5730\u5740\uFF08\u805A\u5408\u591A\u5E73\u53F0\u5F39\u5E55\uFF0C\u5BC6\u5EA6\u9AD8\u4E8E\u5355\u6E90 B\u7AD9\uFF09\u3002\u5F00\u542F\u540E\u4F5C\u4E3A\u4F18\u9009\u6E90\uFF0C\u672A\u547D\u4E2D\u81EA\u52A8\u964D\u7EA7\u5185\u7F6E B\u7AD9\uFF1B\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002": "Enter the danmu_api service address deployed on your NAS (aggregates multiple platforms, denser than Bilibili alone). When on it becomes the preferred danmaku source and falls back to the built-in Bilibili fetch on a miss. Takes effect on next MPV play.",
     "\u542F\u7528\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3\uFF08\u4F18\u5148\u4E8E B\u7AD9\u5F39\u5E55\uFF09": "Use the self-hosted danmaku API (preferred over Bilibili)",
     "\u5DF2\u4FDD\u5B58\u5E76\u542F\u7528\uFF0C\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002": "Saved and enabled; takes effect on next MPV play.",
     "\u5DF2\u4FDD\u5B58\u5E76\u5173\u95ED\uFF0C\u56DE\u843D\u5185\u7F6E B\u7AD9 \u5F39\u5E55\u83B7\u53D6\u3002": "Saved and disabled; falls back to the built-in Bilibili fetch.",
@@ -2618,12 +2658,13 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   registerHook("onReady" /* OnReady */, handle);
 
   // src/preload/plugins/danmakuHeat.ts
-  init_electron();
   var HEAT_ID = "fntv-danmaku-heat";
-  var LS_KEY4 = "fntv-danmaku";
+  var LS_KEY4 = "fntv_danmaku_enabled";
+  var ITEMS_EVENT = "fntv:danmaku-items";
   var heatCanvas = null;
   var heatCtx = null;
   var density = [];
+  var pendingTimes = null;
   function aggregate(times, duration) {
     const bins = Math.max(30, Math.min(240, Math.round(duration / 2)));
     const arr = new Array(bins).fill(0);
@@ -2632,6 +2673,11 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       arr[idx]++;
     }
     return arr;
+  }
+  function videoDuration() {
+    const v = document.querySelector("video");
+    const d = v ? v.duration : 0;
+    return d && isFinite(d) && d > 0 ? d : 0;
   }
   function drawHeat() {
     if (!heatCtx || !heatCanvas) return;
@@ -2649,28 +2695,8 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
       heatCtx.fillRect(i * binW, h * (1 - ratio * 0.85), Math.max(1, binW - 0.5), h * ratio * 0.85);
     }
   }
-  var hookInstalled = false;
-  function hookInvoke() {
-    if (hookInstalled) return;
-    hookInstalled = true;
-    const real = ipcRenderer.invoke.bind(ipcRenderer);
-    ipcRenderer.invoke = async function(cmd, ...args) {
-      const result = await real(cmd, ...args);
-      if (cmd === "danmaku:prepare" && result && Array.isArray(result.items) && result.items.length) {
-        try {
-          const v = document.querySelector("video");
-          const realDur = v && v.duration && isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
-          if (realDur > 0) {
-            density = aggregate(result.items.map((it) => it.time || 0), realDur);
-          }
-        } catch {
-        }
-      }
-      return result;
-    };
-  }
   function ensureHeatCanvas() {
-    if (heatCanvas) return;
+    if (heatCanvas || !document.body) return;
     const c = document.createElement("canvas");
     c.id = HEAT_ID;
     c.style.cssText = "position:fixed;z-index:6;pointer-events:none;display:none;";
@@ -2695,25 +2721,56 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     heatCanvas.height = 8;
   }
   function updateHeat() {
+    ensureHeatCanvas();
     if (!heatCanvas) return;
     let danmakuOn = true;
     try {
       danmakuOn = localStorage.getItem(LS_KEY4) !== "0";
     } catch {
     }
-    if (!danmakuOn || !density.length) {
+    if (!danmakuOn) {
+      heatCanvas.style.display = "none";
+      return;
+    }
+    if (pendingTimes) {
+      const dur = videoDuration();
+      if (dur > 0) {
+        density = aggregate(pendingTimes, dur);
+        pendingTimes = null;
+      }
+    }
+    if (!density.length) {
       heatCanvas.style.display = "none";
       return;
     }
     positionHeatBar();
     drawHeat();
   }
+  function ingest(times) {
+    if (!Array.isArray(times) || !times.length) return;
+    const dur = videoDuration();
+    if (dur > 0) {
+      density = aggregate(times, dur);
+      pendingTimes = null;
+    } else {
+      pendingTimes = times;
+    }
+    try {
+      updateHeat();
+    } catch {
+    }
+  }
+  window.addEventListener(ITEMS_EVENT, (e) => {
+    var _a;
+    try {
+      ingest((_a = e.detail) == null ? void 0 : _a.times);
+    } catch {
+    }
+  });
   registerHook("onReady" /* OnReady */, () => {
-    hookInvoke();
     ensureHeatCanvas();
     window.setInterval(() => {
       try {
-        ensureHeatCanvas();
         updateHeat();
       } catch {
       }
@@ -2733,6 +2790,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   var GUID_RE2 = /\/v\/(?:movie|tv|video)(?:\/(?:season|episode))?\/([a-f0-9]{32})/i;
   var LS_KEY5 = "fntv_danmaku_enabled";
   var LS_STYLE_KEY = "fntv_danmaku_style";
+  var LS_BILI_KEY = "fntv_danmaku_bili_search";
   var PLAYER_HEADER_STYLE_ID = "fntv-player-header-style";
   var _headerStyleInjected = false;
   var _headerHideTimer = null;
@@ -2768,6 +2826,24 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     opacity: 0 !important;
     pointer-events: none !important;
     transform: translateY(-8px) !important;
+}
+/* \u2500\u2500 \u9690\u85CF\u64AD\u653E\u5668\u8D77\u64AD/\u7F13\u51B2\u65F6\u7684\u52A0\u8F7D\u5708\uFF08\u7528\u6237\u8981\u6C42\u5220\u6389\u7684\u767D\u5708\uFF09\u2500\u2500
+   \u2460 xgplayer \u81EA\u5E26\u7F13\u51B2\u8F6C\u5708\uFF1B\u5BB9\u5668\u72B6\u6001\u7C7B xgplayer-isloading \u4E0D\u52A8\uFF08\u5B83\u8FD8\u8054\u52A8 start \u6309\u94AE\u663E\u9690\uFF09\uFF0C
+      \u539F\u751F .xgplayer-isloading .xgplayer-loading{display:block} \u7279\u5F02\u5EA6\u66F4\u9AD8\uFF0C\u5FC5\u987B !important \u538B\u8FC7\uFF1B
+   \u2461 \u98DE\u725B\u64AD\u653E\u5668\u6D41\u52A0\u8F7D\u65F6\u7684 Semi\u300C\u52A0\u8F7D\u4E2D\u2026\u300D\u8499\u5C42\uFF08spinner+\u6587\u5B57\uFF09\uFF0C\u9650\u5B9A\u5728\u64AD\u653E\u5668\u6839\u5185\uFF0C
+      \u4E0D\u5F71\u54CD\u5176\u5B83\u9875\u9762\u6B63\u5E38\u4F7F\u7528\u7684 Semi Spin\uFF1B\u8499\u5C42\u5BB9\u5668\u6574\u4F53\u85CF\uFF0C\u5708\u548C\u6587\u5B57\u4E00\u8D77\u6D88\u5931\u3002 */
+.xgplayer-loading {
+    display: none !important;
+}
+/* \u2462 xgplayer \u8D77\u64AD\u906E\u7F69 spinner\uFF08\u767D\u8272\u8F90\u6761\u5708 #ffffffb3\uFF0C\u5B9E\u6D4B\u5C31\u662F\u7528\u6237\u6307\u7684\u767D\u5708\u672C\u4F53\uFF09\uFF0C\u906E\u7F69\u53EA\u6709\u5B83\uFF0C\u6574\u4E2A\u85CF */
+.xgplayer-enter {
+    display: none !important;
+}
+.trim-mc__video-player--root .semi-spin {
+    display: none !important;
+}
+.trim-mc__video-player--root div:has(> .semi-spin) {
+    display: none !important;
 }
 `;
     const el = document.createElement("style");
@@ -2833,23 +2909,41 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   var videoEl = null;
   var canvas = null;
   var ctx = null;
-  var toggleWrap = null;
-  var toggleSpan = null;
-  var detailsWrap = null;
-  var modal = null;
-  var styleWrap = null;
-  var stylePanel = null;
+  var dmBtnWrap = null;
+  var dmBtnSpan = null;
+  var dmList = null;
+  var dmSecStyle = false;
+  var dmSecDetail = false;
+  var dmSecSearch = false;
+  var dmHeadStyle = null;
+  var dmHeadDetail = null;
+  var dmHeadSearch = null;
+  var dmFoldStyle = null;
+  var dmFoldDetail = null;
+  var dmFoldSearch = null;
+  var dmDetailBody = null;
+  var dmDetailShown;
+  var dmSearchBody = null;
+  var dmSearchResults = null;
+  var dmSearchErr = "";
+  var dmSearchBusy = false;
+  var dmSearchKw = "";
+  var dmPickedBvid = "";
+  var dmSwitch = null;
+  var dmCloseTimer = null;
+  var dmDragging = false;
   var controlsPlaced = false;
   var mountedForGuid = null;
   var loading = false;
   var inflight = false;
   var enabled2 = true;
+  var biliSearch = true;
   var items = [];
   var meta = null;
   var currentGuid = null;
   var currentGuidFromPrefetch = false;
   var guidCache = /* @__PURE__ */ new Map();
-  var GUID_CACHE_MAX = 6;
+  var GUID_CACHE_MAX = 3;
   function guidCachePut(guid, payload) {
     guidCache.delete(guid);
     guidCache.set(guid, payload);
@@ -2866,14 +2960,24 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   var LANE_GRACE_SEC = 2;
   var DUP_TEXT_SEC = 1;
   var recentTexts = /* @__PURE__ */ new Map();
+  var RECENT_TEXTS_MAX = 2048;
   var renderDirty = true;
   var lastPausedDraw = false;
-  var laneBusyScroll = [];
-  var laneBusyTop = [];
-  var laneBusyBottom = [];
+  var laneScroll = [];
+  var laneTop = [];
+  var laneBottom = [];
   var laneCount = 0;
   var LANE_RATIO = 0.034;
-  var MAX_ACTIVE = 80;
+  var maxScreen = 0;
+  var MAX_ACTIVE_HARD_CAP = 200;
+  var appliedSignature = null;
+  var styleSettling = false;
+  var styleSettleTimer = null;
+  var needRectSync = true;
+  var rectTicks = 0;
+  var RECT_SYNC_EVERY = 30;
+  var rectRO = null;
+  var rectROTarget = null;
   var DEFAULT_STYLE = {
     bold: false,
     fontScale: 0.036,
@@ -2907,12 +3011,22 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     }
     return { ...DEFAULT_STYLE };
   }
+  function styleSignature() {
+    return `${style.bold}|${style.fontScale}|${style.outline}|${style.shadow}|${style.scrollDuration}|${style.displayArea}|${maxScreen}`;
+  }
   function saveStyle() {
-    try {
-      localStorage.setItem(LS_STYLE_KEY, JSON.stringify(style));
-    } catch {
-    }
     renderDirty = true;
+    styleSettling = true;
+    if (styleSettleTimer) clearTimeout(styleSettleTimer);
+    styleSettleTimer = setTimeout(() => {
+      styleSettleTimer = null;
+      styleSettling = false;
+      try {
+        localStorage.setItem(LS_STYLE_KEY, JSON.stringify(style));
+      } catch {
+      }
+      renderDirty = true;
+    }, 180);
   }
   var style = loadStyle();
   function isPlayerPage() {
@@ -2957,8 +3071,176 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     }
     return null;
   }
+  var DM_PANEL_STYLE_ID = "fntv-dm-panel-style";
+  var BRAND_ACCENT = "var(--semi-color-primary, #3374DB)";
+  var _dmPanelStyleInjected = false;
+  function injectDmPanelStyle() {
+    if (_dmPanelStyleInjected) return;
+    const css = `
+/* \u2500\u2500 hover \u5F39\u7A97: \u9010\u5B57\u7167\u6284\u98DE\u725B Semi \u5F39\u5C42 .semi-dropdown-wrapper / -menu / -item \u2500\u2500 */
+/* z-index 30: \u539F\u751F .xg-options-list \u5199\u7684\u662F 5, \u4F46\u6211\u4EEC\u7684\u5F39\u5E55 canvas \u6302\u5728 body \u4E0A z-index=5\u3001
+   \u9AD8\u80FD\u6761 z-index=6 \u2192 \u540C\u4E00\u5C42\u53E0\u4E0A\u4E0B\u6587\u91CC\u540E\u63D2\u5165\u8005\u80DC, \u9762\u677F\u4F1A\u88AB canvas \u76D6\u4F4F\u3002 */
+/* \u53F3\u5BF9\u9F50\u6309\u94AE\u800C\u975E\u539F\u751F\u7684\u5C45\u4E2D(right:50%+translate(50%)): \u5F39\u7A97 320px \u5BBD, \u5F39\u5E55\u6309\u94AE\u5728\u63A7\u5236\u680F
+   \u6700\u53F3\u4FA7\u4E00\u7EC4\u91CC, \u5C45\u4E2D\u4F1A\u6EA2\u51FA\u64AD\u653E\u5668\u53F3\u8FB9\u754C\u3002 */
+.fntv-dm-list{
+  position:absolute; right:-6px; bottom:calc(100% + 10px);
+  z-index:30; width:320px; box-sizing:border-box; margin:0; padding:4px 0;
+  background:rgba(46,47,48,.97);                 /* \u6697\u8272 --semi-color-bg-dropdown = grey-2(46,47,48) */
+  border:1px solid rgba(255,255,255,.07);        /* \u7EAF\u9ED1\u753B\u9762\u4E0A\u628A\u5BB9\u5668\u8FB9\u754C\u5206\u51FA\u6765 */
+  border-radius:14px;                            /* .semi-dropdown-wrapper */
+  box-shadow:0 10px 20px #00000014, 0 10px 40px #0000001f;
+  cursor:default; overflow:auto; color:#fff; font-size:14px; line-height:20px;
+  /* \u9AD8\u5EA6\u968F\u5185\u5BB9\u957F(\u6298\u53E0\u6BB5\u81EA\u5DF1\u8FC7\u6E21); \u53EA\u5728\u6781\u7AEF\u5C0F\u7A97\u515C\u5E95 \u2014\u2014 \u6B63\u5E38\u5F62\u6001\u4E0B\u4E00\u89C8\u65E0\u4F59\u3001\u4E0D\u51FA\u6EDA\u52A8\u6761 */
+  max-height:min(86vh, 920px);
+  /* \u5426\u5219\u590D\u9009\u6846/\u6ED1\u5757\u6309\u6D45\u8272\u8868\u5355\u63A7\u4EF6\u6E32\u67D3, \u6697\u9762\u677F\u4E0A\u662F\u4E00\u6761\u8FD1\u767D\u7C97\u8F68 */
+  color-scheme:dark;
+  /* fnOS \u9876\u680F\u662F\u7A97\u53E3\u62D6\u62FD\u533A, \u6CE8\u5165\u9762\u677F\u5FC5\u987B\u663E\u5F0F\u6392\u9664, \u5426\u5219\u6ED1\u5757\u62D6\u4E0D\u52A8 */
+  -webkit-app-region:no-drag;
+  /* \u8FDB\u51FA\u573A\u52A8\u753B: \u4E0D\u80FD\u518D\u9760 display:none \u786C\u5207(\u90A3\u4F1A\u8DF3\u8FC7\u6574\u6BB5\u8FC7\u6E21)\u3002visibility \u5EF6\u5230\u6DE1\u51FA\u8D70\u5B8C
+     \u624D\u7FFB\u9690\u85CF \u2192 \u5173\u95ED\u6001\u65E2\u4E0D\u5360\u89C6\u89C9\u4E5F\u4E0D\u62E6\u70B9\u51FB\u3002 */
+  transform-origin:100% 100%;
+  opacity:0; visibility:hidden; pointer-events:none; transform:translateY(8px) scale(.96);
+  transition:opacity .18s cubic-bezier(.22,1,.36,1), transform .18s cubic-bezier(.22,1,.36,1), visibility 0s linear .18s;
+}
+.fntv-dm-list.active{opacity:1; visibility:visible; pointer-events:auto; transform:none; transition-delay:0s}
+/* \u900F\u660E\u6865\u63A5: \u5F39\u7A97\u4E0E\u6309\u94AE\u4E4B\u95F4\u7559 10px \u89C6\u89C9\u95F4\u9699, \u4F46\u9F20\u6807\u7A7F\u8FC7\u65F6\u4E0D\u80FD\u7B97\u300C\u79FB\u51FA\u300D\u2014\u2014
+   hover \u89E6\u53D1\u7684\u5F39\u7A97\u82E5\u5728\u534A\u8DEF\u5173\u6389, \u5C31\u6C38\u8FDC\u79FB\u4E0D\u8FDB\u53BB\u62D6\u6ED1\u5757\u3002\u4F2A\u5143\u7D20\u5C5E\u4E8E\u5F39\u7A97\u672C\u8EAB\u3002 */
+.fntv-dm-list::after{content:'';position:absolute;left:0;right:0;top:100%;height:12px}
+/* \u884C = .semi-dropdown-item: \u5DE6\u5BF9\u9F50 + 8px 16px + hover \u6362\u5E95\u8272(\u539F\u751F\u5C31\u662F\u6362\u5E95\u8272, \u4E0D\u662F\u6362\u5B57\u8272) */
+.fntv-dm-list li{
+  display:flex; align-items:center; gap:8px; margin:0; padding:8px 16px;
+  list-style:none; cursor:pointer; color:#fff; transition:background-color .16s ease;
+}
+.fntv-dm-list li:hover{background:rgba(255,255,255,.06)}    /* --semi-color-fill-1 */
+.fntv-dm-list li:active{background:rgba(255,255,255,.12)}   /* --semi-color-fill-2 */
+/* \u5F00\u5173\u884C: \u6807\u7B7E\u5728\u5DE6\u3001Switch \u63A8\u5230\u53F3\u7F18 */
+.fntv-dm-sw-row{justify-content:space-between}
+/* Semi Switch \u9010\u5B57\u89C4\u683C: 40\xD724 \u8F68\u9053 / 18\xD718 \u767D\u8272\u65CB\u94AE / \u9009\u4E2D\u4F4D\u79FB 18px */
+.fntv-dm-sw{
+  position:relative; flex:none; box-sizing:border-box; width:40px; height:24px;
+  border-radius:12px; border:1px solid transparent; background:rgba(255,255,255,.12);
+  transition:background-color .2s cubic-bezier(0,0,.2,1);
+}
+.fntv-dm-sw:hover{background:rgba(255,255,255,.06)}
+.fntv-dm-sw-knob{
+  position:absolute; left:0; top:2px; width:18px; height:18px; border-radius:9px;
+  background:#fff; box-shadow:0 4px 6px #0000001a, 0 0 1px #0000004d;
+  transition:transform .2s ease-in-out;
+}
+.fntv-dm-sw:has(input:checked){background:var(--semi-color-primary, #3374DB)}
+.fntv-dm-sw:has(input:checked):hover{background:var(--semi-color-primary-hover, #2e63c9)}
+.fntv-dm-sw:has(input:checked) .fntv-dm-sw-knob{transform:translate(18px)}
+/* \u539F\u751F checkbox \u7BA1\u72B6\u6001\u4E0E\u952E\u76D8, \u89C6\u89C9\u5168\u4EA4\u7ED9\u4E0A\u9762\u7684\u8F68\u9053 */
+.fntv-dm-sw input{position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer}
+/* \u6298\u53E0\u5934: \u6807\u9898\u5728\u5DE6\u3001caret \u5728\u53F3(\u7EAF CSS \u753B V \u5F62, \u4E0D\u4F9D\u8D56\u5B57\u5F62); \u5C55\u5F00\u6001\u6807\u9898\u8F6C\u54C1\u724C\u8272 */
+.fntv-dm-h{justify-content:space-between}
+.fntv-dm-h.open{color:var(--semi-color-primary, #3374DB)}
+.fntv-dm-caret{
+  flex:none; width:6px; height:6px;
+  border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor;
+  transform:rotate(45deg); opacity:.45; transition:transform .22s ease, opacity .22s ease;
+}
+.fntv-dm-h.open .fntv-dm-caret{transform:rotate(-135deg); opacity:.85}
+/* \u6298\u53E0: grid-template-rows 0fr\u21941fr \u8FC7\u6E21; visibility \u7684\u8FC7\u6E21\u662F\u9636\u8DC3\u7684(\u5C55\u5F00\u7ACB\u5373\u53D8\u53EF\u89C1\u3001\u6536\u8D77\u7B49\u52A8\u753B\u8D70\u5B8C)\u6B63\u597D\u5408\u7528\u3002 */
+.fntv-dm-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s ease}
+.fntv-dm-fold.open{grid-template-rows:1fr}
+/* \u5DE6\u53F3\u7559\u767D\u7531\u5185\u5C42\u7EDF\u4E00\u627F\u62C5(\u5BB9\u5668\u53EA\u7559\u4E0A\u4E0B 4px)\u3002\u7EB5\u5411 padding \u4F1A\u6F0F\u51FA 0fr \u8F68\u9053(\u5B9E\u6D4B\u6CC4 2px) \u2192 \u4E00\u5F8B\u4E0D\u7ED9,
+   \u547C\u5438\u653E\u88C1\u526A\u6846\u5185\u90E8\u7684 ::after\u3002 */
+.fntv-dm-fold>div{overflow:hidden;min-height:0;box-sizing:border-box;padding:0 16px;visibility:hidden;transition:visibility .22s ease}
+.fntv-dm-fold>div::after{content:'';display:block;height:12px}
+.fntv-dm-fold.open>div{visibility:visible}
+/* \u5206\u533A\u7EBF = .semi-dropdown-divider: \u901A\u94FA 1px, \u4E0A\u4E0B 4px */
+.fntv-dm-sep{height:1px;margin:4px 0;background:rgba(255,255,255,.15);pointer-events:none}
+/* [lc-1118] \u624B\u52A8\u641C\u7D22\u6BB5: \u641C\u7D22\u884C + \u5019\u9009\u5217\u8868(\u6781\u7B80\u6392\u7248, \u65E0\u6846\u4F53\u5806\u780C)\u3002
+   \u9009\u62E9\u5668\u5E26 .fntv-dm-list \u524D\u7F00\u62AC\u7279\u5F02\u5EA6\uFF0C\u5E76\u663E\u5F0F\u538B\u6389\u98DE\u725B\u9875\u9762\u5168\u5C40\u7ED9 input/button \u7684
+   \u6D45\u8272 inset \u63CF\u8FB9\u4E0E\u7070\u767D\u5E95(box-shadow/background)\uFF0C\u5426\u5219\u63A7\u4EF6\u5728\u6697\u5E95\u5F39\u7A97\u91CC\u53D1\u7070 */
+.fntv-dm-list .fntv-dm-search-row{display:flex;gap:6px;align-items:center;padding:8px 16px 4px}
+.fntv-dm-list .fntv-dm-search-in{
+  flex:1;min-width:0;height:28px;padding:0 9px;box-sizing:border-box;
+  border:1px solid rgba(255,255,255,.14);border-radius:6px;
+  background:rgba(255,255,255,.07);color:#fff;font-size:12px;
+  outline:none;box-shadow:none;appearance:none;
+}
+.fntv-dm-list .fntv-dm-search-in::placeholder{color:rgba(255,255,255,.35)}
+.fntv-dm-list .fntv-dm-search-in:focus{border-color:var(--semi-color-primary,#3374DB);background:rgba(255,255,255,.09)}
+.fntv-dm-list .fntv-dm-search-btn{
+  flex:none;height:28px;padding:0 12px;box-sizing:border-box;
+  border:none;border-radius:6px;
+  background-color:var(--semi-color-primary,#3374DB);
+  color:#fff;font-size:12px;font-weight:500;cursor:pointer;
+  outline:none;box-shadow:none;appearance:none;
+}
+.fntv-dm-list .fntv-dm-search-btn:hover{background-color:var(--semi-color-primary-hover,#2e63c9)}
+.fntv-dm-list .fntv-dm-search-btn:disabled{opacity:.45;cursor:default}
+.fntv-dm-cand{padding:7px 16px;cursor:pointer}
+.fntv-dm-cand:hover{background:rgba(255,255,255,.06)}
+.fntv-dm-cand.on{background:rgba(51,116,219,.18)}
+.fntv-dm-cand.on:hover{background:rgba(51,116,219,.26)}
+.fntv-dm-cand-t{font-size:12px;color:#fff;line-height:1.45;word-break:break-all}
+.fntv-dm-cand.on .fntv-dm-cand-t{color:var(--semi-color-primary,#3374DB)}
+.fntv-dm-cand-s{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+.fntv-dm-search-msg{font-size:12px;color:rgba(255,255,255,.5);padding:8px 16px;line-height:1.55}
+.fntv-dm-search-err{color:#ff8a8a}
+/* \u65CB\u94AE\u533A: \u6BCF\u884C\u300C\u6807\u7B7E + \u5F53\u524D\u503C\u300D\u5728\u4E0A\u3001\u6ED1\u5757\u5728\u4E0B, \u4E0E MPV \u5F39\u5E55\u6837\u5F0F\u9762\u677F\u540C\u6784 */
+.fntv-dm-knobs{display:flex;flex-direction:column;gap:14px}
+/* \u300C\u6062\u590D\u9ED8\u8BA4\u300D\u901A\u94FA\u6210\u4E00\u884C\u83DC\u5355\u9879: \u8D1F margin \u62B5\u6D88\u5185\u5C42\u7559\u767D, \u53D1\u4E1D\u7EBF\u624D\u8DDF\u5206\u533A\u7EBF\u4E00\u6837\u9F50\u8FB9 */
+.fntv-dm-reset{
+  margin:14px -16px -12px; padding:12px 16px 10px; border-top:1px solid rgba(255,255,255,.08);
+  color:#fff; cursor:pointer; font-size:14px; text-align:center; transition:background-color .16s ease;
+}
+.fntv-dm-reset:hover{background:rgba(255,255,255,.06)}
+/* \u8BE6\u60C5: \u5355\u884C\u300C\u6807\u7B7E\u5DE6 / \u503C\u53F3\u300D(iOS \u8BBE\u7F6E\u5355\u5143\u683C\u5F0F)\u3002\u539F\u5148\u6807\u7B7E/\u503C\u5404\u4E00\u884C\u592A\u5360\u9AD8 \u2014\u2014
+   11 \u884C\u628A\u6846\u9876\u5230 86vh \u4E0A\u9650\u4ECD\u9700\u6EDA 93px\uFF0C\u800C\u7528\u6237\u660E\u786E\u8981\u300C\u5C55\u5F00\u8BE6\u60C5\u5C31\u4E00\u89C8\u65E0\u4F59\u3001\u4E0D\u8981\u6EDA\u52A8\u300D\u3002
+   \u503C\u53EF\u80FD\u662F\u5F88\u957F\u7684\u670D\u52A1\u7AEF\u6807\u9898 \u2192 \u5141\u8BB8\u6298\u884C\u53F3\u5BF9\u9F50\uFF0Coverflow-wrap:anywhere \u515C\u4F4F\u8FDE\u53F7 BVID\u3002 */
+.fntv-dm-rows{margin:0;padding:0}
+.fntv-dm-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+  padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05);
+}
+.fntv-dm-row:last-child{border-bottom:none}
+.fntv-dm-row dt{flex:none;font-size:12px;color:rgba(255,255,255,.45)}
+.fntv-dm-row dd{
+  margin:0; flex:1; min-width:0; text-align:right; font-size:13px; line-height:1.4;
+  color:rgba(255,255,255,.92); overflow-wrap:anywhere;
+}
+.fntv-dm-wait{padding:2px 0 0;font-size:13px;color:rgba(255,255,255,.45)}
+/* \u590D\u9009\u6846\u81EA\u7ED8: \u539F\u751F checkbox \u5728\u6697\u9762\u677F\u4E0A\u662F\u4E00\u5768\u5B9E\u5FC3\u7070\u5757, \u4E0E\u98DE\u725B Semi \u7684\u63CF\u8FB9\u65B9\u6846\u89C2\u611F\u4E0D\u7B26\u3002
+   \u26A0 \u5FC5\u987B\u6392\u9664\u5F00\u5173\u91CC\u90A3\u4E2A\u900F\u660E\u7684\u539F\u751F checkbox, \u5426\u5219\u5B83\u4F1A\u88AB\u753B\u6210\u65B9\u6846\u3002 */
+.fntv-dm-list input[type=checkbox]:not(.fntv-dm-sw-in){
+  -webkit-appearance:none; appearance:none; box-sizing:border-box; width:16px; height:16px; margin:0;
+  background-color:#ffffff14; border:1px solid #ffffff33; border-radius:3px; cursor:pointer;
+  background-repeat:no-repeat; background-position:center; background-size:11px 11px;
+  transition:border-color .15s ease, background-color .15s ease;
+}
+.fntv-dm-list input[type=checkbox]:not(.fntv-dm-sw-in):hover{border-color:#ffffff5c}
+.fntv-dm-list input[type=checkbox]:not(.fntv-dm-sw-in):checked{
+  background-color:var(--semi-color-primary, #3374DB); border-color:transparent;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.6 6.3 4.9 8.6 9.4 3.7' fill='none' stroke='%23fff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* \u6ED1\u5757\u81EA\u7ED8: accent-color \u7684\u672A\u586B\u5145\u8F68\u9053\u5728\u6697\u9762\u677F\u4E0A\u662F\u4E00\u6761\u8FD1\u767D\u7C97\u8F68(color-scheme:dark \u4E5F\u538B\u4E0D\u4F4F),
+   \u5DF2\u586B\u5145\u6BD4\u4F8B\u7531 makeSlider \u7684 paint() \u7528 linear-gradient \u753B\u5728 background \u4E0A */
+.fntv-dm-list input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:4px; margin:6px 0 0;
+  border-radius:2px; background:rgba(255,255,255,.18); cursor:pointer; outline:none;
+}
+.fntv-dm-list input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:12px; height:12px; border-radius:50%;
+  background:var(--semi-color-primary, #3374DB); border:none;
+}
+/* \u6781\u7AEF\u5C0F\u7A97\u515C\u5E95: \u5F39\u7A97\u81EA\u8EAB\u5C31\u662F\u6EDA\u52A8\u5BB9\u5668, ::-webkit-scrollbar \u5FC5\u987B\u540C\u65F6\u5199\u81EA\u8EAB\u4E0E\u540E\u4EE3 */
+.fntv-dm-list::-webkit-scrollbar,.fntv-dm-list *::-webkit-scrollbar{width:6px}
+.fntv-dm-list::-webkit-scrollbar-thumb,.fntv-dm-list *::-webkit-scrollbar-thumb{background:#ffffff2e;border-radius:3px}`;
+    const el = document.createElement("style");
+    el.id = DM_PANEL_STYLE_ID;
+    el.textContent = css;
+    (document.head || document.documentElement).appendChild(el);
+    _dmPanelStyleInjected = true;
+  }
   function ensureCanvas() {
-    if (canvas) return;
+    if (canvas) {
+      canvas.style.display = enabled2 ? "block" : "none";
+      return;
+    }
     const c = document.createElement("canvas");
     c.id = "fntv-danmaku-canvas";
     Object.assign(c.style, {
@@ -2977,64 +3259,230 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   function ensureMounted() {
     if (!isPlayerPage()) return;
     ensureCanvas();
+    if (dmBtnWrap && !dmBtnWrap.isConnected) controlsPlaced = false;
     const bar2 = findControlsBar();
-    if (bar2) {
-      if (!toggleWrap) createControls();
-      if (toggleWrap && toggleWrap.parentElement !== bar2) bar2.appendChild(toggleWrap);
-      if (detailsWrap && detailsWrap.parentElement !== bar2) bar2.appendChild(detailsWrap);
-      if (styleWrap && styleWrap.parentElement !== bar2) bar2.appendChild(styleWrap);
-      if (!controlsPlaced) {
-        log6.info("[danmakuWeb] \u5F39\u5E55\u5F00\u5173\u5DF2\u6CE8\u5165\u63A7\u5236\u680F(" + String(bar2.className).slice(0, 40) + ")");
-        controlsPlaced = true;
-      }
-    } else {
-      if (!toggleWrap) createControls();
-      if (toggleWrap && !toggleWrap.parentElement) document.body.appendChild(toggleWrap);
-      if (detailsWrap && !detailsWrap.parentElement) document.body.appendChild(detailsWrap);
-      if (styleWrap && !styleWrap.parentElement) document.body.appendChild(styleWrap);
+    if (!bar2) return;
+    if (!dmBtnWrap) createControls();
+    if (dmBtnWrap && dmBtnWrap.parentElement !== bar2) bar2.appendChild(dmBtnWrap);
+    if (!controlsPlaced) {
+      log6.info("[danmakuWeb] \u5F39\u5E55\u5165\u53E3\u5DF2\u6CE8\u5165\u63A7\u5236\u680F(" + String(bar2.className).slice(0, 40) + ")");
+      controlsPlaced = true;
+      stopMountPoll();
     }
   }
-  function makeControlButton(label, onClick) {
+  function createControls() {
+    if (dmBtnWrap) return;
+    injectDmPanelStyle();
     const wrap = document.createElement("div");
     wrap.className = "plugin-placeholder";
+    wrap.dataset.fnosUi = "1";
+    wrap.style.position = "relative";
     const hfull = document.createElement("div");
     hfull.className = "h-full";
     const flex = document.createElement("div");
     flex.className = "flex h-full items-center justify-center";
     flex.setAttribute("tabindex", "0");
     const span = document.createElement("span");
-    span.className = "cursor-pointer text-lg leading-lg text-[var(--semi-color-text-1)] hover:text-[var(--semi-color-text-0)]";
-    span.textContent = label;
+    span.className = "cursor-pointer text-lg leading-lg";
     span.style.userSelect = "none";
+    span.textContent = t("\u5F39\u5E55");
     flex.appendChild(span);
     hfull.appendChild(flex);
     wrap.appendChild(hfull);
+    const list = document.createElement("div");
+    list.className = "fntv-dm-list";
+    list.dataset.fnosUi = "1";
+    wrap.appendChild(list);
+    wrap.addEventListener("mouseenter", () => {
+      cancelClosePanel();
+      openPanel();
+    });
+    wrap.addEventListener("mouseleave", () => scheduleClosePanel());
     flex.addEventListener("click", (e) => {
       e.stopPropagation();
       e.preventDefault();
-      onClick();
+      cancelClosePanel();
+      openPanel();
     });
-    return { wrap, span };
-  }
-  function createControls() {
-    if (toggleWrap) return;
-    const t2 = makeControlButton("\u5F39\u5E55", () => toggleDanmaku());
-    toggleWrap = t2.wrap;
-    toggleSpan = t2.span;
-    const d = makeControlButton("\u8BE6\u60C5", () => openDetails());
-    detailsWrap = d.wrap;
-    const s = makeControlButton("\u6837\u5F0F", () => openStylePanel());
-    styleWrap = s.wrap;
+    list.addEventListener("click", (e) => e.stopPropagation());
+    list.addEventListener("pointerdown", () => {
+      dmDragging = true;
+      window.addEventListener("pointerup", () => {
+        dmDragging = false;
+      }, { once: true });
+    });
+    dmBtnWrap = wrap;
+    dmBtnSpan = span;
+    dmList = list;
     syncToggleUI();
   }
-  function syncToggleUI() {
-    if (!toggleSpan) return;
-    toggleSpan.textContent = loading ? "\u5F39\u5E55\u2026" : "\u5F39\u5E55";
-    toggleSpan.style.color = enabled2 ? "var(--fn-bg-brand, #3374DB)" : "var(--semi-color-text-1)";
-    toggleSpan.style.opacity = enabled2 ? "1" : "0.55";
+  function renderPanel() {
+    const p = dmList;
+    if (!p) return;
+    const keepScroll = p.scrollTop;
+    p.innerHTML = "";
+    dmSwitch = null;
+    dmHeadStyle = null;
+    dmHeadDetail = null;
+    dmHeadSearch = null;
+    dmFoldStyle = null;
+    dmFoldDetail = null;
+    dmFoldSearch = null;
+    dmDetailBody = null;
+    dmSearchBody = null;
+    dmDetailShown = void 0;
+    const swRow = document.createElement("li");
+    swRow.className = "fntv-dm-sw-row";
+    const swLab = document.createElement("span");
+    swLab.textContent = t("\u5F39\u5E55");
+    const sw = document.createElement("label");
+    sw.className = "fntv-dm-sw";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.className = "fntv-dm-sw-in";
+    input.checked = enabled2;
+    input.setAttribute("aria-label", t("\u5F39\u5E55"));
+    input.addEventListener("change", () => setDanmakuEnabled(input.checked));
+    const knob = document.createElement("span");
+    knob.className = "fntv-dm-sw-knob";
+    sw.appendChild(input);
+    sw.appendChild(knob);
+    swRow.appendChild(swLab);
+    swRow.appendChild(sw);
+    swRow.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.closest(".fntv-dm-sw")) return;
+      input.checked = !input.checked;
+      setDanmakuEnabled(input.checked);
+    });
+    dmSwitch = input;
+    p.appendChild(swRow);
+    const biliRow = document.createElement("li");
+    biliRow.className = "fntv-dm-sw-row";
+    const biliLab = document.createElement("span");
+    biliLab.textContent = t("B\u7AD9\u5F39\u5E55\u641C\u7D22");
+    const biliSw = document.createElement("label");
+    biliSw.className = "fntv-dm-sw";
+    const biliInput = document.createElement("input");
+    biliInput.type = "checkbox";
+    biliInput.className = "fntv-dm-sw-in";
+    biliInput.checked = biliSearch;
+    biliInput.setAttribute("aria-label", t("B\u7AD9\u5F39\u5E55\u641C\u7D22"));
+    biliInput.addEventListener("change", () => setBiliSearch(biliInput.checked));
+    const biliKnob = document.createElement("span");
+    biliKnob.className = "fntv-dm-sw-knob";
+    biliSw.appendChild(biliInput);
+    biliSw.appendChild(biliKnob);
+    biliRow.appendChild(biliLab);
+    biliRow.appendChild(biliSw);
+    biliRow.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.closest(".fntv-dm-sw")) return;
+      biliInput.checked = !biliInput.checked;
+      setBiliSearch(biliInput.checked);
+    });
+    p.appendChild(biliRow);
+    const sep1 = document.createElement("div");
+    sep1.className = "fntv-dm-sep";
+    p.appendChild(sep1);
+    const knobs = document.createElement("div");
+    knobs.className = "fntv-dm-knobs";
+    knobs.appendChild(buildStyleControls());
+    dmHeadStyle = mkFold(p, t("\u5F39\u5E55\u6837\u5F0F"), knobs, "style");
+    dmDetailBody = document.createElement("div");
+    dmHeadDetail = mkFold(p, t("\u6765\u6E90\u8BE6\u60C5"), dmDetailBody, "detail");
+    renderDetailRows();
+    dmSearchBody = document.createElement("div");
+    dmHeadSearch = mkFold(p, t("\u624B\u52A8\u641C\u7D22"), dmSearchBody, "search", (open) => {
+      if (open && dmSearchResults === null && !dmSearchBusy) {
+        void runSearch(dmSearchKw || (meta ? meta.searchTitle : ""));
+      }
+    });
+    renderSearchBody();
+    p.scrollTop = keepScroll;
   }
-  function toggleDanmaku() {
-    enabled2 = !enabled2;
+  function mkFold(parent, label, body, which, onToggle) {
+    const on = () => which === "style" ? dmSecStyle : which === "detail" ? dmSecDetail : dmSecSearch;
+    const head = document.createElement("li");
+    head.className = "fntv-dm-h";
+    head.textContent = label;
+    const caret = document.createElement("span");
+    caret.className = "fntv-dm-caret";
+    head.appendChild(caret);
+    const fold = document.createElement("div");
+    fold.className = "fntv-dm-fold";
+    fold.appendChild(body);
+    if (which === "style") dmFoldStyle = fold;
+    else if (which === "detail") dmFoldDetail = fold;
+    else dmFoldSearch = fold;
+    const apply = () => {
+      head.classList.toggle("open", on());
+      fold.classList.toggle("open", on());
+    };
+    apply();
+    head.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const next = !on();
+      dmSecStyle = which === "style" ? next : false;
+      dmSecDetail = which === "detail" ? next : false;
+      dmSecSearch = which === "search" ? next : false;
+      if (dmFoldStyle) {
+        dmFoldStyle.classList.toggle("open", dmSecStyle);
+        dmHeadStyle == null ? void 0 : dmHeadStyle.classList.toggle("open", dmSecStyle);
+      }
+      if (dmFoldDetail) {
+        dmFoldDetail.classList.toggle("open", dmSecDetail);
+        dmHeadDetail == null ? void 0 : dmHeadDetail.classList.toggle("open", dmSecDetail);
+      }
+      if (dmFoldSearch) {
+        dmFoldSearch.classList.toggle("open", dmSecSearch);
+        dmHeadSearch == null ? void 0 : dmHeadSearch.classList.toggle("open", dmSecSearch);
+      }
+      onToggle == null ? void 0 : onToggle(next);
+    });
+    parent.appendChild(head);
+    parent.appendChild(fold);
+    return head;
+  }
+  function openPanel() {
+    if (!dmList) return;
+    if (!dmList.classList.contains("active")) renderPanel();
+    dmList.classList.add("active");
+    refreshDismissBinding();
+  }
+  function closePanel() {
+    cancelClosePanel();
+    dmList == null ? void 0 : dmList.classList.remove("active");
+    if (dmList) dmList.scrollTop = 0;
+    refreshDismissBinding();
+  }
+  function scheduleClosePanel() {
+    cancelClosePanel();
+    dmCloseTimer = window.setTimeout(() => {
+      dmCloseTimer = null;
+      if (dmDragging) {
+        scheduleClosePanel();
+        return;
+      }
+      closePanel();
+    }, 260);
+  }
+  function cancelClosePanel() {
+    if (dmCloseTimer !== null) {
+      window.clearTimeout(dmCloseTimer);
+      dmCloseTimer = null;
+    }
+  }
+  function syncToggleUI() {
+    if (!dmBtnSpan) return;
+    dmBtnSpan.textContent = loading ? t("\u5F39\u5E55\u2026") : t("\u5F39\u5E55");
+    dmBtnSpan.style.color = enabled2 ? "var(--semi-color-primary, #3374DB)" : "rgba(255,255,255,.45)";
+    if (dmSwitch && dmSwitch.checked !== enabled2) dmSwitch.checked = enabled2;
+    if (dmSecDetail && dmDetailBody && dmDetailShown !== meta) renderDetailRows();
+  }
+  function setDanmakuEnabled(v) {
+    if (enabled2 === v) return;
+    enabled2 = v;
     try {
       localStorage.setItem(LS_KEY5, enabled2 ? "1" : "0");
     } catch {
@@ -3043,6 +3491,29 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     syncToggleUI();
     if (enabled2) startRender();
     else stopRender();
+  }
+  function setBiliSearch(v) {
+    if (biliSearch === v) return;
+    biliSearch = v;
+    try {
+      localStorage.setItem(LS_BILI_KEY, v ? "1" : "0");
+    } catch {
+    }
+    log6.info("[danmakuWeb] B\u7AD9\u5F39\u5E55\u641C\u7D22\u5F00\u5173 \u2192 " + v);
+    if (currentGuid && !inflight && items.length === 0) {
+      loadedGuids.delete(currentGuid);
+      void prepareAndLoad(currentGuid);
+    }
+  }
+  var DANMAKU_ITEMS_EVENT = "fntv:danmaku-items";
+  function announceItems() {
+    if (!items.length) return;
+    try {
+      window.dispatchEvent(new CustomEvent(DANMAKU_ITEMS_EVENT, {
+        detail: { times: items.map((d) => d.time) }
+      }));
+    } catch {
+    }
   }
   async function prepareAndLoad(targetGuid) {
     var _a;
@@ -3058,8 +3529,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       currentGuidFromPrefetch = !!targetGuid && guid !== urlGuid;
       items = [];
       meta = null;
+      dmSearchResults = null;
+      dmSearchErr = "";
+      dmPickedBvid = "";
       resetRenderState();
-      closeDetails();
+      closePanel();
       inflight = false;
     } else if (items.length && enabled2) {
       startRender();
@@ -3073,8 +3547,10 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     if (cached && cached.items.length) {
       items = cached.items;
       meta = cached.meta;
+      maxScreen = cached.maxScreen;
       loadedGuids.add(guid);
       renderDirty = true;
+      announceItems();
       log6.info("[danmakuWeb] \u4F1A\u8BDD\u7F13\u5B58\u547D\u4E2D " + items.length + " \u6761 guid=" + guid);
       if (enabled2) startRender();
       return;
@@ -3086,13 +3562,13 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     loading = true;
     syncToggleUI();
     try {
-      const res = await ipcRenderer.invoke("danmaku:prepare", { guid });
+      const res = await ipcRenderer.invoke("danmaku:prepare", { guid, biliSearch });
       if (guid !== currentGuid) {
         log6.info("[danmakuWeb] \u4E22\u5F03\u8FC7\u671F\u5F39\u5E55\u54CD\u5E94(\u5DF2\u5207\u96C6) guid=" + guid);
         return;
       }
       if (res && res.ok && Array.isArray(res.items) && res.items.length) {
-        items = res.items;
+        items = ensureAscending(res.items);
         meta = res.meta || {
           searchTitle: res.title || "",
           matchedTitle: res.title || "",
@@ -3102,9 +3578,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
           isMovie: !!res.isMovie,
           count: res.count || items.length
         };
+        maxScreen = Number(res.maxScreen) > 0 ? Math.round(Number(res.maxScreen)) : 0;
         loadedGuids.add(guid);
-        guidCachePut(guid, { items, meta });
+        guidCachePut(guid, { items, meta, maxScreen });
         renderDirty = true;
+        announceItems();
         log6.info(`[danmakuWeb] \u83B7\u53D6\u5F39\u5E55 ${items.length} \u6761 title="${res.title}" ep=${res.ep} movie=${res.isMovie}`);
         if (enabled2) startRender();
       } else {
@@ -3166,8 +3644,9 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       try {
         const ct = ((_b = (_a = resp.headers) == null ? void 0 : _a.get) == null ? void 0 : _b.call(_a, "content-type")) || "";
         if (ct.includes("json")) {
-          const j = await resp.clone().json();
-          if (!(j && j.success === true && j.data == null)) onPlayInfo(guid);
+          resp.clone().json().then((j) => {
+            if (!(j && j.success === true && j.data == null)) onPlayInfo(guid);
+          }).catch(() => onPlayInfo(guid));
         } else {
           onPlayInfo(guid);
         }
@@ -3192,10 +3671,37 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       return origSend.call(this, body);
     };
   }
+  function ensureAscending(arr) {
+    for (let i = 1; i < arr.length; i++) {
+      if (arr[i].time < arr[i - 1].time) {
+        log6.info("[danmakuWeb] items \u975E\u5347\u5E8F\uFF08\u4E3B\u8FDB\u7A0B\u4EA7\u7269\u53EF\u80FD\u504F\u65E7\uFF09\u2192 \u6E32\u67D3\u4FA7\u8865\u6392");
+        arr.sort((a, b) => a.time - b.time);
+        break;
+      }
+    }
+    return arr;
+  }
+  function binsearchTimes(arr, key) {
+    let left = 0;
+    let right = arr.length;
+    while (left < right - 1) {
+      const mid = left + right >> 1;
+      if (key >= arr[mid].time) left = mid;
+      else right = mid;
+    }
+    if (arr[left] && key < arr[left].time) return left;
+    return right;
+  }
+  var ctxFont = "";
+  function applyFont(font) {
+    if (!ctx || ctxFont === font) return;
+    ctx.font = font;
+    ctxFont = font;
+  }
   function syncCanvasRect() {
-    if (!canvas || !videoEl) return;
+    if (!canvas || !videoEl) return false;
     const r = videoEl.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) return;
+    if (r.width < 2 || r.height < 2) return false;
     const dpr = window.devicePixelRatio || 1;
     const w = Math.round(r.width * dpr);
     const h = Math.round(r.height * dpr);
@@ -3203,36 +3709,81 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       canvas.width = w;
       canvas.height = h;
       renderDirty = true;
+      ctxFont = "";
+      appliedSignature = null;
     }
     canvas.style.left = r.left + "px";
     canvas.style.top = r.top + "px";
     canvas.style.width = r.width + "px";
     canvas.style.height = r.height + "px";
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return true;
   }
-  function allocLane(busy, t2, dur) {
-    for (let i = 0; i < busy.length; i++) {
-      if (t2 >= busy[i]) {
-        busy[i] = t2 + dur;
+  function ensureRectObserver() {
+    if (!videoEl || typeof ResizeObserver === "undefined") return;
+    if (!rectRO) {
+      rectRO = new ResizeObserver(() => {
+        needRectSync = true;
+        renderDirty = true;
+      });
+      const bump = () => {
+        needRectSync = true;
+        renderDirty = true;
+      };
+      window.addEventListener("resize", bump, { passive: true });
+      document.addEventListener("fullscreenchange", bump);
+    }
+    if (rectROTarget !== videoEl) {
+      rectRO.disconnect();
+      rectRO.observe(videoEl);
+      rectROTarget = videoEl;
+      needRectSync = true;
+    }
+  }
+  function slotCollides(s, now, cw, newW, dur, fix) {
+    if (fix) return now - s.time < dur;
+    const slotTotal = cw + s.width;
+    if (s.width > slotTotal * (now - s.time) / dur) return true;
+    const slotLeftTime = dur + s.time - now;
+    const newArrivalTime = dur * cw / (cw + newW);
+    return slotLeftTime > newArrivalTime;
+  }
+  function allocLane(pool, now, cw, w, dur, fix) {
+    for (let i = 0; i < pool.length; i++) {
+      const s = pool[i];
+      if (!s || !slotCollides(s, now, cw, w, dur, fix)) {
+        pool[i] = { time: now, width: w };
         return i;
       }
     }
     return -1;
   }
+  function resetLanes() {
+    laneScroll = new Array(laneCount).fill(null);
+    laneTop = new Array(laneCount).fill(null);
+    laneBottom = new Array(laneCount).fill(null);
+  }
   function ensureLanes(n) {
-    if (laneCount === n) return;
+    if (laneCount === n) return false;
     laneCount = n;
-    laneBusyScroll = new Array(n).fill(-Infinity);
-    laneBusyTop = new Array(n).fill(-Infinity);
-    laneBusyBottom = new Array(n).fill(-Infinity);
+    resetLanes();
+    return true;
+  }
+  function relocateCursor(t2) {
+    active.clear();
+    resetLanes();
+    recentTexts.clear();
+    cursor = binsearchTimes(items, t2);
+    for (let i = cursor - 1; i >= 0 && t2 - items[i].time <= DUP_TEXT_SEC; i--) {
+      recentTexts.set(items[i].text, items[i].time);
+    }
+    renderDirty = true;
   }
   function resetRenderState() {
     active.clear();
     cursor = 0;
     recentTexts.clear();
-    laneBusyScroll = new Array(laneCount).fill(-Infinity);
-    laneBusyTop = new Array(laneCount).fill(-Infinity);
-    laneBusyBottom = new Array(laneCount).fill(-Infinity);
+    resetLanes();
     lastTime = -1;
     renderDirty = true;
     lastPausedDraw = false;
@@ -3253,15 +3804,58 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     }
     resetRenderState();
   }
+  function currentFont(fontSize) {
+    return `${style.bold ? "bold " : ""}${fontSize}px "Microsoft YaHei", "PingFang SC", sans-serif`;
+  }
+  function createCommentBitmap(text, color, fontSize, textW, out) {
+    const sw = style.outline > 0 ? Math.max(1, fontSize * 0.04 * style.outline) : 0;
+    const blur = style.shadow > 0 ? fontSize * 0.06 * style.shadow : 0;
+    const pad = Math.ceil(sw + blur + fontSize * 0.28);
+    const bw = textW + pad * 2;
+    const bh = Math.ceil(fontSize * 1.3) + pad * 2;
+    const dpr = window.devicePixelRatio || 1;
+    const cvs = document.createElement("canvas");
+    cvs.width = Math.max(1, Math.round(bw * dpr));
+    cvs.height = Math.max(1, Math.round(bh * dpr));
+    const c = cvs.getContext("2d");
+    if (c) {
+      c.scale(dpr, dpr);
+      c.font = currentFont(fontSize);
+      c.textBaseline = "top";
+      if (blur > 0) {
+        c.shadowColor = "rgba(0,0,0,0.9)";
+        c.shadowBlur = blur;
+      }
+      if (sw > 0) {
+        c.lineJoin = "round";
+        c.lineWidth = sw;
+        c.strokeStyle = "rgba(0,0,0,0.95)";
+        c.strokeText(text, pad, pad);
+      }
+      c.fillStyle = color;
+      c.fillText(text, pad, pad);
+    }
+    out.bw = bw;
+    out.bh = bh;
+    out.pad = pad;
+    return cvs;
+  }
   function render() {
     if (!ctx || !canvas || !enabled2) return;
-    if (!videoEl || videoEl.getBoundingClientRect().width < 2) {
-      videoEl = pickVideo();
-    }
+    if (!videoEl || !videoEl.isConnected) videoEl = pickVideo();
     if (!videoEl) return;
-    syncCanvasRect();
-    const cw = canvas.width / (window.devicePixelRatio || 1);
-    const ch = canvas.height / (window.devicePixelRatio || 1);
+    ensureRectObserver();
+    if (needRectSync || ++rectTicks >= RECT_SYNC_EVERY) {
+      rectTicks = 0;
+      needRectSync = false;
+      if (!syncCanvasRect()) {
+        videoEl = pickVideo();
+        return;
+      }
+    }
+    const dprNow = window.devicePixelRatio || 1;
+    const cw = canvas.width / dprNow;
+    const ch = canvas.height / dprNow;
     const t2 = videoEl.currentTime;
     const fixDuration = Math.max(3, style.scrollDuration * 0.6);
     if (t2 !== lastTime) renderDirty = true;
@@ -3269,40 +3863,29 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     if (paused && lastPausedDraw && !renderDirty) return;
     lastPausedDraw = paused;
     renderDirty = false;
-    if (lastTime >= 0 && t2 < lastTime - 0.5) {
-      active.clear();
-      cursor = 0;
-      recentTexts.clear();
-      laneBusyScroll = new Array(laneCount).fill(-Infinity);
-      laneBusyTop = new Array(laneCount).fill(-Infinity);
-      laneBusyBottom = new Array(laneCount).fill(-Infinity);
-    } else if (lastTime >= 0 && t2 > lastTime + 1.5) {
-      while (cursor < items.length && items[cursor].time <= t2) {
-        recentTexts.set(items[cursor].text, items[cursor].time);
-        cursor++;
-      }
-    }
-    lastTime = t2;
     const fontSize = Math.max(14, Math.min(48, ch * style.fontScale));
     const laneH = Math.max(20, ch * LANE_RATIO, fontSize * 1.08);
     const usableH = ch * style.displayArea;
     const n = Math.max(6, Math.floor(usableH / laneH));
-    ensureLanes(n);
+    let needRelocate = false;
+    if (lastTime >= 0 && (t2 < lastTime - 0.5 || t2 > lastTime + 1.5)) {
+      needRelocate = true;
+    } else if (!styleSettling) {
+      const sig = styleSignature();
+      if (appliedSignature === null) appliedSignature = sig;
+      else if (sig !== appliedSignature) {
+        appliedSignature = sig;
+        needRelocate = true;
+      }
+    }
+    if (!styleSettling && ensureLanes(n)) needRelocate = true;
+    if (needRelocate) relocateCursor(t2);
+    lastTime = t2;
     ctx.clearRect(0, 0, cw, ch);
-    ctx.font = `${style.bold ? "bold " : ""}${fontSize}px "Microsoft YaHei", "PingFang SC", sans-serif`;
-    ctx.textBaseline = "top";
-    if (style.shadow > 0) {
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = fontSize * 0.06 * style.shadow;
-    } else {
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-    }
-    if (style.outline > 0) {
-      ctx.lineJoin = "round";
-      ctx.lineWidth = Math.max(1, fontSize * 0.04 * style.outline);
-      ctx.strokeStyle = "rgba(0,0,0,0.95)";
-    }
+    const cap = maxScreen > 0 ? Math.min(maxScreen, MAX_ACTIVE_HARD_CAP) : MAX_ACTIVE_HARD_CAP;
+    if (recentTexts.size > RECENT_TEXTS_MAX) recentTexts.clear();
+    const font = currentFont(fontSize);
+    applyFont(font);
     while (cursor < items.length && items[cursor].time <= t2) {
       const i = cursor;
       const d = items[i];
@@ -3311,14 +3894,17 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         cursor++;
         continue;
       }
-      if (active.size >= MAX_ACTIVE) break;
+      if (active.size >= cap) break;
       const isBottom = d.type === 4;
       const isFix = isBottom || d.type === 5;
       const dur = isFix ? fixDuration : style.scrollDuration;
-      const lane = allocLane(isBottom ? laneBusyBottom : isFix ? laneBusyTop : laneBusyScroll, t2, dur);
+      const w = Math.max(1, Math.ceil(ctx.measureText(d.text).width));
+      const lane = allocLane(isBottom ? laneBottom : isFix ? laneTop : laneScroll, t2, cw, w, dur, isFix);
       if (lane >= 0) {
-        const w = ctx.measureText(d.text).width;
-        active.set(i, { appear: t2, lane, w, fix: isFix });
+        const dim = { bw: 0, bh: 0, pad: 0 };
+        const color = "#" + (d.color & 16777215).toString(16).padStart(6, "0");
+        const cvs = createCommentBitmap(d.text, color, fontSize, w, dim);
+        active.set(i, { appear: t2, lane, w, fix: isFix, cvs, bw: dim.bw, bh: dim.bh, pad: dim.pad });
         recentTexts.set(d.text, d.time);
         cursor++;
       } else if (t2 - d.time > LANE_GRACE_SEC) {
@@ -3329,31 +3915,26 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     }
     for (const [i, st] of active) {
       const d = items[i];
-      const isFix = st.fix;
-      const dur = isFix ? fixDuration : style.scrollDuration;
+      const dur = st.fix ? fixDuration : style.scrollDuration;
       const elapsed = t2 - st.appear;
       if (elapsed >= dur || elapsed < 0) {
         active.delete(i);
         continue;
       }
-      const color = "#" + (d.color & 16777215).toString(16).padStart(6, "0");
       let x;
       let y;
       let alpha = style.opacity;
-      if (isFix) {
+      if (st.fix) {
         y = d.type === 5 ? 6 + st.lane * laneH : ch - 6 - (st.lane + 1) * laneH;
         x = (cw - st.w) / 2;
         if (elapsed < 0.2) alpha = elapsed / 0.2 * style.opacity;
         else if (elapsed > dur - 0.3) alpha = Math.max(0, (dur - elapsed) / 0.3) * style.opacity;
       } else {
-        const p = elapsed / dur;
-        x = cw - p * (cw + st.w);
+        x = cw - elapsed / dur * (cw + st.w);
         y = 6 + st.lane * laneH;
       }
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      ctx.fillStyle = color;
-      if (style.outline > 0) ctx.strokeText(d.text, x, y);
-      ctx.fillText(d.text, x, y);
+      ctx.drawImage(st.cvs, x - st.pad, y - st.pad, st.bw, st.bh);
     }
     ctx.globalAlpha = 1;
   }
@@ -3376,89 +3957,187 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     };
     return { text: "\u2014", warn: false, detail: "" };
   }
-  var GLASS_PANEL_STYLE = {
-    background: "linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.012))",
-    backgroundColor: "rgba(15,15,20,.78)",
-    backdropFilter: "blur(42px) saturate(150%) brightness(.82)",
-    "-webkit-backdrop-filter": "blur(42px) saturate(150%) brightness(.82)",
-    borderRadius: "18px",
-    boxShadow: "0 18px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.07), inset 0 1px 0 rgba(255,255,255,.10)",
-    fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif'
-  };
-  function ensureModal() {
-    if (modal) return modal;
-    const m = document.createElement("div");
-    m.id = "fntv-dm-modal";
-    Object.assign(m.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483647",
-      display: "none",
-      alignItems: "center",
-      justifyContent: "center"
-    });
-    const backdrop = document.createElement("div");
-    Object.assign(backdrop.style, {
-      position: "absolute",
-      inset: "0",
-      background: "rgba(0,0,0,0.42)",
-      backdropFilter: "blur(18px) saturate(120%)"
-    });
-    backdrop.style.setProperty("-webkit-backdrop-filter", "blur(18px) saturate(120%)");
-    backdrop.addEventListener("click", () => closeDetails());
-    const panel = document.createElement("div");
-    Object.assign(panel.style, {
-      position: "relative",
-      width: "min(560px, 92vw)",
-      maxHeight: "82vh",
-      color: "#f5f5f7",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-      fontSize: "14px"
-    }, GLASS_PANEL_STYLE);
-    const head = document.createElement("div");
-    Object.assign(head.style, {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "14px 18px 12px",
-      fontWeight: "600",
-      fontSize: "15px",
-      borderBottom: "1px solid rgba(255,255,255,.06)"
-    });
-    const titleEl = document.createElement("span");
-    titleEl.textContent = "\u5F39\u5E55\u6765\u6E90\u4FE1\u606F";
-    const closeEl = document.createElement("span");
-    closeEl.textContent = "\u2715";
-    closeEl.style.cursor = "pointer";
-    closeEl.style.padding = "0 4px";
-    closeEl.style.opacity = "0.7";
-    closeEl.addEventListener("click", () => closeDetails());
-    head.appendChild(titleEl);
-    head.appendChild(closeEl);
-    const body = document.createElement("div");
-    body.id = "fntv-dm-modal-body";
-    Object.assign(body.style, {
-      overflow: "auto",
-      padding: "14px 18px",
-      flex: "1"
-    });
-    panel.appendChild(head);
-    panel.appendChild(body);
-    m.appendChild(backdrop);
-    m.appendChild(panel);
-    document.body.appendChild(m);
-    modal = m;
-    return m;
+  var _dismissBound = false;
+  function anyPanelOpen() {
+    return !!(dmList == null ? void 0 : dmList.classList.contains("active"));
   }
-  function renderModalBody() {
-    const m = ensureModal();
-    const body = m.querySelector("#fntv-dm-modal-body");
+  function onDismissClick(e) {
+    const tgt = e.target;
+    if (tgt && (dmBtnWrap == null ? void 0 : dmBtnWrap.contains(tgt))) return;
+    closePanel();
+  }
+  function onDismissKeydown(e) {
+    if (e.key !== "Escape") return;
+    closePanel();
+  }
+  function refreshDismissBinding() {
+    const need = anyPanelOpen();
+    if (need === _dismissBound) return;
+    _dismissBound = need;
+    if (need) {
+      document.addEventListener("click", onDismissClick, true);
+      document.addEventListener("keydown", onDismissKeydown, true);
+    } else {
+      document.removeEventListener("click", onDismissClick, true);
+      document.removeEventListener("keydown", onDismissKeydown, true);
+    }
+  }
+  function renderSearchBody() {
+    const body = dmSearchBody;
     if (!body) return;
     body.innerHTML = "";
+    const msg = (text, err = false) => {
+      const m = document.createElement("div");
+      m.className = "fntv-dm-search-msg" + (err ? " fntv-dm-search-err" : "");
+      m.textContent = text;
+      body.appendChild(m);
+    };
+    const row2 = document.createElement("div");
+    row2.className = "fntv-dm-search-row";
+    const glassExempt = (el) => {
+      el.setAttribute("data-fntv-glass-exclude", "1");
+    };
+    const inp = document.createElement("input");
+    inp.className = "fntv-dm-search-in";
+    glassExempt(inp);
+    inp.value = dmSearchKw;
+    inp.placeholder = t("\u756A\u540D\u6216\u5173\u952E\u8BCD");
+    inp.addEventListener("input", () => {
+      dmSearchKw = inp.value;
+    });
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") void runSearch(dmSearchKw);
+    });
+    const btn = document.createElement("button");
+    btn.className = "fntv-dm-search-btn";
+    glassExempt(btn);
+    btn.textContent = t("\u641C\u7D22");
+    btn.disabled = dmSearchBusy;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      void runSearch(dmSearchKw);
+    });
+    glassExempt(row2);
+    row2.appendChild(inp);
+    row2.appendChild(btn);
+    body.appendChild(row2);
+    if (dmSearchBusy) {
+      msg(t("\u6B63\u5728\u641C\u7D22\u2026"));
+      return;
+    }
+    if (dmSearchErr) {
+      msg(dmSearchErr, true);
+      return;
+    }
+    if (dmSearchResults === null) {
+      msg(t("\u5C55\u5F00\u540E\u81EA\u52A8\u6309\u5F53\u524D\u756A\u540D\u641C\u7D22\uFF0C\u4E5F\u53EF\u6539\u5173\u952E\u8BCD\u91CD\u641C"));
+      return;
+    }
+    if (!dmSearchResults.length) {
+      msg(t("\u6CA1\u6709\u53EF\u7528\u7684\u641C\u7D22\u7ED3\u679C"));
+      return;
+    }
+    for (const c of dmSearchResults) {
+      const item = document.createElement("div");
+      item.className = "fntv-dm-cand" + (c.bvid === dmPickedBvid ? " on" : "");
+      const tEl = document.createElement("div");
+      tEl.className = "fntv-dm-cand-t";
+      tEl.textContent = (c.bvid === dmPickedBvid ? "\u2713 " : "") + c.title;
+      const sEl = document.createElement("div");
+      sEl.className = "fntv-dm-cand-s";
+      sEl.textContent = sourceLabel(c.source) + (c.isCompilation ? " \u26A0\uFE0F\u5408\u96C6" : "") + (c.bvid === dmPickedBvid ? t("\uFF08\u4F7F\u7528\u4E2D\uFF09") : "");
+      item.appendChild(tEl);
+      item.appendChild(sEl);
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        void pickCandidate(c);
+      });
+      body.appendChild(item);
+    }
+  }
+  async function runSearch(kw) {
+    kw = String(kw || "").trim();
+    if (!kw) {
+      dmSearchErr = t("\u8BF7\u8F93\u5165\u641C\u7D22\u5173\u952E\u8BCD");
+      renderSearchBody();
+      return;
+    }
+    if (dmSearchBusy) return;
+    dmSearchBusy = true;
+    dmSearchKw = kw;
+    dmSearchErr = "";
+    renderSearchBody();
+    try {
+      const res = await ipcRenderer.invoke("danmaku:candidates", {
+        title: kw,
+        ep: meta ? meta.ep : 0,
+        season: meta ? meta.season : 0
+      });
+      if (res && res.ok && Array.isArray(res.candidates)) {
+        dmSearchResults = res.candidates;
+      } else {
+        dmSearchResults = [];
+        dmSearchErr = res && res.error || t("\u6CA1\u6709\u53EF\u7528\u7684\u641C\u7D22\u7ED3\u679C");
+      }
+    } catch (e) {
+      dmSearchResults = [];
+      dmSearchErr = t("\u641C\u7D22\u5F02\u5E38") + ": " + ((e == null ? void 0 : e.message) || e);
+    } finally {
+      dmSearchBusy = false;
+      renderSearchBody();
+    }
+  }
+  async function pickCandidate(c) {
+    if (dmSearchBusy || !(c == null ? void 0 : c.bvid)) return;
+    dmSearchBusy = true;
+    dmSearchErr = "";
+    renderSearchBody();
+    try {
+      const res = await ipcRenderer.invoke("danmaku:pick", {
+        title: dmSearchKw || (meta ? meta.searchTitle : ""),
+        ep: meta ? meta.ep : 0,
+        season: meta ? meta.season : 0,
+        isMovie: meta ? meta.isMovie : false,
+        bvid: c.bvid
+      });
+      if (res && res.ok && Array.isArray(res.items) && res.items.length && currentGuid) {
+        items = ensureAscending(res.items);
+        meta = res.meta || meta;
+        if (Number(res.maxScreen) > 0) maxScreen = Math.round(Number(res.maxScreen));
+        dmPickedBvid = String(c.bvid);
+        loadedGuids.add(currentGuid);
+        guidCachePut(currentGuid, { items, meta, maxScreen });
+        renderDirty = true;
+        dmDetailShown = void 0;
+        renderDetailRows();
+        announceItems();
+        if (enabled2) startRender();
+        log6.info("[danmakuWeb] \u624B\u52A8\u9009\u5B9A\u5F39\u5E55: " + items.length + " \u6761 bvid=" + c.bvid);
+      } else {
+        const err = res && res.error || t("\u9009\u5B9A\u5931\u8D25");
+        if (meta) meta.error = err;
+        dmSearchErr = err;
+      }
+    } catch (e) {
+      dmSearchErr = t("\u9009\u5B9A\u5931\u8D25") + ": " + ((e == null ? void 0 : e.message) || e);
+    } finally {
+      dmSearchBusy = false;
+      renderSearchBody();
+      syncToggleUI();
+    }
+  }
+  function renderDetailRows() {
+    const body = dmDetailBody;
+    if (!body) return;
+    dmDetailShown = meta;
+    body.innerHTML = "";
     if (!meta) {
-      body.textContent = "\u5F39\u5E55\u52A0\u8F7D\u4E2D\u2026";
+      const wait = document.createElement("div");
+      wait.className = "fntv-dm-wait";
+      wait.textContent = t("\u5F39\u5E55\u52A0\u8F7D\u4E2D\u2026");
+      body.appendChild(wait);
       return;
     }
     const cookie = cookieStatusInfo(meta.cookieStatus || "");
@@ -3480,65 +4159,49 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       const banner = document.createElement("div");
       banner.textContent = "\u26A0\uFE0F " + cookie.detail;
       Object.assign(banner.style, {
-        marginBottom: "14px",
-        padding: "9px 11px",
-        borderRadius: "8px",
+        margin: "2px 0 10px",
+        padding: "8px 10px",
+        borderRadius: "6px",
         background: "rgba(255,76,76,0.12)",
         border: "1px solid rgba(255,76,76,0.45)",
         color: "#ff8a8a",
-        fontSize: "13px",
+        fontSize: "12px",
         lineHeight: "1.5"
       });
       body.appendChild(banner);
     }
-    const grid = document.createElement("div");
-    Object.assign(grid.style, {
-      display: "grid",
-      gridTemplateColumns: "96px 1fr",
-      rowGap: "10px",
-      columnGap: "12px",
-      alignItems: "start"
-    });
+    const dl = document.createElement("dl");
+    dl.className = "fntv-dm-rows";
     for (const [k, v] of rows) {
-      const kEl = document.createElement("div");
+      const row2 = document.createElement("div");
+      row2.className = "fntv-dm-row";
+      const kEl = document.createElement("dt");
       kEl.textContent = k;
-      kEl.style.color = "rgba(245,245,247,.52)";
-      kEl.style.flexShrink = "0";
-      const vEl = document.createElement("div");
+      const vEl = document.createElement("dd");
       vEl.textContent = v;
-      vEl.style.wordBreak = "break-all";
       if (k === "\u767B\u5F55\u72B6\u6001") {
         vEl.style.color = cookie.warn ? "#ff6b6b" : "#5ad17a";
         vEl.style.fontWeight = "600";
-      } else {
-        vEl.style.color = "rgba(245,245,247,.92)";
       }
-      grid.appendChild(kEl);
-      grid.appendChild(vEl);
+      row2.appendChild(kEl);
+      row2.appendChild(vEl);
+      dl.appendChild(row2);
     }
-    body.appendChild(grid);
+    body.appendChild(dl);
     const tip = document.createElement("div");
-    tip.textContent = "\u6570\u636E\u6765\u6E90\uFF1AB\u7AD9\uFF08\u4E0E MPV \u5F39\u5E55\u540C\u6E90\uFF09";
+    tip.textContent = /^自建源/.test(String(meta.source || "")) ? "\u6570\u636E\u6765\u6E90\uFF1A\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3 danmu_api\uFF08\u53EA\u8BA4\u7CBE\u786E\u5339\u914D\uFF0C\u672A\u547D\u4E2D\u81EA\u52A8\u964D\u7EA7 B\u7AD9\uFF09" : "\u6570\u636E\u6765\u6E90\uFF1AB\u7AD9\uFF08\u4E0E MPV \u5F39\u5E55\u540C\u6E90\uFF09";
     Object.assign(tip.style, {
-      marginTop: "14px",
       paddingTop: "10px",
       borderTop: "1px solid rgba(255,255,255,.06)",
       color: "rgba(245,245,247,.4)",
-      fontSize: "12px"
+      fontSize: "12px",
+      lineHeight: "1.5"
     });
     body.appendChild(tip);
   }
-  function openDetails() {
-    const m = ensureModal();
-    renderModalBody();
-    m.style.display = "flex";
-  }
-  function closeDetails() {
-    if (modal) modal.style.display = "none";
-  }
   function makeSlider(label, min, max, step, value, fmt2, onInput) {
     const row2 = document.createElement("div");
-    Object.assign(row2.style, { display: "flex", flexDirection: "column", gap: "6px" });
+    Object.assign(row2.style, { display: "flex", flexDirection: "column" });
     const top = document.createElement("div");
     Object.assign(top.style, { display: "flex", justifyContent: "space-between", fontSize: "13px" });
     const lab = document.createElement("span");
@@ -3556,10 +4219,15 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     input.step = String(step);
     input.value = String(value);
     Object.assign(input.style, { width: "100%" });
-    input.style.setProperty("accent-color", "#2997ff");
+    const paint = () => {
+      const pct = Math.max(0, Math.min(100, (parseFloat(input.value) - min) / (max - min) * 100));
+      input.style.background = `linear-gradient(to right, ${BRAND_ACCENT} 0 ${pct}%, rgba(255,255,255,.18) ${pct}% 100%)`;
+    };
+    paint();
     input.addEventListener("input", () => {
       const v = parseFloat(input.value);
       val.textContent = fmt2(v);
+      paint();
       onInput(v);
     });
     row2.appendChild(top);
@@ -3575,8 +4243,6 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     const input = document.createElement("input");
     input.type = "checkbox";
     input.checked = value;
-    Object.assign(input.style, { width: "18px", height: "18px" });
-    input.style.setProperty("accent-color", "#2997ff");
     input.addEventListener("change", () => onChange(input.checked));
     row2.appendChild(lab);
     row2.appendChild(input);
@@ -3585,24 +4251,25 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   function buildStyleControls() {
     const wrap = document.createElement("div");
     Object.assign(wrap.style, { display: "flex", flexDirection: "column", gap: "14px" });
-    wrap.appendChild(makeToggle("\u7C97\u4F53", style.bold, (v) => {
+    wrap.appendChild(makeToggle(t("\u7C97\u4F53"), style.bold, (v) => {
       style.bold = v;
       saveStyle();
     }));
+    const baseScale = DEFAULT_STYLE.fontScale;
     wrap.appendChild(makeSlider(
-      "\u5B57\u53F7",
+      t("\u5B57\u53F7"),
       50,
       180,
       1,
-      Math.round(style.fontScale / 0.036 * 100),
+      Math.round(style.fontScale / baseScale * 100),
       (v) => v + "%",
       (v) => {
-        style.fontScale = 0.036 * (v / 100);
+        style.fontScale = baseScale * (v / 100);
         saveStyle();
       }
     ));
     wrap.appendChild(makeSlider(
-      "\u63CF\u8FB9",
+      t("\u63CF\u8FB9"),
       0,
       3,
       0.1,
@@ -3614,7 +4281,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       }
     ));
     wrap.appendChild(makeSlider(
-      "\u9634\u5F71",
+      t("\u9634\u5F71"),
       0,
       3,
       0.1,
@@ -3626,19 +4293,19 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       }
     ));
     wrap.appendChild(makeSlider(
-      "\u6EDA\u52A8\u65F6\u957F",
+      t("\u6EDA\u52A8\u65F6\u957F\uFF08\u8D8A\u5927\u8D8A\u6162\uFF09"),
       4,
       16,
       0.5,
       style.scrollDuration,
-      (v) => v.toFixed(1) + "s\uFF08\u8D8A\u5927\u8D8A\u6162\uFF09",
+      (v) => v.toFixed(1) + "s",
       (v) => {
         style.scrollDuration = v;
         saveStyle();
       }
     ));
     wrap.appendChild(makeSlider(
-      "\u900F\u660E\u5EA6",
+      t("\u900F\u660E\u5EA6"),
       0.3,
       1,
       0.05,
@@ -3650,7 +4317,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       }
     ));
     wrap.appendChild(makeSlider(
-      "\u663E\u793A\u8303\u56F4",
+      t("\u663E\u793A\u8303\u56F4"),
       0.3,
       1,
       0.05,
@@ -3661,111 +4328,78 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         saveStyle();
       }
     ));
-    const reset = document.createElement("button");
-    reset.textContent = "\u6062\u590D\u9ED8\u8BA4";
-    Object.assign(reset.style, {
-      marginTop: "4px",
-      padding: "9px 12px",
-      background: "rgba(41,151,255,.22)",
-      color: "#6cb8ff",
-      border: "1px solid rgba(41,151,255,.35)",
-      borderRadius: "10px",
-      cursor: "pointer",
-      fontSize: "13px"
-    });
-    reset.addEventListener("mouseenter", () => {
-      reset.style.background = "rgba(41,151,255,.32)";
-    });
-    reset.addEventListener("mouseleave", () => {
-      reset.style.background = "rgba(41,151,255,.22)";
-    });
-    reset.addEventListener("click", () => {
+    const reset = document.createElement("div");
+    reset.className = "fntv-dm-reset";
+    reset.textContent = t("\u6062\u590D\u9ED8\u8BA4");
+    reset.addEventListener("click", (e) => {
+      e.stopPropagation();
       style = { ...DEFAULT_STYLE };
       saveStyle();
-      const body = stylePanel == null ? void 0 : stylePanel.querySelector("#fntv-dm-style-body");
-      if (body) {
-        body.innerHTML = "";
-        body.appendChild(buildStyleControls());
-      }
+      renderPanel();
     });
     wrap.appendChild(reset);
     return wrap;
   }
-  function ensureStylePanel() {
-    if (stylePanel) return stylePanel;
-    const m = document.createElement("div");
-    m.id = "fntv-dm-style";
-    Object.assign(m.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483647",
-      display: "none",
-      alignItems: "center",
-      justifyContent: "center"
-    });
-    const backdrop = document.createElement("div");
-    Object.assign(backdrop.style, {
-      position: "absolute",
-      inset: "0",
-      background: "rgba(0,0,0,0.42)",
-      backdropFilter: "blur(18px) saturate(120%)"
-    });
-    backdrop.style.setProperty("-webkit-backdrop-filter", "blur(18px) saturate(120%)");
-    backdrop.addEventListener("click", () => closeStylePanel());
-    const panel = document.createElement("div");
-    Object.assign(panel.style, {
-      position: "relative",
-      width: "min(420px, 92vw)",
-      maxHeight: "82vh",
-      color: "#f5f5f7",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-      fontSize: "14px"
-    }, GLASS_PANEL_STYLE);
-    const head = document.createElement("div");
-    Object.assign(head.style, {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "14px 18px 12px",
-      fontWeight: "600",
-      fontSize: "15px",
-      borderBottom: "1px solid rgba(255,255,255,.06)"
-    });
-    const titleEl = document.createElement("span");
-    titleEl.textContent = "\u5F39\u5E55\u6837\u5F0F";
-    const closeEl = document.createElement("span");
-    closeEl.textContent = "\u2715";
-    closeEl.style.cursor = "pointer";
-    closeEl.style.padding = "0 4px";
-    closeEl.style.opacity = "0.7";
-    closeEl.addEventListener("click", () => closeStylePanel());
-    head.appendChild(titleEl);
-    head.appendChild(closeEl);
-    const body = document.createElement("div");
-    body.id = "fntv-dm-style-body";
-    Object.assign(body.style, { overflow: "auto", padding: "14px 18px", flex: "1" });
-    body.appendChild(buildStyleControls());
-    panel.appendChild(head);
-    panel.appendChild(body);
-    m.appendChild(backdrop);
-    m.appendChild(panel);
-    document.body.appendChild(m);
-    stylePanel = m;
-    return m;
-  }
-  function openStylePanel() {
-    const m = ensureStylePanel();
-    m.style.display = "flex";
-  }
-  function closeStylePanel() {
-    if (stylePanel) stylePanel.style.display = "none";
-  }
   installPlayInfoObserver();
+  var MOUNT_POLL_MS = 400;
+  var MOUNT_POLL_MAX = 60;
+  var MOUNT_POLL_PAGE_GRACE = 15;
+  var mountPollTimer = null;
+  var mountPollTries = 0;
+  function stopMountPoll() {
+    if (mountPollTimer) {
+      clearInterval(mountPollTimer);
+      mountPollTimer = null;
+    }
+    mountPollTries = 0;
+  }
+  function startMountPoll() {
+    if (mountPollTimer || controlsPlaced) return;
+    mountPollTries = 0;
+    mountPollTimer = setInterval(() => {
+      mountPollTries++;
+      if (controlsPlaced || mountPollTries > MOUNT_POLL_MAX || mountPollTries > MOUNT_POLL_PAGE_GRACE && !isPlayerPage()) {
+        stopMountPoll();
+        return;
+      }
+      ensureMounted();
+    }, MOUNT_POLL_MS);
+  }
+  function leavePlayer() {
+    stopRender();
+    if (canvas) canvas.style.display = "none";
+    if (rectRO) {
+      rectRO.disconnect();
+      rectRO = null;
+      rectROTarget = null;
+    }
+    cancelClosePanel();
+    dmBtnWrap == null ? void 0 : dmBtnWrap.remove();
+    dmBtnWrap = null;
+    dmBtnSpan = null;
+    dmList = null;
+    dmSwitch = null;
+    dmHeadStyle = null;
+    dmHeadDetail = null;
+    dmFoldStyle = null;
+    dmFoldDetail = null;
+    dmDetailBody = null;
+    dmDetailShown = void 0;
+    controlsPlaced = false;
+    mountedForGuid = null;
+    refreshDismissBinding();
+  }
+  function checkLeave() {
+    if (mountedForGuid === null && !dmBtnWrap) return;
+    if (GUID_RE2.test(window.location.href)) return;
+    leavePlayer();
+  }
   function maybeSetup() {
     applyVideoFullscreenClass();
-    if (!isPlayerPage()) return;
+    if (!isPlayerPage()) {
+      checkLeave();
+      return;
+    }
     injectPlayerHeaderStyle();
     bindHeaderAutoHide();
     bindVideoFullscreenFix();
@@ -3774,9 +4408,13 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       enabled2 = saved !== "0";
     } catch {
     }
+    try {
+      biliSearch = localStorage.getItem(LS_BILI_KEY) !== "0";
+    } catch {
+    }
     const guid = getGuid();
     if (!guid) return;
-    if (guid === mountedForGuid && controlsPlaced) {
+    if (guid === mountedForGuid && controlsPlaced && !!(dmBtnWrap == null ? void 0 : dmBtnWrap.isConnected)) {
       if (canvas) canvas.style.display = enabled2 ? "block" : "none";
       syncToggleUI();
       return;
@@ -3785,14 +4423,38 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     mountedForGuid = guid;
     syncToggleUI();
     prepareAndLoad();
+    if (!controlsPlaced) startMountPoll();
   }
   registerHook("onReady" /* OnReady */, () => {
+    startMountPoll();
     setTimeout(maybeSetup, 1500);
   });
   registerHook("onDomChange" /* OnDomChange */, () => {
+    checkLeave();
     if (maybeSetup._t) clearTimeout(maybeSetup._t);
     maybeSetup._t = setTimeout(maybeSetup, 800);
+    if (!controlsPlaced) startMountPoll();
   });
+  var _routeHooked = false;
+  function hookRouteChanges() {
+    if (_routeHooked) return;
+    _routeHooked = true;
+    window.addEventListener("popstate", checkLeave);
+    window.addEventListener("hashchange", checkLeave);
+    try {
+      const h = window.history;
+      for (const m of ["pushState", "replaceState"]) {
+        const orig = h[m];
+        if (typeof orig !== "function") continue;
+        h[m] = function(...a) {
+          orig.apply(this, a);
+          checkLeave();
+        };
+      }
+    } catch {
+    }
+  }
+  hookRouteChanges();
 
   // src/preload/plugins/embyWall/modals/feedback.ts
   init_electron();
@@ -3800,24 +4462,24 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   var FEEDBACK_LINK_URL = "https://wj.qq.com/s2/27390788/787a/";
   var QQ_GROUP_URL = "https://qm.qq.com/q/dUnIQVvoIw";
   var openFeedbackModal = async () => {
-    let modal2 = document.getElementById("fnos-feedback-modal");
-    if (!modal2) {
-      modal2 = document.createElement("div");
-      modal2.id = "fnos-feedback-modal";
-      modal2.setAttribute("data-fnos-ui", "1");
-      modal2.style.cssText = "position:fixed;z-index:2147483701;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-      modal2.addEventListener("click", (e) => {
-        if (e.target === modal2) modal2.style.display = "none";
+    let modal = document.getElementById("fnos-feedback-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "fnos-feedback-modal";
+      modal.setAttribute("data-fnos-ui", "1");
+      modal.style.cssText = "position:fixed;z-index:2147483701;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.style.display = "none";
       });
       const card = document.createElement("div");
       card.style.cssText = "width:300px;border-radius:18px;padding:24px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);text-align:center;";
       card.innerHTML = '<div id="fnos-feedback-back" style="display:flex;align-items:center;gap:6px;margin-bottom:16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--fnos-ui-pill-text);"><span style="font-size:17px;line-height:1;">\u2190</span><span>\u8FD4\u56DE</span></div><div style="font-size:20px;font-weight:800;color:var(--fnos-ui-pill-text);margin-bottom:6px;">\u{1F4AC} \u610F\u89C1\u53CD\u9988</div><div style="font-size:12.5px;line-height:1.7;color:var(--fnos-ui-text);opacity:.82;margin-bottom:16px;">\u6B22\u8FCE\u626B\u7801\u586B\u5199\u95EE\u5377\uFF0C\u5411\u6211\u4EEC\u53CD\u9988\u4F7F\u7528\u4F53\u9A8C\u4E0E\u5EFA\u8BAE\u3002</div><div id="fnos-feedback-qr" style="width:180px;height:180px;margin:0 auto 14px;background:#fff;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:11px;opacity:.65;margin-bottom:14px;">\u626B\u7801\u53C2\u4E0E\u7528\u6237\u8C03\u7814</div><a id="fnos-feedback-link" href="' + FEEDBACK_LINK_URL + '" style="display:inline-block;font-size:13px;font-weight:700;color:var(--fnos-ui-pill-text);text-decoration:none;padding:8px 20px;border-radius:10px;background:var(--fnos-ui-pill-bg)!important;border:1px solid var(--fnos-ui-pill-border);transition:background .15s,transform .1s;">\u{1F517} \u7528\u6237\u8C03\u7814\u95EE\u5377</a>';
-      modal2.appendChild(card);
-      document.body.appendChild(modal2);
+      modal.appendChild(card);
+      document.body.appendChild(modal);
       document.getElementById("fnos-feedback-back").addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        modal2.style.display = "none";
+        modal.style.display = "none";
         const choice = document.getElementById("fnos-feedback-choice-modal");
         if (choice) choice.style.display = "flex";
       });
@@ -3841,7 +4503,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         flink.style.color = "var(--fnos-ui-pill-text)";
       };
     }
-    modal2.style.display = "flex";
+    modal.style.display = "flex";
     const qrBox = document.getElementById("fnos-feedback-qr");
     if (qrBox && !qrBox.querySelector("img")) {
       try {
@@ -3860,14 +4522,14 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     }
   };
   var openFeedbackChoiceModal = () => {
-    let modal2 = document.getElementById("fnos-feedback-choice-modal");
-    if (!modal2) {
-      modal2 = document.createElement("div");
-      modal2.id = "fnos-feedback-choice-modal";
-      modal2.setAttribute("data-fnos-ui", "1");
-      modal2.style.cssText = "position:fixed;z-index:2147483702;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-      modal2.addEventListener("click", (e) => {
-        if (e.target === modal2) modal2.style.display = "none";
+    let modal = document.getElementById("fnos-feedback-choice-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "fnos-feedback-choice-modal";
+      modal.setAttribute("data-fnos-ui", "1");
+      modal.style.cssText = "position:fixed;z-index:2147483702;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.style.display = "none";
       });
       const card = document.createElement("div");
       card.style.cssText = "width:320px;border-radius:18px;padding:22px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);";
@@ -3877,7 +4539,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       optSurvey.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;box-sizing:border-box;padding:14px 16px;margin-bottom:12px;border-radius:14px;cursor:pointer;text-align:center;background:var(--fnos-ui-input-bg)!important;border:1px solid var(--fnos-ui-border3);color:var(--fnos-ui-text);transition:background .15s,border-color .15s;";
       optSurvey.innerHTML = '<div style="font-size:14px;font-weight:700;">\u{1F4DD} \u7528\u6237\u8C03\u7814\u95EE\u5377</div><div style="font-size:11.5px;opacity:.7;">\u586B\u5199\u95EE\u5377\uFF0C\u53CD\u9988\u4F7F\u7528\u4F53\u9A8C\u4E0E\u5EFA\u8BAE</div>';
       optSurvey.addEventListener("click", () => {
-        if (modal2) modal2.style.display = "none";
+        if (modal) modal.style.display = "none";
         openFeedbackModal();
       });
       const optQQ = document.createElement("button");
@@ -3885,7 +4547,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       optQQ.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;box-sizing:border-box;padding:14px 16px;border-radius:14px;cursor:pointer;text-align:center;background:var(--fnos-ui-input-bg)!important;border:1px solid var(--fnos-ui-border3);color:var(--fnos-ui-text);transition:background .15s,border-color .15s;";
       optQQ.innerHTML = '<div style="font-size:14px;font-weight:700;">\u{1F4AC} QQ \u4EA4\u6D41\u7FA4</div><div style="font-size:11.5px;opacity:.7;">\u52A0\u5165 QQ \u7FA4\uFF0C\u5B9E\u65F6\u4EA4\u6D41\u53CD\u9988</div>';
       optQQ.addEventListener("click", () => {
-        if (modal2) modal2.style.display = "none";
+        if (modal) modal.style.display = "none";
         openQQGroupModal();
       });
       [optSurvey, optQQ].forEach((b) => {
@@ -3900,30 +4562,30 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       });
       card.appendChild(optSurvey);
       card.appendChild(optQQ);
-      modal2.appendChild(card);
-      document.body.appendChild(modal2);
+      modal.appendChild(card);
+      document.body.appendChild(modal);
     }
-    modal2.style.display = "flex";
+    modal.style.display = "flex";
   };
   var openQQGroupModal = () => {
-    let modal2 = document.getElementById("fnos-qq-group-modal");
-    if (!modal2) {
-      modal2 = document.createElement("div");
-      modal2.id = "fnos-qq-group-modal";
-      modal2.setAttribute("data-fnos-ui", "1");
-      modal2.style.cssText = "position:fixed;z-index:2147483703;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-      modal2.addEventListener("click", (e) => {
-        if (e.target === modal2) modal2.style.display = "none";
+    let modal = document.getElementById("fnos-qq-group-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "fnos-qq-group-modal";
+      modal.setAttribute("data-fnos-ui", "1");
+      modal.style.cssText = "position:fixed;z-index:2147483703;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.style.display = "none";
       });
       const card = document.createElement("div");
       card.style.cssText = "width:320px;border-radius:18px;padding:22px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);";
       card.innerHTML = '<div id="fnos-qq-back" style="display:flex;align-items:center;gap:6px;margin-bottom:16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--fnos-ui-pill-text);"><span style="font-size:17px;line-height:1;">\u2190</span><span>\u8FD4\u56DE</span></div><div style="font-size:20px;font-weight:800;color:var(--fnos-ui-pill-text);margin-bottom:6px;">\u{1F4AC} QQ \u4EA4\u6D41\u7FA4</div><div style="font-size:12.5px;line-height:1.7;color:var(--fnos-ui-text);opacity:.82;margin-bottom:18px;">\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u52A0\u5165 QQ \u7FA4\uFF0C\u5B9E\u65F6\u4EA4\u6D41\u4F7F\u7528\u4F53\u9A8C\u4E0E\u5EFA\u8BAE\u3002</div><a id="fnos-qq-join" href="' + QQ_GROUP_URL + '" style="display:inline-block;font-size:13px;font-weight:700;color:var(--fnos-ui-pill-text);text-decoration:none;padding:9px 22px;border-radius:10px;background:var(--fnos-ui-pill-bg)!important;border:1px solid var(--fnos-ui-pill-border);transition:background .15s,transform .1s;">\u2795 \u52A0\u5165 QQ \u7FA4</a>';
-      modal2.appendChild(card);
-      document.body.appendChild(modal2);
+      modal.appendChild(card);
+      document.body.appendChild(modal);
       document.getElementById("fnos-qq-back").addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        modal2.style.display = "none";
+        modal.style.display = "none";
         const choice = document.getElementById("fnos-feedback-choice-modal");
         if (choice) choice.style.display = "flex";
       });
@@ -3947,7 +4609,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         qjoin.style.color = "var(--fnos-ui-pill-text)";
       };
     }
-    modal2.style.display = "flex";
+    modal.style.display = "flex";
   };
 
   // src/preload/plugins/embyWall/state.ts
@@ -11593,21 +12255,21 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
         st.textContent = "@keyframes fnosPatchSpin{to{transform:rotate(360deg)}}@keyframes fnosPatchIndet{0%{margin-left:0}50%{margin-left:55%}100%{margin-left:0}}";
         document.head.appendChild(st);
       }
-      const modal2 = document.createElement("div");
-      modal2.id = "fntv-patch-apply-popup";
-      modal2.setAttribute("data-fnos-ui", "1");
-      modal2.style.cssText = "position:fixed;z-index:2147483706;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
-      modal2.addEventListener("click", (e) => {
-        if (e.target === modal2 && modal2.getAttribute("data-closable") === "1") fntvClosePatchApplyPopup();
+      const modal = document.createElement("div");
+      modal.id = "fntv-patch-apply-popup";
+      modal.setAttribute("data-fnos-ui", "1");
+      modal.style.cssText = "position:fixed;z-index:2147483706;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);";
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal && modal.getAttribute("data-closable") === "1") fntvClosePatchApplyPopup();
       });
       const card = document.createElement("div");
       card.style.cssText = "width:340px;border-radius:16px;padding:22px;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;border:1px solid var(--fnos-ui-border-outer);box-shadow:0 18px 50px rgba(80,60,120,.28),0 4px 16px rgba(80,60,120,.14);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);text-align:center;";
       const body = document.createElement("div");
       body.id = "fntv-patch-apply-body";
       card.appendChild(body);
-      modal2.appendChild(card);
-      document.body.appendChild(modal2);
-      _patchApplyModal = modal2;
+      modal.appendChild(card);
+      document.body.appendChild(modal);
+      _patchApplyModal = modal;
     }
     _patchApplyModal.style.display = "flex";
     _patchApplyModal.setAttribute("data-closable", "1");
@@ -11634,12 +12296,12 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     }
   }
   function fntvRenderPatchApply(state, info) {
-    const modal2 = _patchApplyModal;
-    if (!modal2) return;
-    const body = modal2.querySelector("#fntv-patch-apply-body");
+    const modal = _patchApplyModal;
+    if (!modal) return;
+    const body = modal.querySelector("#fntv-patch-apply-body");
     if (!body) return;
     const closable = state === "checking" || state === "available" || state === "uptodate" || state === "error";
-    modal2.setAttribute("data-closable", closable ? "1" : "0");
+    modal.setAttribute("data-closable", closable ? "1" : "0");
     body.innerHTML = "";
     const version = info && info.version ? info.version : "";
     const curVer = info && info.currentVersion ? info.currentVersion : "";
@@ -11828,19 +12490,19 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       } catch (_) {
       }
     }
-    function launchExternal(modal2) {
-      const video = modal2.querySelector("video");
+    function launchExternal(modal) {
+      const video = modal.querySelector("video");
       const rawUrl = (video == null ? void 0 : video.currentSrc) || (video == null ? void 0 : video.src) || "";
-      const titleEl = modal2.querySelector(".trim-ui__app-layout--header-title span");
+      const titleEl = modal.querySelector(".trim-ui__app-layout--header-title span");
       const title = ((titleEl == null ? void 0 : titleEl.textContent) || "fnOS \u89C6\u9891").trim();
       const m = rawUrl.match(/\/v\/api\/v1\/media\/range\/([a-f0-9]{32})/i);
       if (m) {
         log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u8D70 fnOS \u64AD\u653E\u94FE\u8DEF:", title, m[1]);
         ipcRenderer.send("external-play", { kind: "fnos", id: m[1], title });
         setTimeout(() => {
-          const closeBtn = modal2.querySelector(".app-layout-header-close");
+          const closeBtn = modal.querySelector(".app-layout-header-close");
           if (closeBtn) closeBtn.click();
-          else modal2.style.display = "none";
+          else modal.style.display = "none";
         }, 200);
         return;
       }
@@ -11854,15 +12516,15 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5916\u90E8\u6253\u5F00:", title, url);
       ipcRenderer.send("external-play", { kind: "url", url, title });
       setTimeout(() => {
-        const closeBtn = modal2.querySelector(".app-layout-header-close");
+        const closeBtn = modal.querySelector(".app-layout-header-close");
         if (closeBtn) closeBtn.click();
-        else modal2.style.display = "none";
+        else modal.style.display = "none";
       }, 200);
     }
-    function showChoiceDialog(modal2) {
-      if (modal2.dataset.fntvChoice === "1") return;
-      modal2.dataset.fntvChoice = "1";
-      const video = modal2.querySelector("video");
+    function showChoiceDialog(modal) {
+      if (modal.dataset.fntvChoice === "1") return;
+      modal.dataset.fntvChoice = "1";
+      const video = modal.querySelector("video");
       const overlay = document.createElement("div");
       overlay.className = "fntv-choice-dialog";
       overlay.style.cssText = "position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);";
@@ -11890,7 +12552,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       };
       card.appendChild(mkBtn("\u{1F3AC} \u5916\u7F6E\u64AD\u653E\u5668 (PotPlayer / MPV)", true, () => {
         closeDialog();
-        launchExternal(modal2);
+        launchExternal(modal);
       }));
       card.appendChild(mkBtn("\u25B6 \u98DE\u725B\u539F\u751F\u64AD\u653E", false, () => {
         closeDialog();
@@ -11907,9 +12569,9 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       document.body.appendChild(overlay);
       log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u5F39\u51FA\u64AD\u653E\u65B9\u5F0F\u9009\u62E9\u5F39\u7A97");
     }
-    function ensureButton2(modal2) {
-      if (modal2.querySelector(".fntv-ext-open")) return;
-      const closeBtn = modal2.querySelector(".app-layout-header-close");
+    function ensureButton2(modal) {
+      if (modal.querySelector(".fntv-ext-open")) return;
+      const closeBtn = modal.querySelector(".app-layout-header-close");
       const headerBtns = closeBtn == null ? void 0 : closeBtn.parentElement;
       if (!headerBtns) return;
       const btn = document.createElement("div");
@@ -11919,17 +12581,17 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       btn.title = "\u7528 PotPlayer / MPV \u6253\u5F00\u6B64\u89C6\u9891";
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        launchExternal(modal2);
+        launchExternal(modal);
       });
       btn.addEventListener("mousedown", (e) => e.stopPropagation());
       headerBtns.insertBefore(btn, headerBtns.firstChild);
     }
-    const handleModal = (modal2) => {
-      if (modal2.dataset.fntvChoice === "1") return;
-      if (modal2.querySelector("video")) {
-        freezeVideo(modal2.querySelector("video"));
-        showChoiceDialog(modal2);
-        ensureButton2(modal2);
+    const handleModal = (modal) => {
+      if (modal.dataset.fntvChoice === "1") return;
+      if (modal.querySelector("video")) {
+        freezeVideo(modal.querySelector("video"));
+        showChoiceDialog(modal);
+        ensureButton2(modal);
       }
     };
     const observer = new MutationObserver(() => {
@@ -12863,7 +13525,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         body.dataset.secBody = "1";
         return { el: d, body };
       };
-      const mkFold = (labelText) => {
+      const mkFold2 = (labelText) => {
         const fold = document.createElement("div");
         fold.style.cssText = "display:flex;flex-direction:column;";
         fold.dataset.fold = "1";
@@ -13055,7 +13717,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       const biliStatus = document.createElement("div");
       biliStatus.style.cssText = "font-size:11.5px;color:var(--fnos-ui-warn);margin-bottom:8px;";
       secBodyBili.appendChild(biliStatus);
-      const biliFold = mkFold("\u767B\u5F55\u4E0E Cookie\u3001\u805A\u5408\u9608\u503C");
+      const biliFold = mkFold2("\u767B\u5F55\u4E0E Cookie\u3001\u805A\u5408\u9608\u503C");
       const biliFoldBody = biliFold.body;
       const biliBtns = document.createElement("div");
       biliBtns.style.cssText = "display:flex;gap:6px;margin-top:6px;";
@@ -13937,7 +14599,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       danHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sec);padding:2px 6px 4px;line-height:1.5;";
       danHint.textContent = t("\u300C\u5F39\u5E55\u6837\u5F0F\u300D\uFF08\u900F\u660E\u5EA6/\u5B57\u53F7/\u63CF\u8FB9\u7B49\uFF09\u8BF7\u5728\u64AD\u653E\u65F6\u901A\u8FC7 MPV \u5E95\u90E8\u63A7\u5236\u680F\u8C03\u6574\uFF1B\u672C\u5361\u7BA1\u7406 B\u7AD9 \u5F39\u5E55\u7684\u5C4F\u853D\u3002");
       danBody.appendChild(danHint);
-      const danFold = mkFold("\u5C4F\u853D\u7C7B\u578B\u3001\u5C4F\u853D\u8BCD\u3001\u5F39\u5E55\u6587\u4EF6\u5939");
+      const danFold = mkFold2("\u5C4F\u853D\u7C7B\u578B\u3001\u5C4F\u853D\u8BCD\u3001\u5F39\u5E55\u6587\u4EF6\u5939");
       danBody.appendChild(danFold.fold);
       const danFoldBody = danFold.body;
       overlay._expandDanmakuFold = () => danFold.setOpen(true);
@@ -13978,7 +14640,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       const ddStateLine = document.createElement("div");
       ddStateLine.style.cssText = "font-size:11.5px;color:var(--fnos-ui-warn);line-height:1.5;";
       ddBody.appendChild(ddStateLine);
-      const ddFold = mkFold("\u5F00\u653E API \u51ED\u8BC1\uFF08AppId / Secret\uFF09");
+      const ddFold = mkFold2("\u5F00\u653E API \u51ED\u8BC1\uFF08AppId / Secret\uFF09");
       ddBody.appendChild(ddFold.fold);
       const ddFoldBody = ddFold.body;
       const ddHint = document.createElement("div");
@@ -14092,7 +14754,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       const dmApiStatus = document.createElement("div");
       dmApiStatus.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sub);padding:0 6px 4px;line-height:1.5;min-height:14px;";
       dmApiBody.appendChild(dmApiStatus);
-      const dmApiFold = mkFold("\u670D\u52A1\u5730\u5740\u4E0E\u8FDE\u901A\u6D4B\u8BD5");
+      const dmApiFold = mkFold2("\u670D\u52A1\u5730\u5740\u4E0E\u8FDE\u901A\u6D4B\u8BD5");
       dmApiBody.appendChild(dmApiFold.fold);
       const dmApiFoldBody = dmApiFold.body;
       const dmApiHint = document.createElement("div");
@@ -14245,7 +14907,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       swDebug.addEventListener("change", () => {
         ipcRenderer.invoke("settings:set-debug-enabled", swDebug.checked).catch((err) => log7("set-debug-enabled failed", err));
       });
-      const dbgFold = mkFold("\u7EC4\u4EF6\u65E5\u5FD7\uFF08\u6309\u7EC4\u4EF6\u5355\u72EC\u63A7\u5236\uFF09");
+      const dbgFold = mkFold2("\u7EC4\u4EF6\u65E5\u5FD7\uFF08\u6309\u7EC4\u4EF6\u5355\u72EC\u63A7\u5236\uFF09");
       secDebugBody.appendChild(dbgFold.fold);
       const dbgFoldBody = dbgFold.body;
       const debugHint = document.createElement("div");
@@ -14929,7 +15591,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         }
         return out;
       };
-      const runSearch = () => {
+      const runSearch2 = () => {
         const raw = searchInput.value;
         const q = norm(raw);
         searchClear.style.display = q ? "block" : "none";
@@ -15001,7 +15663,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       let searchTimer;
       searchInput.addEventListener("input", () => {
         window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(runSearch, 90);
+        searchTimer = window.setTimeout(runSearch2, 90);
       });
       searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
@@ -15087,12 +15749,12 @@ html.fntv-boot-hide #root{visibility:hidden}
         }
       };
       const openBiliLogin = async () => {
-        let modal2 = document.getElementById("fnos-bili-modal");
-        if (!modal2) {
-          modal2 = document.createElement("div");
-          modal2.id = "fnos-bili-modal";
-          modal2.style.cssText = "position:fixed;z-index:2147483700;display:none;align-items:center;justify-content:center;left:0;top:0;width:100%;height:100%;background:var(--fnos-modal-overlay);";
-          modal2.setAttribute("data-fnos-ui", "1");
+        let modal = document.getElementById("fnos-bili-modal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "fnos-bili-modal";
+          modal.style.cssText = "position:fixed;z-index:2147483700;display:none;align-items:center;justify-content:center;left:0;top:0;width:100%;height:100%;background:var(--fnos-modal-overlay);";
+          modal.setAttribute("data-fnos-ui", "1");
           const box = document.createElement("div");
           box.style.cssText = "width:300px;padding:22px 20px 18px;border-radius:18px;text-align:center;color:var(--fnos-ui-text);background:var(--fnos-ui-panel-bg)!important;backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);box-shadow:0 18px 50px rgba(80,60,120,.3),var(--fnos-modal-inner-shadow);border:1px solid var(--fnos-ui-border-outer);";
           box.innerHTML = '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">B\u7AD9\u5F39\u5E55\u767B\u5F55</div><div style="font-size:11px;color:var(--fnos-ui-sec);margin-bottom:14px;">\u8BF7\u7528 B\u7AD9 APP \u626B\u7801\u767B\u5F55</div><div class="fnos-bili-qr" style="width:200px;height:200px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;background:var(--fnos-qr-bg);border-radius:12px;padding:10px;box-sizing:border-box;overflow:hidden;"></div><div class="fnos-bili-tip" style="font-size:12px;color:var(--fnos-ui-muted);min-height:18px;margin-bottom:14px;">\u51C6\u5907\u4E2D\u2026</div>';
@@ -15101,21 +15763,21 @@ html.fntv-boot-hide #root{visibility:hidden}
           closeB.textContent = t("\u53D6\u6D88");
           closeB.style.cssText = "width:100%;padding:9px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;background:var(--fnos-ui-btn-bg)!important;color:var(--fnos-ui-btn-text2);border:1px solid var(--fnos-ui-border-strong);";
           box.appendChild(closeB);
-          modal2.appendChild(box);
-          modal2.addEventListener("click", (e) => {
-            if (e.target === modal2) {
-              modal2.style.display = "none";
+          modal.appendChild(box);
+          modal.addEventListener("click", (e) => {
+            if (e.target === modal) {
+              modal.style.display = "none";
               clearInterval(_biliQrTimer);
             }
           });
           closeB.addEventListener("click", (e) => {
             e.stopPropagation();
-            modal2.style.display = "none";
+            modal.style.display = "none";
             clearInterval(_biliQrTimer);
           });
-          document.body.appendChild(modal2);
+          document.body.appendChild(modal);
         }
-        const m = modal2;
+        const m = modal;
         m.style.display = "flex";
         const qrWrap = m.querySelector(".fnos-bili-qr");
         const tip = m.querySelector(".fnos-bili-tip");
@@ -17635,7 +18297,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     }
     return document.querySelector('div[class*="mb-[46px]"]');
   }
-  function renderPanel(container, data) {
+  function renderPanel2(container, data) {
     let box = container.querySelector("#" + PANEL_ID2);
     if (!box) {
       box = document.createElement("div");
@@ -17662,7 +18324,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     const toggle = box.querySelector(".fpw-h-missing-toggle");
     if (toggle) toggle.addEventListener("click", () => {
       _onlyMissing = !_onlyMissing;
-      renderPanel(container, data);
+      renderPanel2(container, data);
     });
     const collapse = box.querySelector(".fpw-h-collapse");
     if (collapse) collapse.addEventListener("click", () => {
@@ -17715,7 +18377,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     if (!guid || !container || _inflight.has(guid)) return;
     const cached = _cache.get(guid);
     if (cached) {
-      renderPanel(container, cached);
+      renderPanel2(container, cached);
       return;
     }
     _inflight.add(guid);
@@ -17744,7 +18406,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         renderMsg(container, "\u8BE5\u6F14\u5458\u65E0 IMDb \u5173\u8054\uFF0C\u65E0\u6CD5\u83B7\u53D6 TMDB \u5B8C\u6574\u4F5C\u54C1");
         return;
       }
-      renderPanel(container, r);
+      renderPanel2(container, r);
     } catch (e) {
       if (_currentGuid === guid) {
         _loadError = "\u62C9\u53D6\u5931\u8D25: " + (e && e.message ? e.message : e);
@@ -18365,7 +19027,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openPanel();
+      openPanel2();
       const closeSb = window.fntvCloseSidebar;
       if (typeof closeSb === "function") closeSb();
     });
@@ -18854,7 +19516,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     if (dView) dView.addEventListener("click", () => {
       const it = curData[curIdx];
       if (it && it.guid) {
-        closePanel();
+        closePanel2();
         viewItemInFnos(it);
       }
     });
@@ -18865,7 +19527,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         closeDetail();
         return;
       }
-      if ($(PANEL_ID3) && $(PANEL_ID3).classList.contains("show")) closePanel();
+      if ($(PANEL_ID3) && $(PANEL_ID3).classList.contains("show")) closePanel2();
     });
   }
   function renderStars(r) {
@@ -18959,7 +19621,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     }
     if (el.dataset.selfHandled === "1") return false;
     if (el.id === "wh-close") {
-      closePanel(true);
+      closePanel2(true);
       return true;
     }
     if (el.id === "wh-sync") {
@@ -18998,7 +19660,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       if (!root.classList.contains("show")) return;
       if (!tgt.closest("#" + PANEL_ID3)) return;
       if (tgt === root || tgt.classList.contains("wh-main") || tgt.classList.contains("wh-topbar")) {
-        closePanel();
+        closePanel2();
         e.stopImmediatePropagation();
         e.preventDefault();
       }
@@ -20056,7 +20718,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     root.style.setProperty("backdrop-filter", "none", "important");
     root.style.setProperty("-webkit-backdrop-filter", "none", "important");
   }
-  function openPanel() {
+  function openPanel2() {
     try {
       const __t0 = performance.now();
       if (!$(PANEL_ID3)) panelBuilt = false;
@@ -20124,7 +20786,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       logger_default.error(LOG2, "openPanel failed", err);
     }
   }
-  function closePanel(goHome = false) {
+  function closePanel2(goHome = false) {
     const root = $(PANEL_ID3);
     if (!root) return;
     root.classList.remove("show");
