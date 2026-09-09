@@ -3258,15 +3258,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         log('[开关回填] swProxy=' + swProxy.checked + ' swHide=' + swHide.checked + ' swNas=' + swNas.checked
           + ' 美化=' + (!!_beautifyToggle && _beautifyToggle.checked) + ' swWheel=' + swWheel.checked);
       });
-      seg('players', () => {
-        mpvPath.textContent = s.mpvPath || '应用内置（已随安装包分发，无需本机安装）';
-        potPathEl.textContent = s.potPath || '应用内置（已随安装包分发，无需本机安装）';
-        shaderSel.value = s.mpvDefaultShader || 'off';
-        renderIccBtn(s.mpvIccEnabled !== false);
-        (overlay as any)._defaultPlayer = s.defaultPlayer || 'mpv';
-        refreshDefaultPlayer();
-        // [退出行为卡已移除] _exitMode / refreshExit() 一并删除（exitEls 孤儿引用，见上方注释）
-      });
+      // [v0.82.0] seg('players') 已删（MPV/Pot 路径卡随外部播放器链一并移除，lc-078）
       seg('accounts', () => {
         refreshBili();
         refreshDouban();

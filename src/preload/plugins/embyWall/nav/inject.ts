@@ -284,41 +284,8 @@ export function injectVideoPreviewExternalPlay(): void {
   // 首次注入时也扫一遍(模态可能已存在)
   document.querySelectorAll('.trim-ui__app-layout--window').forEach((m) => handleModal(m as HTMLElement));
 
-  // [lc-596] 影视播放页(xgplayer)控制栏注入「🎬 MPV」按钮:
-  // 未刮削个人视频在详情页可能没有标准"播放"按钮导致 playButton 注入不了,
-  // 用户打开原生网页播放后这里提供 MPV 出口——从 video src(media/range/{guid}) 提取
-  // guid 走 play-movie(fnOS 代理链路, 主进程 config.token 兜底鉴权)。
-  const mpvBtnInjected = (): void => {
-    try {
-      const video = document.querySelector('video[src*="/v/api/v1/media/range/"], xgplayer video') as HTMLVideoElement | null;
-      if (!video || !video.offsetParent) return;
-      if (video.closest('.trim-ui__app-layout--window')) return; // 文件预览 modal 由上面的弹窗逻辑处理
-      const bar = document.querySelector('xg-right-grid') as HTMLElement | null;
-      if (!bar || bar.querySelector('.fntv-playerbar-mpv')) return;
-      const btn = document.createElement('div');
-      btn.className = 'fntv-playerbar-mpv';
-      btn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:0 12px;cursor:pointer;color:var(--semi-color-text-1,#e8e8ee);font-size:13px;font-weight:600;white-space:nowrap;user-select:none';
-      btn.textContent = '🎬 MPV';
-      btn.title = '用 MPV 播放器打开此视频';
-      btn.addEventListener('click', (e: Event) => {
-        e.stopPropagation();
-        // [lc-600] 修正: 必须是 item GUID(走 fnapi.getPlayInfo)而非 media file GUID。
-        // - 正确: 从 location.pathname 提取(/v/video/{32hex} / /v/tv/{32hex} / /v/movie/{32hex})
-        // - 错误(旧 lc-596): 从 video.src 提 media/range/{32hex} 走 getPlayInfo 找不到 item, 失败
-        const path = (location.pathname || '').replace(/\/+$/, '');
-        const m = path.match(/\/v\/(?:movie|tv|video|other)\/(?:season\/|episode\/)?([a-f0-9]{32})/i);
-        if (!m) { alert('未能从当前页面提取视频 ID(URL=' + path + ')'); return; }
-        const itemGuid = m[1];
-        log('[播放页 MPV] 打开 item:', itemGuid);
-        ipcRenderer.send('play-movie', { id: itemGuid, token: '', sourceIndex: 0, player: 'mpv' });
-      });
-      bar.appendChild(btn);
-      log('[播放页 MPV] 控制栏按钮已注入');
-    } catch (e) { /* ignore */ }
-  };
-  const mpvObs = new MutationObserver(mpvBtnInjected);
-  mpvObs.observe(document.body, { childList: true, subtree: true });
-  mpvBtnInjected();
+  // [v0.82.0] 播放页「🎬 MPV」控制栏按钮已删（外部播放器链，网页端 play-movie 是 no-op；
+  // 网页端播放统一走 fnOS 原生网页播放器）。
 
   log('[视频预览外放] 已注入(自动弹窗选择 + 标题栏外部打开按钮)');
 }

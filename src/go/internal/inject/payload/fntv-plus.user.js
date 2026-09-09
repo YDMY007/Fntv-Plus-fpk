@@ -12615,38 +12615,6 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     });
     observer.observe(document.body, { childList: true, subtree: true });
     document.querySelectorAll(".trim-ui__app-layout--window").forEach((m) => handleModal(m));
-    const mpvBtnInjected = () => {
-      try {
-        const video = document.querySelector('video[src*="/v/api/v1/media/range/"], xgplayer video');
-        if (!video || !video.offsetParent) return;
-        if (video.closest(".trim-ui__app-layout--window")) return;
-        const bar2 = document.querySelector("xg-right-grid");
-        if (!bar2 || bar2.querySelector(".fntv-playerbar-mpv")) return;
-        const btn = document.createElement("div");
-        btn.className = "fntv-playerbar-mpv";
-        btn.style.cssText = "display:flex;align-items:center;justify-content:center;padding:0 12px;cursor:pointer;color:var(--semi-color-text-1,#e8e8ee);font-size:13px;font-weight:600;white-space:nowrap;user-select:none";
-        btn.textContent = "\u{1F3AC} MPV";
-        btn.title = "\u7528 MPV \u64AD\u653E\u5668\u6253\u5F00\u6B64\u89C6\u9891";
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const path = (location.pathname || "").replace(/\/+$/, "");
-          const m = path.match(/\/v\/(?:movie|tv|video|other)\/(?:season\/|episode\/)?([a-f0-9]{32})/i);
-          if (!m) {
-            alert("\u672A\u80FD\u4ECE\u5F53\u524D\u9875\u9762\u63D0\u53D6\u89C6\u9891 ID(URL=" + path + ")");
-            return;
-          }
-          const itemGuid = m[1];
-          log7("[\u64AD\u653E\u9875 MPV] \u6253\u5F00 item:", itemGuid);
-          ipcRenderer.send("play-movie", { id: itemGuid, token: "", sourceIndex: 0, player: "mpv" });
-        });
-        bar2.appendChild(btn);
-        log7("[\u64AD\u653E\u9875 MPV] \u63A7\u5236\u680F\u6309\u94AE\u5DF2\u6CE8\u5165");
-      } catch (e) {
-      }
-    };
-    const mpvObs = new MutationObserver(mpvBtnInjected);
-    mpvObs.observe(document.body, { childList: true, subtree: true });
-    mpvBtnInjected();
     log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u6CE8\u5165(\u81EA\u52A8\u5F39\u7A97\u9009\u62E9 + \u6807\u9898\u680F\u5916\u90E8\u6253\u5F00\u6309\u94AE)");
   }
 
@@ -15932,14 +15900,6 @@ html.fntv-boot-hide #root{visibility:hidden}
           swWheel.checked = !!s.wheelHScroll;
           S.wheelHScrollEnabled = !!s.wheelHScroll;
           log7("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
-        });
-        seg2("players", () => {
-          mpvPath.textContent = s.mpvPath || "\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09";
-          potPathEl.textContent = s.potPath || "\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09";
-          shaderSel.value = s.mpvDefaultShader || "off";
-          renderIccBtn(s.mpvIccEnabled !== false);
-          overlay._defaultPlayer = s.defaultPlayer || "mpv";
-          refreshDefaultPlayer();
         });
         seg2("accounts", () => {
           refreshBili();
