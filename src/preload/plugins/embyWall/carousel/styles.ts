@@ -704,13 +704,13 @@ export function ensureStyle4Css(): void {
 [data-fntv-carousel-style="4"] .fntv-s4-card{
   position:absolute;left:7%;top:4%;width:86%;height:92%;
   border-radius:22px;overflow:hidden;
-  box-shadow:0 30px 60px rgba(0,0,0,.42);
+  box-shadow:0 18px 44px rgba(0,0,0,.22);
   transition:transform .85s cubic-bezier(.22,1,.36,1),opacity .7s ease,filter .7s ease,box-shadow .7s ease,visibility .7s;
   opacity:0;visibility:hidden;will-change:transform,opacity,filter;
   transform:scale(.82) translateX(42px) rotateY(10deg);
-  border:1px solid rgba(255,255,255,.07);background:#1e1b17;cursor:pointer;
+  border:none;background:#1e1b17;cursor:pointer;
 }
-[data-fntv-carousel-style="4"] .fntv-s4-card.active{opacity:1;visibility:visible;transform:scale(1) translateX(0) rotateY(0deg);z-index:10;box-shadow:0 34px 80px rgba(0,0,0,.5)}
+[data-fntv-carousel-style="4"] .fntv-s4-card.active{opacity:1;visibility:visible;transform:scale(1) translateX(0) rotateY(0deg);z-index:10;box-shadow:0 22px 56px rgba(0,0,0,.28)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.prev{opacity:.5;visibility:visible;transform:scale(.8) translateX(-72%) rotateY(30deg);z-index:5;filter:blur(1.5px) brightness(.82)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.next{opacity:.5;visibility:visible;transform:scale(.8) translateX(72%) rotateY(-30deg);z-index:5;filter:blur(1.5px) brightness(.82)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.far-left,[data-fntv-carousel-style="4"] .fntv-s4-card.far-right{opacity:0;visibility:hidden;transform:scale(.55) translateX(135%) rotateY(38deg);z-index:1}
