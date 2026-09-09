@@ -519,6 +519,8 @@ function handle(): void {
       panel.style.setProperty('-webkit-backdrop-filter', 'var(--fnos-sb-bf)', 'important');
       panel.style.setProperty('border-right', 'var(--fnos-sidebar-border)', 'important');
       panel.style.setProperty('box-shadow', 'var(--fnos-sidebar-shadow)', 'important');
+      // [v0.98.0] 常驻过渡（含 backdrop-filter）：开启渐显模糊 / 关闭随滑出渐隐（不再瞬消）
+      panel.style.setProperty('transition', 'transform .34s cubic-bezier(.22,1,.36,1), opacity .3s ease, backdrop-filter .3s ease', 'important');
       // [v352] 关键: 面板内层嵌套容器常带白底(bg-white/bg-gray), 会盖住浅蓝 → 把它们全部透明化
       // [lc-371-fix] 跳过 #fnos-switch-system-btn 等注入按钮(否则二次调用 applySidebarGlass 时
       //   已存在的按钮背景被透明化 → 在半透明面板上不可见)
@@ -3470,6 +3472,17 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
   }
   const animateCloseDrawer = (d: HTMLElement): void => {
     d.classList.remove('drawer-open');
+    // [v0.98.0] 面板毛玻璃随滑出渐隐：backdrop-filter 是 inline !important（applySidebarGlass 注入），
+    //   不参与类过渡 → 此前模糊原样挂到滑出最后一帧才瞬消，观感突兀。
+    //   先把面板 transition 常驻补上 backdrop-filter 过渡，再把值过渡到 blur(0)（与滑出同步渐隐）。
+    const panel = Array.from(d.children).find((c) => !(c as HTMLElement).classList.contains('absolute')) as HTMLElement | undefined;
+    if (panel) {
+      const tr = panel.style.getPropertyValue('transition');
+      if (tr && !/backdrop-filter/.test(tr)) {
+        panel.style.setProperty('transition', tr + ', backdrop-filter .3s ease', 'important');
+      }
+      panel.style.setProperty('backdrop-filter', 'blur(0px)', 'important');
+    }
     // 过渡结束后(340ms)才真正移除 display, 期间 opacity→0+pointer-events:none 已不可点, 安全
     window.setTimeout(() => { if (!d.classList.contains('drawer-open')) d.style.removeProperty('display'); }, 340);
   };
