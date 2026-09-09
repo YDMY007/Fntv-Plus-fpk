@@ -23,7 +23,7 @@ import (
 const danmuSourceLabel = "自建源(danmu_api)"
 const danmuIDPrefix = "dmapi:"
 
-func (b *Bridge) danmuBase() string      { return strings.TrimSpace(getSetting(b.cfg, "danmuApi")) }
+func (b *Bridge) danmuBase() string      { return strings.TrimSpace(getSetting(b.cfg, "danmuApiBase")) }
 func (b *Bridge) danmuIsActive() bool    { return b.danmuBase() != "" }
 
 var (

@@ -703,6 +703,19 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
             return apiPost("/app/fntvplus/api/bridge/proxy/test", { proxyUrl: args[1] });
           }
           if (channel === "settings:test-danmu-api") return apiPost("/app/fntvplus/api/bridge/danmu/test", { base: args[0] });
+          if (channel === "settings:set-danmu-api") {
+            const a = args[0] || {};
+            const base = String(a.base || "").trim().replace(/\/+$/, "");
+            return apiPost("/app/fntvplus/api/settings", {
+              danmuApiEnabled: !!a.enabled,
+              danmuApiBase: base
+            }).then(() => {
+              if (a.enabled && base && !/^https?:\/\/.+/i.test(base)) {
+                return { ok: false, error: "\u5730\u5740\u683C\u5F0F\u5E94\u4E3A http://IP:\u7AEF\u53E3\uFF08\u5982 http://192.168.1.10:9321\uFF09" };
+              }
+              return { ok: true };
+            });
+          }
           if (channel === "play-movie" || channel === "external-play" || channel === "pause" || channel === "media:control") {
             return Promise.resolve(void 0);
           }
@@ -7263,13 +7276,13 @@ html.fnos-perf.dark{
 [data-fntv-carousel-style="4"] .fntv-s4-card{
   position:absolute;left:7%;top:4%;width:86%;height:92%;
   border-radius:22px;overflow:hidden;
-  box-shadow:0 30px 60px rgba(0,0,0,.42);
+  box-shadow:0 18px 44px rgba(0,0,0,.22);
   transition:transform .85s cubic-bezier(.22,1,.36,1),opacity .7s ease,filter .7s ease,box-shadow .7s ease,visibility .7s;
   opacity:0;visibility:hidden;will-change:transform,opacity,filter;
   transform:scale(.82) translateX(42px) rotateY(10deg);
-  border:1px solid rgba(255,255,255,.07);background:#1e1b17;cursor:pointer;
+  border:none;background:#1e1b17;cursor:pointer;
 }
-[data-fntv-carousel-style="4"] .fntv-s4-card.active{opacity:1;visibility:visible;transform:scale(1) translateX(0) rotateY(0deg);z-index:10;box-shadow:0 34px 80px rgba(0,0,0,.5)}
+[data-fntv-carousel-style="4"] .fntv-s4-card.active{opacity:1;visibility:visible;transform:scale(1) translateX(0) rotateY(0deg);z-index:10;box-shadow:0 22px 56px rgba(0,0,0,.28)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.prev{opacity:.5;visibility:visible;transform:scale(.8) translateX(-72%) rotateY(30deg);z-index:5;filter:blur(1.5px) brightness(.82)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.next{opacity:.5;visibility:visible;transform:scale(.8) translateX(72%) rotateY(-30deg);z-index:5;filter:blur(1.5px) brightness(.82)}
 [data-fntv-carousel-style="4"] .fntv-s4-card.far-left,[data-fntv-carousel-style="4"] .fntv-s4-card.far-right{opacity:0;visibility:hidden;transform:scale(.55) translateX(135%) rotateY(38deg);z-index:1}
@@ -14781,7 +14794,7 @@ html.fntv-boot-hide #root{visibility:hidden}
             dmApiStatus.style.color = "var(--fnos-ui-warn)";
             return;
           }
-          dmApiStatus.textContent = swDanmuApi.checked ? t("\u5DF2\u4FDD\u5B58\u5E76\u542F\u7528\uFF0C\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002") : t("\u5DF2\u4FDD\u5B58\u5E76\u5173\u95ED\uFF0C\u56DE\u843D\u5185\u7F6E B\u7AD9 \u5F39\u5E55\u83B7\u53D6\u3002");
+          dmApiStatus.textContent = swDanmuApi.checked ? t("\u5DF2\u4FDD\u5B58\u5E76\u542F\u7528\uFF0C\u4E0B\u6B21\u64AD\u653E\u65F6\u751F\u6548\u3002") : t("\u5DF2\u4FDD\u5B58\u5E76\u5173\u95ED\uFF0C\u56DE\u843D\u5185\u7F6E B\u7AD9 \u5F39\u5E55\u83B7\u53D6\u3002");
           dmApiStatus.style.color = "var(--fnos-ui-sub)";
         }).catch((err) => {
           dmApiStatus.textContent = t("\u4FDD\u5B58\u5931\u8D25") + ": " + (err && err.message ? err.message : err);
@@ -14807,13 +14820,6 @@ html.fntv-boot-hide #root{visibility:hidden}
           dmApiStatus.textContent = t("\u8FDE\u63A5\u5931\u8D25") + ": " + (err && err.message ? err.message : err);
           dmApiStatus.style.color = "var(--fnos-ui-warn)";
         });
-      });
-      const biliFolderBtn = mkBtn("\u6253\u5F00\u5F39\u5E55\u6587\u4EF6\u5939", true);
-      biliFolderBtn.style.marginTop = "10px";
-      danFoldBody.appendChild(biliFolderBtn);
-      biliFolderBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ipcRenderer.invoke("bili:open-danmaku-folder").catch((err) => log7("bili:open-danmaku-folder failed", err));
       });
       const secDiag = section("\u8BCA\u65AD\u4FE1\u606F");
       const diagBody = secDiag.body;

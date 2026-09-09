@@ -2100,7 +2100,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
             return;
           }
           dmApiStatus.textContent = swDanmuApi.checked
-            ? t('已保存并启用，下次 MPV 播放时生效。')
+            ? t('已保存并启用，下次播放时生效。')
             : t('已保存并关闭，回落内置 B站 弹幕获取。');
           dmApiStatus.style.color = 'var(--fnos-ui-sub)';
         })
@@ -2125,14 +2125,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         .catch((err) => { dmApiStatus.textContent = t('连接失败') + ': ' + (err && err.message ? err.message : err); dmApiStatus.style.color = 'var(--fnos-ui-warn)'; });
     });
 
-    // 打开已下载弹幕文件夹（方便用户管理/删除；目录与 MPV 弹幕落盘、Node 端弹幕缓存一致：%PUBLIC%\fnos-danmaku）
-    const biliFolderBtn = mkBtn('打开弹幕文件夹', true);
-    biliFolderBtn.style.marginTop = '10px';
-    danFoldBody.appendChild(biliFolderBtn);
-    biliFolderBtn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      ipcRenderer.invoke('bili:open-danmaku-folder').catch((err) => log('bili:open-danmaku-folder failed', err));
-    });
+    // [v0.78.0] 「打开弹幕文件夹」按钮已删：那是外部播放器（MPV）的弹幕落盘目录，网页端不存在。
 
 
     // ===== 诊断信息（汇总运行态，减少"查日志"往返）=====
