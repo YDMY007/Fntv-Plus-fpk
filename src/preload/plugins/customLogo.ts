@@ -14,6 +14,7 @@ const CHOICE_KEY = 'fntvLogo.custom';
 const CUSTOM_DATA_KEY = 'fntvLogo.customData';
 const LOGO_API_BASE = '/app/fntvplus/api/bridge/logos/';
 const MARK_ATTR = 'data-fntv-logo-applied';
+const INJECTED_ID = 'fntv-home-logo';
 const ORIG_ATTR = 'data-fntv-logo-orig';
 
 export interface LogoChoice { type: 'default' | 'preset' | 'custom'; presetId?: string; }
@@ -74,7 +75,7 @@ export function resolveLogoSrc(): string {
     const p = PRESETS.find((x) => x.id === c.presetId);
     if (p) return LOGO_API_BASE + p.file;
   }
-  return '';
+  return LOGO_API_BASE + 'fntv_default.png'; // 默认=原版「飞牛影视」图标（iconfntv.png，后端 embed）
 }
 
 /** 首页判定：裸 /v 或 /v/ */
@@ -124,40 +125,62 @@ function findHomeLogo(): { el: HTMLElement; isImg: boolean } | null {
   return fallbackText ? { el: fallbackText, isImg: fallbackText.tagName.toLowerCase() === 'img' } : null;
 }
 
-/** 应用当前选择到首页 logo（首次替换记原始内容，恢复默认时还原）。 */
+/** 应用当前选择（[v0.94.0] 双模，对齐桌面 titlebar 语义）：
+ *  A. fnOS 原生顶部有 logo → 原位替换（保留原内容可还原）；
+ *  B. 原生没有（用户确认 fnOS 原生首页无 logo）→ 注入悬浮 logo（桌面 titlebar 同款：
+ *     body 顶层 fixed top:72px 水平居中 height:30px，仅首页可见，OnDomChange 刷新显隐）。 */
 function applyLogo(): void {
-  if (!isHomePage()) return;
-  const found = findHomeLogo();
-  if (!found) {
-    const w = window as any;
-    if (!w.__fntvLogoHintShown) {
-      w.__fntvLogoHintShown = true;
-      console.log('[customLogo] 未定位到首页 Logo——请在 F12 选中该 Logo 元素复制 outerHTML 发给开发者以精确适配');
-    }
+  if (!isHomePage()) {
+    const existing = document.getElementById(INJECTED_ID);
+    if (existing) existing.style.visibility = 'hidden'; // 离开首页隐藏注入 logo（桌面同语义）
     return;
   }
-  const el = found.el;
   const src = resolveLogoSrc();
-  if (!src) {
-    // 恢复默认：还原首次替换前保存的原始内容
-    const orig = el.getAttribute(ORIG_ATTR);
-    if (orig) {
-      if (found.isImg) el.setAttribute('src', orig);
-      else el.innerHTML = orig;
+  const existing = document.getElementById(INJECTED_ID) as HTMLImageElement | null;
+  if (existing) existing.style.visibility = 'visible';
+
+  // A. 原生顶部有 logo → 原位替换
+  const found = findHomeLogo();
+  if (found) {
+    const el = found.el;
+    if (!src) {
+      const orig = el.getAttribute(ORIG_ATTR);
+      if (orig) {
+        if (found.isImg) el.setAttribute('src', orig);
+        else el.innerHTML = orig;
+      }
+      el.removeAttribute(MARK_ATTR);
+      if (existing) existing.style.visibility = 'hidden';
+      return;
     }
-    el.removeAttribute(MARK_ATTR);
+    if (found.isImg) {
+      if (!el.getAttribute(ORIG_ATTR)) el.setAttribute(ORIG_ATTR, el.getAttribute('src') || '');
+      if (el.getAttribute('src') === src) return;
+      el.setAttribute('src', src);
+    } else {
+      if (!el.getAttribute(ORIG_ATTR)) el.setAttribute(ORIG_ATTR, el.innerHTML);
+      if (el.getAttribute(MARK_ATTR) === '1') return;
+      el.innerHTML = '<img src="' + src + '" alt="飞牛影视" style="height:30px;width:auto;object-fit:contain;display:block;pointer-events:none">';
+    }
+    el.setAttribute(MARK_ATTR, '1');
+    if (existing) existing.style.visibility = 'hidden';
     return;
   }
-  if (found.isImg) {
-    if (!el.getAttribute(ORIG_ATTR)) el.setAttribute(ORIG_ATTR, el.getAttribute('src') || '');
-    if (el.getAttribute('src') === src) return; // 已是目标图，防 MO 循环
-    el.setAttribute('src', src);
-  } else {
-    if (!el.getAttribute(ORIG_ATTR)) el.setAttribute(ORIG_ATTR, el.innerHTML);
-    if (el.getAttribute(MARK_ATTR) === '1') return;
-    el.innerHTML = '<img src="' + src + '" alt="飞牛影视" style="height:30px;width:auto;object-fit:contain;display:block;pointer-events:none">';
+
+  // B. 原生没有 → 注入悬浮 logo（桌面 titlebar 同款位置与样式）
+  if (!src) return;
+  if (existing) {
+    if (existing.getAttribute('src') !== src) existing.setAttribute('src', src);
+    return;
   }
-  el.setAttribute(MARK_ATTR, '1');
+  const img = document.createElement('img');
+  img.id = INJECTED_ID;
+  img.alt = '飞牛影视';
+  img.src = src;
+  img.draggable = false;
+  img.style.cssText = 'height:30px;width:auto;object-fit:contain;display:block;position:fixed;top:72px;left:50%;'
+    + 'transform:translate(-50%,-50%);z-index:99998;opacity:.96;pointer-events:none';
+  document.body.appendChild(img);
 }
 
 /** 通用卡内嵌 UI（embyWall 设置面板「通用」卡调用）：分组预设 chips + 自定义上传 + 恢复默认。 */
