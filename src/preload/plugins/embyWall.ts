@@ -3519,6 +3519,21 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     //   (与 v322 的 !hidden 类编辑死锁本质不同)。
     //   [v329 动画] 开合不再瞬切 display, 改为 display:flex + 双rAF切 .drawer-open 类驱动 CSS 过渡
     //     (overlay opacity 淡入 + 面板 translateX 滑入); 关闭时移除类、过渡结束(340ms)后再移除 display。
+    // [v0.97.0] 抽屉开合动画样式：v329 的 .drawer-open 类驱动机制一直缺这条 CSS 规则（类加了样式没变=瞬切无动画）。
+    //   展开：背板淡入 + 面板从左侧 28px 滑入淡入（340ms easeOut）；收起反向（与既有 340ms display 移除定时匹配）。
+    if (!document.getElementById('fntv-drawer-anim-style')) {
+      const animStyle = document.createElement('style');
+      animStyle.id = 'fntv-drawer-anim-style';
+      animStyle.textContent = [
+        '.fixed.inset-0[class*="lg:!hidden"] > *:not(.absolute) { transition: transform .34s cubic-bezier(.22,1,.36,1), opacity .3s ease; }',
+        '.fixed.inset-0[class*="lg:!hidden"]:not(.drawer-open) > *:not(.absolute) { transform: translateX(-28px); opacity: 0; }',
+        '.fixed.inset-0[class*="lg:!hidden"].drawer-open > *:not(.absolute) { transform: translateX(0); opacity: 1; }',
+        '.fixed.inset-0[class*="lg:!hidden"] > .absolute.inset-0 { transition: opacity .3s ease; }',
+        '.fixed.inset-0[class*="lg:!hidden"]:not(.drawer-open) > .absolute.inset-0 { opacity: 0; }',
+        '.fixed.inset-0[class*="lg:!hidden"].drawer-open > .absolute.inset-0 { opacity: 1; }',
+      ].join('\n');
+      (document.head || document.documentElement).appendChild(animStyle);
+    }
     if (!(burger as any).dataset.burgerHooked) {
       (burger as any).dataset.burgerHooked = '1';
       burger.addEventListener('click', (e: Event) => {
