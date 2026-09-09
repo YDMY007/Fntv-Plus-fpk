@@ -2168,35 +2168,37 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     diagBtns.appendChild(diagRefresh); diagBtns.appendChild(diagCopy);
     const loadDiag = async (): Promise<void> => {
       try {
-        const r: any = await ipcRenderer.invoke('settings:diagnostics');
-        if (!r || !r.ok) { diagPre.textContent = '诊断失败：' + ((r && r.error) || '未知'); return; }
+        // [v1.0.0] 诊断全面对齐 web 端：数据源 = /api/status（反代/注入/版本）+ settings:get（开关全量）+ 浏览器环境。
+        // 桌面字段（App 路径/mpv conf/uosc conf/登录背景路径）已随外部播放器链一并移除。
+        const maskBase = (u: string): string => {
+          try { const x = new URL(u); const pre = x.pathname.replace(/\/+$/, ''); return x.origin + (pre ? '/<路径前缀·已隐藏>' : ''); } catch { return '(未配置)'; }
+        };
+        const st: any = await fetch('/app/fntvplus/api/status', { credentials: 'include' }).then((x) => x.json()).catch(() => null);
+        const s: any = await ipcRenderer.invoke('settings:get');
         const lines: string[] = [];
-        lines.push('== 基本信息 ==');
-        lines.push(`版本: ${r.version}${r.isPackaged ? ' (打包版)' : ' (dev)'}`);
-        lines.push(`App 路径: ${r.appPath}`);
+        lines.push('== 运行环境 ==');
+        lines.push('插件版本: v' + (st && st.version ? st.version : '?') + '   Payload: ' + ((st && st.payload_hash) || '?').substring(0, 12));
+        lines.push('访问入口: ' + location.origin);
+        lines.push('浏览器: ' + navigator.userAgent.substring(0, 90));
+        if (st && st.now) lines.push('服务器时间: ' + st.now);
         lines.push('');
-        lines.push('== 登录与 NAS ==');
-        lines.push(`NAS 地址: ${r.domain}`);
-        lines.push(`账号: ${r.account}  登录方式: ${r.loginType}  Token: ${r.hasToken ? '已保存' : '无'}`);
-        lines.push(`豆瓣同步: ${r.doubanEnabled ? '开' : '关'}${r.doubanLoggedIn ? '(已登录)' : ''}   Bangumi: ${r.bangumiEnabled ? '开' : '关'}${r.bangumiHasToken ? '(有Token)' : ''}`);
+        lines.push('== 反代与上游 ==');
+        lines.push('上游地址: ' + ((st && st.upstream) || '(未配置)') + '   连通性: ' + (st && st.upstream_ok ? '正常' : '不可达'));
+        lines.push('增强注入: ' + (st && st.enhancement_enabled ? '开' : '关'));
         lines.push('');
+        lines.push('== 登录与同步 ==');
+        lines.push('fnOS 会话: 已登录（网页会话）');
+        lines.push('豆瓣同步: ' + (s.doubanEnabled ? '开' : '关') + (s.doubanLoggedIn ? '（已登录）' : '') + '   Bangumi: ' + (s.bangumiEnabled ? '开' : '关') + (s.bangumiHasToken ? '（有Token）' : ''));
         lines.push('');
-        lines.push('--- mpv-user.conf ---');
-        lines.push(r.mpvUserConf || '(空)');
+        lines.push('== 弹幕 ==');
+        lines.push('B站登录态: ' + (s.bili_cookie ? '已配置' : '未配置（番剧/动漫搜索需要）'));
+        lines.push('自建弹幕源: ' + (s.danmuApiEnabled ? '启用 · ' + maskBase(String(s.danmuApiBase || '')) : '未启用'));
+        const bt: string[] = Array.isArray(s.biliDanmakuBlockTypes) ? s.biliDanmakuBlockTypes : [];
+        lines.push('屏蔽类型: ' + (bt.length ? bt.join(', ') : '(无)') + '   屏蔽词: ' + (s.biliDanmakuBlacklist ? '已配置' : '(无)'));
         lines.push('');
-        lines.push('== B站弹幕 ==');
-        lines.push(`搜索: ${r.biliSearchEnabled ? '开' : '关'}  聚合阈值: ${r.biliAggregateThreshold}`);
-        const bt = Array.isArray(r.danmakuBlockTypes) ? r.danmakuBlockTypes : [];
-        lines.push(`屏蔽类型: ${bt.length ? bt.join(', ') : '(无)'}`);
-        lines.push(`屏蔽词: ${r.danmakuBlacklist ? r.danmakuBlacklist : '(无)'}`);
-        lines.push('');
-        lines.push('--- uosc_danmaku.conf ---');
-        lines.push(r.danmakuConf || '(空)');
-        lines.push('');
-        lines.push('== 界面 / 其它 ==');
-        lines.push(`滚轮横滚: ${r.wheelHScroll ? '开' : '关'}   详情页无盒: ${r.detailBoxless ? '是' : '否'}`);
-        lines.push(`登录背景: ${r.loginBgPath}`);
-        lines.push(`更新打烊时间戳: ${r.updateDismissedAt ? String(r.updateDismissedAt) : '(无)'}`);
+        lines.push('== 界面 ==');
+        lines.push('轮播样式: ' + (localStorage.getItem('fnos-carousel-style') || '4') + '   轮播Logo: ' + (S.carouselLogoEnabled ? '开' : '关'));
+        lines.push('滚轮横滚: ' + (s.wheelHScroll ? '开' : '关'));
         diagPre.textContent = lines.join('\n');
       } catch (err) {
         diagPre.textContent = '诊断加载异常：' + String(err);
