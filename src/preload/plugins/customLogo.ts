@@ -503,6 +503,10 @@ export function openPresetPanel(): void {
   updatePreview(PRESETS.find((x) => x.id === curId) || null);
 }
 
-// ── [网页版适配] 设置面板「通用」卡挂载：导出 buildCard/refreshCard，
-//     由 embyWall.ts 设置面板构建时调用（SPA 重建时面板重建会重新挂载，无需自备 keepalive）──
+// ── [网页版适配] 启动挂载：桌面版 logo 宿主由 titlebar 负责；网页端宿主由本模块自建——
+//     必须在 OnReady/OnDomChange 时调 applyLogoToDom（建宿主+应用当前选择），
+//     否则刷新/重开首页后 Logo 不显示、进设置动一下才出现（v0.95 回归根因）。
+registerHook(HookType.OnReady, () => { applyLogoToDom(); });
+registerHook(HookType.OnDomChange, () => { applyLogoToDom(); });
+
 export {};
