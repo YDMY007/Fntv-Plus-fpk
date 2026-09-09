@@ -511,7 +511,6 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
         "debug-enabled": "debugEnabled",
         "debug-components": "debugComponents",
         "danmu-api": "danmuApi",
-        "carousel-logo": "carouselLogoEnabled",
         "hot-source": "hotSource"
       };
       ipcRenderer = {
@@ -2245,11 +2244,11 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   });
 
   // src/preload/plugins/customLogo.ts
-  var log5 = logger_default;
-  var STORAGE_KEY = "fntvLogo.custom";
+  var CHOICE_KEY = "fntvLogo.custom";
   var CUSTOM_DATA_KEY = "fntvLogo.customData";
-  var MAX_UPLOAD_BYTES = 1.5 * 1024 * 1024;
-  var PRESET_DIR = resolve(__dirname, "../../../resource/logos");
+  var LOGO_API_BASE = "/app/fntvplus/api/bridge/logos/";
+  var MARK_ATTR = "data-fntv-logo-applied";
+  var ORIG_ATTR = "data-fntv-logo-orig";
   var PRESETS = [
     { id: "cn_iqiyi", name: "\u7231\u5947\u827A", file: "cn_iqiyi.png", group: "\u56FD\u5185\u5E73\u53F0" },
     { id: "cn_tencent", name: "\u817E\u8BAF\u89C6\u9891", file: "cn_tencent.png", group: "\u56FD\u5185\u5E73\u53F0" },
@@ -2276,43 +2275,25 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     { id: "intl_vimeo", name: "Vimeo", file: "intl_vimeo.png", group: "\u56FD\u9645\u5E73\u53F0" },
     { id: "intl_dailymotion", name: "Dailymotion", file: "intl_dailymotion.png", group: "\u56FD\u9645\u5E73\u53F0" }
   ];
-  var _presetCache = /* @__PURE__ */ new Map();
-  var _defaultLogoUri = "";
-  function presetDataUri(p) {
-    if (_presetCache.has(p.id)) return _presetCache.get(p.id);
-    try {
-      const buf2 = readFileSync(join(PRESET_DIR, p.file));
-      const uri = "data:image/png;base64," + buf2.toString("base64");
-      _presetCache.set(p.id, uri);
-      return uri;
-    } catch (e) {
-      log5.warn("[customLogo] \u9884\u8BBE\u8BFB\u53D6\u5931\u8D25:", p.file, String(e).substring(0, 80));
-      return "";
-    }
-  }
   function getChoice() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { type: "default" };
-      const j = JSON.parse(raw);
-      if (j && (j.type === "default" || j.type === "preset" || j.type === "custom")) return j;
+      const raw = localStorage.getItem(CHOICE_KEY);
+      if (raw) {
+        const c = JSON.parse(raw);
+        if (c && (c.type === "preset" || c.type === "custom" || c.type === "default")) return c;
+      }
     } catch {
     }
     return { type: "default" };
   }
   function setChoice(c) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
-    } catch (e) {
-      log5.warn("[customLogo] \u6301\u4E45\u5316\u5931\u8D25", String(e).substring(0, 80));
+      localStorage.setItem(CHOICE_KEY, JSON.stringify(c));
+    } catch {
     }
   }
-  function resolveLogoSrc(choice) {
-    const c = choice || getChoice();
-    if (c.type === "preset" && c.presetId) {
-      const p = PRESETS.find((x) => x.id === c.presetId);
-      return p ? presetDataUri(p) : "";
-    }
+  function resolveLogoSrc() {
+    const c = getChoice();
     if (c.type === "custom") {
       try {
         return localStorage.getItem(CUSTOM_DATA_KEY) || "";
@@ -2320,386 +2301,159 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
         return "";
       }
     }
-    return _defaultLogoUri;
-  }
-  function applyLogoToDom(choice) {
-    const img = document.getElementById("tb-logo");
-    if (!img) return;
-    const src = resolveLogoSrc(choice);
-    if (src && img.src !== src) img.src = src;
-  }
-  function currentLabel() {
-    const c = getChoice();
-    if (c.type === "custom") return "\u81EA\u5B9A\u4E49\u4E0A\u4F20";
-    if (c.type === "preset") {
+    if (c.type === "preset" && c.presetId) {
       const p = PRESETS.find((x) => x.id === c.presetId);
-      return p ? "\u9884\u8BBE \xB7 " + p.name : "\u9884\u8BBE\uFF08\u5DF2\u5931\u6548\uFF09";
+      if (p) return LOGO_API_BASE + p.file;
     }
-    return "\u9ED8\u8BA4\uFF08\u98DE\u725B\u5F71\u89C6\uFF09";
+    return "";
   }
-  function currentThumbUri() {
-    return resolveLogoSrc();
+  function isHomePage() {
+    return /^\/v\/?$/.test(location.pathname || "");
   }
-  function mkSmallBtn(text) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = text;
-    b.style.cssText = "border:none;cursor:pointer;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:600;background:var(--fnos-ui-btn-bg,rgba(90,120,200,.12));color:var(--fnos-ui-btn-text,#3d4a6e);transition:background .15s;";
-    b.addEventListener("mouseenter", () => {
-      b.style.background = "var(--fnos-ui-btn-hover,rgba(109,127,242,.32))";
-    });
-    b.addEventListener("mouseleave", () => {
-      b.style.background = "var(--fnos-ui-btn-bg,rgba(90,120,200,.12))";
-    });
-    return b;
-  }
-  var CHIP_DARK = "linear-gradient(165deg,rgba(28,24,38,.88),rgba(18,15,26,.92))";
-  var _lightCache = /* @__PURE__ */ new Map();
-  function isLightLogoDataUrl(dataUrl) {
-    if (!dataUrl) return Promise.resolve(false);
-    const hit = _lightCache.get(dataUrl);
-    if (hit !== void 0) return Promise.resolve(hit);
-    return new Promise((resolve2) => {
-      const im = new Image();
-      im.onload = () => {
-        try {
-          const w = im.naturalWidth, h = im.naturalHeight;
-          if (!w || !h) {
-            _lightCache.set(dataUrl, false);
-            resolve2(false);
-            return;
-          }
-          const c = document.createElement("canvas");
-          c.width = Math.min(w, 64);
-          c.height = Math.min(h, 64);
-          const ctx2 = c.getContext("2d");
-          if (!ctx2) {
-            _lightCache.set(dataUrl, false);
-            resolve2(false);
-            return;
-          }
-          ctx2.drawImage(im, 0, 0, c.width, c.height);
-          const px = ctx2.getImageData(0, 0, c.width, c.height).data;
-          let vis = 0, lumSum = 0;
-          for (let i = 0; i < px.length; i += 4) {
-            if (px[i + 3] < 16) continue;
-            vis++;
-            lumSum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
-          }
-          const light = vis > 0 && lumSum / vis > 0.72;
-          _lightCache.set(dataUrl, light);
-          resolve2(light);
-        } catch {
-          resolve2(false);
-        }
-      };
-      im.onerror = () => resolve2(false);
-      im.src = dataUrl;
-    });
-  }
-  function isLightPreset(presetId) {
-    if (!presetId) return false;
-    const p = PRESETS.find((x) => x.id === presetId);
-    return !!(p && p.lightBody);
-  }
-  function refreshCard() {
-    const card = document.getElementById("fntv-logo-ctrl");
-    if (!card) return;
-    const label = card.querySelector("#fntv-logo-cur-label");
-    const thumb = card.querySelector("#fntv-logo-cur-thumb");
-    const chip = card.querySelector("#fntv-logo-cur-chip");
-    if (label) label.textContent = currentLabel();
-    const choice = getChoice();
-    const uri = currentThumbUri();
-    if (thumb) {
-      if (uri) {
-        thumb.src = uri;
-        thumb.style.display = "block";
-      } else thumb.style.display = "none";
-    }
-    if (chip) {
-      if (choice.type === "preset") {
-        chip.style.background = isLightPreset(choice.presetId) ? CHIP_DARK : "transparent";
-      } else {
-        chip.style.background = "transparent";
-        if (uri) {
-          void isLightLogoDataUrl(uri).then((light) => {
-            const now = getChoice();
-            if (now.type === "custom" === (choice.type === "custom") && chip.isConnected) {
-              chip.style.background = light ? CHIP_DARK : "transparent";
-            }
-          });
-        }
+  function findHomeLogo() {
+    const candidates = [
+      'img[src*="logo" i]',
+      "header img",
+      "table img"
+    ];
+    for (const sel of candidates) {
+      try {
+        const el = document.querySelector(sel);
+        if (el && el.offsetParent !== null && el.getBoundingClientRect().width > 10) return el;
+      } catch {
       }
     }
+    return null;
   }
-  function buildCard2() {
-    const block = document.createElement("div");
-    block.id = "fntv-logo-ctrl";
-    block.style.cssText = "margin-top:18px;padding-top:14px;border-top:1px solid var(--fnos-ui-border,rgba(90,120,200,.14));display:flex;flex-direction:column;";
+  function applyLogo() {
+    if (!isHomePage()) return;
+    const img = findHomeLogo();
+    if (!img) {
+      const w = window;
+      if (!w.__fntvLogoHintShown) {
+        w.__fntvLogoHintShown = true;
+        console.log("[customLogo] \u672A\u5B9A\u4F4D\u5230\u9996\u9875 Logo \u5143\u7D20\u2014\u2014\u8BF7\u5728 F12 \u9009\u4E2D\u8BE5 Logo \u590D\u5236 outerHTML \u53D1\u7ED9\u5F00\u53D1\u8005\u4EE5\u7CBE\u786E\u9002\u914D");
+      }
+      return;
+    }
+    if (!img.getAttribute(ORIG_ATTR)) {
+      img.setAttribute(ORIG_ATTR, img.getAttribute("src") || "");
+    }
+    const src = resolveLogoSrc();
+    if (!src) {
+      const orig = img.getAttribute(ORIG_ATTR);
+      if (orig) img.setAttribute("src", orig);
+      img.removeAttribute(MARK_ATTR);
+      return;
+    }
+    if (img.getAttribute("src") === src) return;
+    img.setAttribute("src", src);
+    img.setAttribute(MARK_ATTR, "1");
+  }
+  function buildCustomLogoUI(container) {
+    const wrap = document.createElement("div");
+    wrap.setAttribute("data-fnos-ui", "1");
+    wrap.style.cssText = "margin-top:18px;padding-top:10px;border-top:1px solid var(--fnos-ui-border2);";
     const title = document.createElement("div");
-    title.style.cssText = "font-size:13px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;color:var(--fnos-ui-text,#4a3d63);";
-    title.textContent = "\u81EA\u5B9A\u4E49 Logo";
-    const sub = document.createElement("div");
-    sub.style.cssText = "font-size:11px;line-height:1.5;margin-bottom:10px;color:var(--fnos-ui-muted2,#8778a5);";
-    sub.textContent = "\u66FF\u6362\u9996\u9875\u9876\u90E8\u5C45\u4E2D\u7684\u300C\u98DE\u725B\u5F71\u89C6\u300D\u6807\u8BC6\uFF08\u4EC5\u9996\u9875\u663E\u793A\uFF09\u3002\u53EF\u9009\u5185\u7F6E\u5E73\u53F0\u9884\u8BBE\u6216\u4E0A\u4F20\u81EA\u5DF1\u7684\u56FE\u7247\u3002";
-    block.appendChild(title);
-    block.appendChild(sub);
-    const cur = document.createElement("div");
-    cur.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:10px;";
-    const thumbWrap = document.createElement("div");
-    thumbWrap.id = "fntv-logo-cur-chip";
-    thumbWrap.style.cssText = "min-width:86px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 8px;background:transparent;";
-    const thumb = document.createElement("img");
-    thumb.id = "fntv-logo-cur-thumb";
-    thumb.alt = "";
-    thumb.draggable = false;
-    thumb.style.cssText = "max-width:72px;max-height:24px;object-fit:contain;display:block;";
-    thumbWrap.appendChild(thumb);
-    const curLabel = document.createElement("span");
-    curLabel.id = "fntv-logo-cur-label";
-    curLabel.style.cssText = "font-size:12px;font-weight:600;color:var(--fnos-ui-text,#4a3d63);";
-    cur.appendChild(thumbWrap);
-    cur.appendChild(curLabel);
-    block.appendChild(cur);
-    const row2 = document.createElement("div");
-    row2.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;";
-    const presetBtn = mkSmallBtn("\u9009\u62E9\u9884\u8BBE");
-    const uploadBtn = mkSmallBtn("\u4E0A\u4F20\u81EA\u5B9A\u4E49");
-    const resetBtn = mkSmallBtn("\u6062\u590D\u9ED8\u8BA4");
-    row2.appendChild(presetBtn);
-    row2.appendChild(uploadBtn);
-    row2.appendChild(resetBtn);
-    block.appendChild(row2);
-    const showUploadError = (msg) => {
-      uploadBtn.textContent = "\u26A0 " + msg;
-      window.setTimeout(() => {
-        uploadBtn.textContent = "\u4E0A\u4F20\u81EA\u5B9A\u4E49";
-      }, 3500);
+    title.textContent = "\u9996\u9875 Logo";
+    title.style.cssText = "font-size:10.5px;font-weight:600;color:var(--fnos-ui-sec);margin-bottom:4px;";
+    const hint = document.createElement("div");
+    hint.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;";
+    hint.textContent = "\u66FF\u6362\u9996\u9875\u9876\u90E8\u5C45\u4E2D\u7684\u300C\u98DE\u725B\u5F71\u89C6\u300D\u6807\u8BC6\uFF08\u4EC5\u9996\u9875\u663E\u793A\uFF09\u3002\u70B9\u9009\u9884\u8BBE\u7ACB\u5373\u751F\u6548\uFF1B\u6216\u4E0A\u4F20\u81EA\u5DF1\u7684\u56FE\u7247\uFF08\u22641.5MB\uFF09\u3002\u2B1B = \u767D\u8272\u4E3B\u4F53\uFF0C\u6DF1\u8272\u80CC\u666F\u66F4\u6E05\u6670\u3002";
+    const groups = [
+      ["\u56FD\u5185\u5E73\u53F0", PRESETS.filter((p) => p.group === "\u56FD\u5185\u5E73\u53F0")],
+      ["\u56FD\u9645\u5E73\u53F0", PRESETS.filter((p) => p.group === "\u56FD\u9645\u5E73\u53F0")]
+    ];
+    const renderChips = () => {
+      wrap.querySelectorAll(".fntv-logo-chips").forEach((n) => n.remove());
+      for (const [gname, list] of groups) {
+        const gLabel = document.createElement("div");
+        gLabel.textContent = gname;
+        gLabel.style.cssText = "font-size:10px;color:var(--fnos-ui-sec);margin:6px 0 4px;";
+        wrap.appendChild(gLabel);
+        const chips = document.createElement("div");
+        chips.className = "fntv-logo-chips";
+        chips.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;";
+        const choice = getChoice();
+        for (const p of list) {
+          const chip = document.createElement("button");
+          chip.type = "button";
+          const active2 = choice.type === "preset" && choice.presetId === p.id;
+          chip.style.cssText = "padding:4px 10px;border-radius:7px;font-size:11px;cursor:pointer;" + (active2 ? "background:var(--fnos-ui-accent);color:#fff;border:1px solid var(--fnos-ui-accent);" : "background:var(--fnos-ui-input-bg);color:var(--fnos-ui-text);border:1px solid var(--fnos-ui-border);");
+          chip.textContent = p.name + (p.lightBody ? " \u2B1B" : "");
+          if (p.lightBody) chip.title = "\u767D\u8272\u4E3B\u4F53 Logo\uFF0C\u6DF1\u8272\u80CC\u666F\u66F4\u6E05\u6670";
+          chip.addEventListener("click", () => {
+            setChoice({ type: "preset", presetId: p.id });
+            applyLogo();
+            renderChips();
+          });
+          chips.appendChild(chip);
+        }
+        wrap.appendChild(chips);
+      }
+    };
+    const ops = document.createElement("div");
+    ops.style.cssText = "display:flex;gap:6px;margin-top:8px;";
+    const mkOp = (label) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.style.cssText = "padding:5px 12px;border-radius:7px;font-size:11px;cursor:pointer;background:var(--fnos-ui-input-bg);color:var(--fnos-ui-text);border:1px solid var(--fnos-ui-border);";
+      return b;
     };
     const fileInput = document.createElement("input");
     fileInput.type = "file";
-    fileInput.accept = "image/png,image/jpeg,image/webp,image/svg+xml";
+    fileInput.accept = "image/png,image/webp,image/jpeg,image/svg+xml";
     fileInput.style.display = "none";
+    const uploadBtn = mkOp("\u4E0A\u4F20\u81EA\u5B9A\u4E49\u56FE\u7247");
+    uploadBtn.addEventListener("click", () => fileInput.click());
     fileInput.addEventListener("change", () => {
       const f = fileInput.files && fileInput.files[0];
-      fileInput.value = "";
       if (!f) return;
-      const preErr = setCustomFromFile(f);
-      if (preErr) {
-        showUploadError(preErr);
+      if (f.size > 1.5 * 1024 * 1024) {
+        hint.textContent = "\u56FE\u7247\u8D85\u8FC7 1.5MB\uFF0C\u8BF7\u538B\u7F29\u540E\u91CD\u8BD5\u3002";
+        fileInput.value = "";
         return;
       }
       const reader = new FileReader();
       reader.onload = () => {
-        const err = applyCustomDataUrl(String(reader.result || ""));
-        if (err) showUploadError(err);
+        const dataUrl = String(reader.result || "");
+        try {
+          localStorage.setItem(CUSTOM_DATA_KEY, dataUrl);
+        } catch {
+          hint.textContent = "\u56FE\u7247\u8FC7\u5927\uFF0C\u672C\u5730\u5B58\u50A8\u5199\u5165\u5931\u8D25\uFF0C\u8BF7\u538B\u7F29\u540E\u91CD\u8BD5\u3002";
+          return;
+        }
+        setChoice({ type: "custom" });
+        applyLogo();
+        renderChips();
+        hint.textContent = "\u5DF2\u5E94\u7528\u81EA\u5B9A\u4E49 Logo\u3002";
+        fileInput.value = "";
       };
-      reader.onerror = () => showUploadError("\u8BFB\u53D6\u6587\u4EF6\u5931\u8D25");
       reader.readAsDataURL(f);
     });
-    uploadBtn.addEventListener("click", () => fileInput.click());
-    presetBtn.addEventListener("click", () => openPresetPanel());
+    const resetBtn = mkOp("\u6062\u590D\u9ED8\u8BA4\uFF08\u98DE\u725B\u5F71\u89C6\uFF09");
     resetBtn.addEventListener("click", () => {
-      resetToDefault();
+      setChoice({ type: "default" });
+      applyLogo();
+      renderChips();
+      hint.textContent = "\u5DF2\u6062\u590D\u9ED8\u8BA4\u300C\u98DE\u725B\u5F71\u89C6\u300D\u6807\u8BC6\u3002";
     });
-    block.appendChild(fileInput);
-    return block;
+    ops.appendChild(uploadBtn);
+    ops.appendChild(resetBtn);
+    ops.appendChild(fileInput);
+    wrap.appendChild(title);
+    wrap.appendChild(hint);
+    wrap.appendChild(ops);
+    container.appendChild(wrap);
+    renderChips();
   }
-  function setCustomFromFile(f) {
-    if (!f.type || !f.type.startsWith("image/")) return "\u4EC5\u652F\u6301\u56FE\u7247\u6587\u4EF6";
-    if (f.size > MAX_UPLOAD_BYTES) return "\u6587\u4EF6\u8D85\u8FC7 1.5MB";
-    return null;
-  }
-  function applyCustomDataUrl(dataUrl) {
-    if (!/^data:image\//.test(dataUrl || "")) return "\u4E0D\u662F\u6709\u6548\u7684\u56FE\u7247";
-    if (dataUrl.length > MAX_UPLOAD_BYTES * 1.4) return "\u6587\u4EF6\u8D85\u8FC7 1.5MB";
-    try {
-      localStorage.setItem(CUSTOM_DATA_KEY, dataUrl);
-    } catch (e) {
-      return "\u56FE\u7247\u8FC7\u5927\uFF0C\u5B58\u50A8\u5931\u8D25";
-    }
-    setChoice({ type: "custom" });
-    applyLogoToDom();
-    refreshCard();
-    return null;
-  }
-  function resetToDefault() {
-    try {
-      localStorage.removeItem(CUSTOM_DATA_KEY);
-    } catch {
-    }
-    setChoice({ type: "default" });
-    applyLogoToDom();
-    refreshCard();
-  }
-  var _panelOpen = false;
-  var _closeTimer = 0;
-  function closePresetPanel() {
-    if (_closeTimer) {
-      clearTimeout(_closeTimer);
-      _closeTimer = 0;
-    }
-    const ov = document.getElementById("fntv-logo-preset-panel");
-    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
-    _panelOpen = false;
-    document.removeEventListener("keydown", onKeydown2, true);
-  }
-  function _panelEsc(e) {
-    if (e.key === "Escape" && _panelOpen) {
-      e.stopPropagation();
-      closePresetPanel();
-    }
-  }
-  function onKeydown2(e) {
-    _panelEsc(e);
-  }
-  function openPresetPanel() {
-    if (_panelOpen) return;
-    _panelOpen = true;
-    const curId = getChoice().type === "preset" ? getChoice().presetId || null : null;
-    const ov = document.createElement("div");
-    ov.id = "fntv-logo-preset-panel";
-    ov.style.cssText = "position:fixed;inset:0;z-index:2147483601;display:flex;align-items:center;justify-content:center;background:rgba(18,14,28,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);-webkit-app-region:no-drag;app-region:no-drag;";
-    ov.addEventListener("click", (e) => {
-      if (e.target === ov) closePresetPanel();
-    });
-    const panel = document.createElement("div");
-    panel.style.cssText = "width:min(660px,calc(100vw - 80px));max-height:80vh;overflow:hidden;display:flex;flex-direction:column;border-radius:18px;background:var(--fnos-ui-panel-bg,linear-gradient(165deg,rgba(250,251,254,.97),rgba(240,243,250,.98)));color:var(--fnos-ui-text,#4a3d63);box-shadow:0 18px 50px rgba(80,60,120,.30),inset 0 0 0 1px rgba(255,255,255,.22);";
-    const head = document.createElement("div");
-    head.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;flex-shrink:0;";
-    const htitle = document.createElement("span");
-    htitle.textContent = "\u9009\u62E9\u9884\u8BBE Logo";
-    htitle.style.cssText = "font-size:15px;font-weight:700;letter-spacing:.3px;";
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.textContent = "\u2715";
-    closeBtn.style.cssText = "border:none;cursor:pointer;background:var(--fnos-ui-btn-bg,rgba(90,120,200,.12));color:var(--fnos-ui-btn-text2,#5a6480);width:30px;height:30px;border-radius:9px;font-size:14px;font-weight:700;";
-    closeBtn.addEventListener("click", () => closePresetPanel());
-    head.appendChild(htitle);
-    head.appendChild(closeBtn);
-    panel.appendChild(head);
-    const preview = document.createElement("div");
-    preview.style.cssText = "display:flex;align-items:center;gap:12px;margin:0 16px 12px;padding:10px 12px;border-radius:12px;flex-shrink:0;background:var(--fnos-ui-input-bg,rgba(255,255,255,.5));";
-    const pvChip = document.createElement("div");
-    pvChip.id = "fntv-logo-pv-chip";
-    pvChip.style.cssText = "width:150px;height:52px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;";
-    const pvImg = document.createElement("img");
-    pvImg.id = "fntv-logo-pv-img";
-    pvImg.alt = "";
-    pvImg.draggable = false;
-    pvImg.style.cssText = "max-width:126px;max-height:36px;object-fit:contain;";
-    pvChip.appendChild(pvImg);
-    const pvText = document.createElement("div");
-    pvText.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;";
-    const pvName = document.createElement("div");
-    pvName.id = "fntv-logo-pv-name";
-    pvName.style.cssText = "font-size:13px;font-weight:700;";
-    const pvHint = document.createElement("div");
-    pvHint.id = "fntv-logo-pv-hint";
-    pvHint.style.cssText = "font-size:11px;line-height:1.45;color:var(--fnos-ui-muted2,#8778a5);";
-    pvText.appendChild(pvName);
-    pvText.appendChild(pvHint);
-    preview.appendChild(pvChip);
-    preview.appendChild(pvText);
-    panel.appendChild(preview);
-    const scroll = document.createElement("div");
-    scroll.style.cssText = "overflow-y:auto;padding:0 16px 8px;flex:1 1 auto;min-height:0;";
-    const updatePreview = (p) => {
-      const uri = p ? presetDataUri(p) : "";
-      if (uri) {
-        pvImg.src = uri;
-        pvImg.style.display = "block";
-      } else pvImg.style.display = "none";
-      pvName.textContent = p ? p.name : "\u672A\u9009\u62E9";
-      pvHint.textContent = p ? p.lightBody ? "\u5DF2\u5E94\u7528 \u2713\uFF08\u767D\u8272\u4E3B\u4F53 logo\uFF0C\u5EFA\u8BAE\u6DF1\u8272\u80CC\u666F\u4F7F\u7528\uFF09" : "\u5DF2\u5E94\u7528 \u2713" : "\u70B9\u51FB\u4E0B\u65B9\u4EFB\u610F\u9884\u8BBE\uFF0C\u7ACB\u5373\u751F\u6548\u5E76\u81EA\u52A8\u5173\u95ED\u3002";
-      pvChip.style.background = p && p.lightBody ? CHIP_DARK : "transparent";
-    };
-    const groups = ["\u56FD\u5185\u5E73\u53F0", "\u56FD\u9645\u5E73\u53F0"];
-    for (const g of groups) {
-      const secT = document.createElement("div");
-      secT.textContent = g;
-      secT.style.cssText = "font-size:11.5px;font-weight:600;letter-spacing:.4px;color:var(--fnos-ui-sec,#4a6fd4);margin:8px 0 8px;";
-      scroll.appendChild(secT);
-      const grid = document.createElement("div");
-      grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;";
-      for (const p of PRESETS.filter((x) => x.group === g)) {
-        const light = !!p.lightBody;
-        const chip = document.createElement("button");
-        chip.type = "button";
-        chip.dataset.presetId = p.id;
-        chip.style.cssText = "cursor:pointer;border:2px solid transparent;border-radius:12px;padding:10px 8px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;background:" + (light ? CHIP_DARK : "transparent") + ";transition:border-color .15s,transform .15s;";
-        const img = document.createElement("img");
-        img.alt = p.name;
-        img.draggable = false;
-        const uri = presetDataUri(p);
-        if (uri) img.src = uri;
-        img.style.cssText = "max-width:104px;max-height:34px;object-fit:contain;";
-        const nm = document.createElement("span");
-        nm.textContent = p.name + (p.lightBody ? " \u26AA" : "");
-        nm.style.cssText = "font-size:11px;font-weight:600;color:" + (light ? "rgba(255,255,255,.82)" : "var(--fnos-ui-text,#4a3d63)") + ";";
-        nm.title = p.lightBody ? "\u767D\u8272\u4E3B\u4F53 logo\uFF0C\u9002\u5408\u6DF1\u8272\u80CC\u666F" : p.name;
-        chip.appendChild(img);
-        chip.appendChild(nm);
-        if (p.id === curId) chip.style.borderColor = "var(--fnos-ui-accent,#6d7ff2)";
-        chip.addEventListener("mouseenter", () => {
-          chip.style.transform = "translateY(-1px)";
-        });
-        chip.addEventListener("mouseleave", () => {
-          chip.style.transform = "";
-        });
-        chip.addEventListener("click", () => {
-          setChoice({ type: "preset", presetId: p.id });
-          applyLogoToDom();
-          refreshCard();
-          for (const el of Array.from(grid.children)) el.style.borderColor = "transparent";
-          chip.style.borderColor = "var(--fnos-ui-accent,#6d7ff2)";
-          updatePreview(p);
-          if (_closeTimer) clearTimeout(_closeTimer);
-          _closeTimer = window.setTimeout(() => {
-            _closeTimer = 0;
-            closePresetPanel();
-          }, 550);
-        });
-        grid.appendChild(chip);
-      }
-      scroll.appendChild(grid);
-    }
-    panel.appendChild(scroll);
-    const foot = document.createElement("div");
-    foot.style.cssText = "padding:10px 16px 14px;flex-shrink:0;font-size:11px;color:var(--fnos-ui-muted2,#8778a5);";
-    foot.textContent = "\u70B9\u51FB\u9884\u8BBE\u7ACB\u5373\u751F\u6548\u5E76\u81EA\u52A8\u5173\u95ED\uFF1B\u5F53\u524D\u9009\u62E9\u4F1A\u8BB0\u4F4F\uFF0C\u53EF\u968F\u65F6\u56DE\u6765\u6362\u6216\u300C\u6062\u590D\u9ED8\u8BA4\u300D\u3002";
-    panel.appendChild(foot);
-    ov.appendChild(panel);
-    document.body.appendChild(ov);
-    document.addEventListener("keydown", onKeydown2, true);
-    updatePreview(PRESETS.find((x) => x.id === curId) || null);
-  }
-  function tryInjectCard() {
-    const anchor = document.getElementById("fnos-appearance-ctrl");
-    if (!anchor || !anchor.parentElement) return false;
-    if (anchor.parentElement.querySelector("#fntv-logo-ctrl")) return true;
-    anchor.parentElement.insertBefore(buildCard2(), anchor.nextSibling);
-    refreshCard();
-    log5.info("[customLogo] \u8BBE\u7F6E\u5361\u7247\u5DF2\u6CE8\u5165");
-    return true;
-  }
-  function handle() {
-    if (!tryInjectCard()) {
-      const target = document.body || document.documentElement;
-      const obs = new MutationObserver(() => {
-        if (tryInjectCard()) obs.disconnect();
-      });
-      obs.observe(target, { childList: true, subtree: true });
-    }
-    window.setInterval(() => {
-      try {
-        tryInjectCard();
-      } catch {
-      }
-    }, 4e3);
-  }
-  registerHook("onReady" /* OnReady */, handle);
+  registerHook("onReady" /* OnReady */, () => {
+    applyLogo();
+  });
+  registerHook("onDomChange" /* OnDomChange */, () => {
+    applyLogo();
+  });
 
   // src/preload/plugins/danmakuHeat.ts
   var HEAT_ID = "fntv-danmaku-heat";
@@ -2829,7 +2583,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
 
   // src/preload/plugins/danmakuWeb.ts
   init_electron();
-  var log6 = logger_default;
+  var log5 = logger_default;
   var loadedGuids = /* @__PURE__ */ new Set();
   var GUID_RE2 = /\/v\/(?:movie|tv|video)(?:\/(?:season|episode))?\/([a-f0-9]{32})/i;
   var LS_KEY5 = "fntv_danmaku_enabled";
@@ -2895,7 +2649,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     el.textContent = css;
     (document.head || document.documentElement).appendChild(el);
     _headerStyleInjected = true;
-    log6.info("[danmakuWeb] \u64AD\u653E\u9875\u9876\u90E8\u6807\u9898\u680F\u7F8E\u5316 CSS \u5DF2\u6CE8\u5165");
+    log5.info("[danmakuWeb] \u64AD\u653E\u9875\u9876\u90E8\u6807\u9898\u680F\u7F8E\u5316 CSS \u5DF2\u6CE8\u5165");
   }
   function resetHeaderHideTimer() {
     if (!isPlayerPage()) return;
@@ -2912,7 +2666,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     document.addEventListener("mousemove", resetHeaderHideTimer, { passive: true });
     document.addEventListener("touchstart", resetHeaderHideTimer, { passive: true });
     setTimeout(resetHeaderHideTimer, 600);
-    log6.info("[danmakuWeb] \u64AD\u653E\u9875\u6807\u9898\u680F\u81EA\u52A8\u9690\u85CF\u5DF2\u542F\u7528 (" + HEADER_HIDE_DELAY + "ms)");
+    log5.info("[danmakuWeb] \u64AD\u653E\u9875\u6807\u9898\u680F\u81EA\u52A8\u9690\u85CF\u5DF2\u542F\u7528 (" + HEADER_HIDE_DELAY + "ms)");
   }
   var _fsFixBound = false;
   function applyVideoFullscreenClass() {
@@ -2948,7 +2702,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     setTimeout(tryObservePlayerClass, 3e3);
     window.addEventListener("resize", update, { passive: true });
     applyVideoFullscreenClass();
-    log6.info("[danmakuWeb] \u64AD\u653E\u5668\u5168\u5C4F\u53BB\u5706\u89D2\u68C0\u6D4B\u5DF2\u542F\u7528 (MutationObserver+xgplayer-fullscreen)");
+    log5.info("[danmakuWeb] \u64AD\u653E\u5668\u5168\u5C4F\u53BB\u5706\u89D2\u68C0\u6D4B\u5DF2\u542F\u7528 (MutationObserver+xgplayer-fullscreen)");
   }
   var videoEl = null;
   var canvas = null;
@@ -3309,7 +3063,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     if (!dmBtnWrap) createControls();
     if (dmBtnWrap && dmBtnWrap.parentElement !== bar2) bar2.appendChild(dmBtnWrap);
     if (!controlsPlaced) {
-      log6.info("[danmakuWeb] \u5F39\u5E55\u5165\u53E3\u5DF2\u6CE8\u5165\u63A7\u5236\u680F(" + String(bar2.className).slice(0, 40) + ")");
+      log5.info("[danmakuWeb] \u5F39\u5E55\u5165\u53E3\u5DF2\u6CE8\u5165\u63A7\u5236\u680F(" + String(bar2.className).slice(0, 40) + ")");
       controlsPlaced = true;
       stopMountPoll();
     }
@@ -3543,7 +3297,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       localStorage.setItem(LS_BILI_KEY, v ? "1" : "0");
     } catch {
     }
-    log6.info("[danmakuWeb] B\u7AD9\u5F39\u5E55\u641C\u7D22\u5F00\u5173 \u2192 " + v);
+    log5.info("[danmakuWeb] B\u7AD9\u5F39\u5E55\u641C\u7D22\u5F00\u5173 \u2192 " + v);
     if (currentGuid && !inflight && items.length === 0) {
       loadedGuids.delete(currentGuid);
       void prepareAndLoad(currentGuid);
@@ -3584,7 +3338,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       return;
     }
     if (inflight) {
-      log6.info("[danmakuWeb] \u5DF2\u6709\u5F39\u5E55\u8BF7\u6C42\u5728\u9014\uFF0C\u8DF3\u8FC7\u91CD\u590D\u62C9\u53D6");
+      log5.info("[danmakuWeb] \u5DF2\u6709\u5F39\u5E55\u8BF7\u6C42\u5728\u9014\uFF0C\u8DF3\u8FC7\u91CD\u590D\u62C9\u53D6");
       return;
     }
     const cached = guidCache.get(guid);
@@ -3595,7 +3349,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       loadedGuids.add(guid);
       renderDirty = true;
       announceItems();
-      log6.info("[danmakuWeb] \u4F1A\u8BDD\u7F13\u5B58\u547D\u4E2D " + items.length + " \u6761 guid=" + guid);
+      log5.info("[danmakuWeb] \u4F1A\u8BDD\u7F13\u5B58\u547D\u4E2D " + items.length + " \u6761 guid=" + guid);
       if (enabled2) startRender();
       return;
     }
@@ -3608,7 +3362,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     try {
       const res = await ipcRenderer.invoke("danmaku:prepare", { guid, biliSearch });
       if (guid !== currentGuid) {
-        log6.info("[danmakuWeb] \u4E22\u5F03\u8FC7\u671F\u5F39\u5E55\u54CD\u5E94(\u5DF2\u5207\u96C6) guid=" + guid);
+        log5.info("[danmakuWeb] \u4E22\u5F03\u8FC7\u671F\u5F39\u5E55\u54CD\u5E94(\u5DF2\u5207\u96C6) guid=" + guid);
         return;
       }
       if (res && res.ok && Array.isArray(res.items) && res.items.length) {
@@ -3627,7 +3381,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         guidCachePut(guid, { items, meta, maxScreen });
         renderDirty = true;
         announceItems();
-        log6.info(`[danmakuWeb] \u83B7\u53D6\u5F39\u5E55 ${items.length} \u6761 title="${res.title}" ep=${res.ep} movie=${res.isMovie}`);
+        log5.info(`[danmakuWeb] \u83B7\u53D6\u5F39\u5E55 ${items.length} \u6761 title="${res.title}" ep=${res.ep} movie=${res.isMovie}`);
         if (enabled2) startRender();
       } else {
         meta = {
@@ -3640,11 +3394,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
           count: 0,
           error: (res == null ? void 0 : res.error) || "\u7A7A"
         };
-        log6.info("[danmakuWeb] \u65E0\u5F39\u5E55: " + ((res == null ? void 0 : res.error) || "\u7A7A"));
+        log5.info("[danmakuWeb] \u65E0\u5F39\u5E55: " + ((res == null ? void 0 : res.error) || "\u7A7A"));
         loadedGuids.add(guid);
       }
     } catch (e) {
-      log6.error("[danmakuWeb] \u83B7\u53D6\u5F39\u5E55\u5931\u8D25:", e);
+      log5.error("[danmakuWeb] \u83B7\u53D6\u5F39\u5E55\u5931\u8D25:", e);
     } finally {
       inflight = false;
       loading = false;
@@ -3674,7 +3428,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       } catch {
       }
       if (guid === currentGuid && (inflight || items.length)) return;
-      log6.info("[danmakuWeb] play/info \u9884\u53D6\u5F39\u5E55 guid=" + guid);
+      log5.info("[danmakuWeb] play/info \u9884\u53D6\u5F39\u5E55 guid=" + guid);
       void prepareAndLoad(guid);
     };
     const origFetch = window.fetch;
@@ -3718,7 +3472,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   function ensureAscending(arr) {
     for (let i = 1; i < arr.length; i++) {
       if (arr[i].time < arr[i - 1].time) {
-        log6.info("[danmakuWeb] items \u975E\u5347\u5E8F\uFF08\u4E3B\u8FDB\u7A0B\u4EA7\u7269\u53EF\u80FD\u504F\u65E7\uFF09\u2192 \u6E32\u67D3\u4FA7\u8865\u6392");
+        log5.info("[danmakuWeb] items \u975E\u5347\u5E8F\uFF08\u4E3B\u8FDB\u7A0B\u4EA7\u7269\u53EF\u80FD\u504F\u65E7\uFF09\u2192 \u6E32\u67D3\u4FA7\u8865\u6392");
         arr.sort((a, b) => a.time - b.time);
         break;
       }
@@ -4158,7 +3912,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
         renderDetailRows();
         announceItems();
         if (enabled2) startRender();
-        log6.info("[danmakuWeb] \u624B\u52A8\u9009\u5B9A\u5F39\u5E55: " + items.length + " \u6761 bvid=" + c.bvid);
+        log5.info("[danmakuWeb] \u624B\u52A8\u9009\u5B9A\u5F39\u5E55: " + items.length + " \u6761 bvid=" + c.bvid);
       } else {
         const err = res && res.error || t("\u9009\u5B9A\u5931\u8D25");
         if (meta) meta.error = err;
@@ -5002,7 +4756,7 @@ html.fnos-perf.dark{
     } catch (e) {
     }
   }
-  function log7(...a) {
+  function log6(...a) {
     if (!getLogEnabled()) return;
     emitLog(LOG_TAG + " " + a.join(" "));
   }
@@ -5052,13 +4806,13 @@ html.fnos-perf.dark{
     const isStrm = !!(opts == null ? void 0 : opts.isStrm);
     const timeoutMs = (_a = opts == null ? void 0 : opts.timeoutMs) != null ? _a : isStrm ? 8e3 : 15e3;
     if (!fullUrl) {
-      if (isStrm) log7("[DIAG] fetchImg \u8DF3\u8FC7(\u7A7AURL) label=", label, "isStrm=true");
+      if (isStrm) log6("[DIAG] fetchImg \u8DF3\u8FC7(\u7A7AURL) label=", label, "isStrm=true");
       return null;
     }
     return imgGate(async () => {
       const first = await fetchImageOnce(fullUrl, timeoutMs, label, isStrm);
       if (first || !isStrm) return first;
-      log7("[DIAG] fetchImg STRm \u9996\u6B21\u5931\u8D25, \u91CD\u8BD5 1 \u6B21 label=", label);
+      log6("[DIAG] fetchImg STRm \u9996\u6B21\u5931\u8D25, \u91CD\u8BD5 1 \u6B21 label=", label);
       return await fetchImageOnce(fullUrl, Math.min(timeoutMs, 6e3), label, isStrm);
     });
   }
@@ -5077,10 +4831,10 @@ html.fnos-perf.dark{
       const ct = resp.headers.get("content-type") || "";
       const ms = Date.now() - t0;
       if (!resp.ok || !ct.startsWith("image/")) {
-        log7("[DIAG] fetchImg \u5931\u8D25", label, "status", resp.status, "ct", ct.substring(0, 24), "isStrm", isStrm, "ms", ms, "path", path.substring(0, 50));
+        log6("[DIAG] fetchImg \u5931\u8D25", label, "status", resp.status, "ct", ct.substring(0, 24), "isStrm", isStrm, "ms", ms, "path", path.substring(0, 50));
         try {
           const t2 = await resp.text();
-          log7("[DIAG] fetchImg \u975E\u56FE\u7247/\u5931\u8D25 body:", t2.substring(0, 120));
+          log6("[DIAG] fetchImg \u975E\u56FE\u7247/\u5931\u8D25 body:", t2.substring(0, 120));
         } catch (e) {
         }
         return null;
@@ -5089,8 +4843,8 @@ html.fnos-perf.dark{
       return URL.createObjectURL(blob);
     } catch (e) {
       const ms = Date.now() - t0;
-      if (e && e.name === "AbortError") log7("[DIAG] fetchImg \u8D85\u65F6(\u88AB abort) label=", label, "isStrm", isStrm, "timeoutMs", timeoutMs, "ms", ms);
-      else log7("[DIAG]  fetchImg err", label, "isStrm", isStrm, "ms", ms, String(e).substring(0, 120));
+      if (e && e.name === "AbortError") log6("[DIAG] fetchImg \u8D85\u65F6(\u88AB abort) label=", label, "isStrm", isStrm, "timeoutMs", timeoutMs, "ms", ms);
+      else log6("[DIAG]  fetchImg err", label, "isStrm", isStrm, "ms", ms, String(e).substring(0, 120));
       return null;
     } finally {
       clearTimeout(to);
@@ -5229,7 +4983,7 @@ html.fnos-perf.dark{
       const json = await resp.json();
       const d = json && json.data || {};
       const strmTag = detectStrmOrCloud(d);
-      if (strmTag) log7("[DIAG] item", id, "\u7591\u4F3C\u6765\u6E90:", strmTag, "| \u5019\u9009\u8DEF\u5F84=", String(d.path || d.file_path || "").substring(0, 90));
+      if (strmTag) log6("[DIAG] item", id, "\u7591\u4F3C\u6765\u6E90:", strmTag, "| \u5019\u9009\u8DEF\u5F84=", String(d.path || d.file_path || "").substring(0, 90));
       const pickImg2 = (v, preferLargest = false) => {
         let s = "";
         const extract = (it) => {
@@ -5284,7 +5038,7 @@ html.fnos-perf.dark{
       const g = d.genres || d.genre || d.types || d.categories || d.tags;
       if (Array.isArray(g)) genres = g.map((x) => typeof x === "string" ? x : (x == null ? void 0 : x.name) || (x == null ? void 0 : x.Name) || (x == null ? void 0 : x.title) || "").filter(Boolean);
       else if (typeof g === "string" && g.trim()) genres = g.split(/[,，/、|]/).map((s) => s.trim()).filter(Boolean);
-      log7("[lc-572] item genres:", JSON.stringify(genres), "(raw=", JSON.stringify(g).substring(0, 100), ")");
+      log6("[lc-572] item genres:", JSON.stringify(genres), "(raw=", JSON.stringify(g).substring(0, 100), ")");
       return {
         backdrop,
         poster,
@@ -5521,7 +5275,7 @@ html.fnos-perf.dark{
     return !h.startsWith("file:") && !h.includes("/login") && /^https?:\/\//.test(h);
   }
   var _lastHotHome = null;
-  function isHomePage() {
+  function isHomePage2() {
     const href = location.href.toLowerCase();
     const path = (location.pathname || "/").toLowerCase();
     if (/\/v\/(tv|movie|anime|cartoon|documentary|variety|show)/.test(href)) return false;
@@ -5533,7 +5287,7 @@ html.fnos-perf.dark{
     return segs.length <= 1;
   }
   function syncHomeVisibility() {
-    const home = isHomePage();
+    const home = isHomePage2();
     if (home === _lastHotHome) return;
     _lastHotHome = home;
     const tab = document.getElementById("fntv-hot-tab");
@@ -6643,13 +6397,13 @@ html.fnos-perf.dark{
       const r = await ipcRenderer2.invoke("media:season-guid", id);
       if (r && r.ok && r.guid) {
         const href = "/v/" + kind + "/season/" + r.guid;
-        log7("[lc-772] More -> \u4E09\u7EA7\u5B63\u9875", href);
+        log6("[lc-772] More -> \u4E09\u7EA7\u5B63\u9875", href);
         _seasonHrefCache.set(id, href);
         return href;
       }
-      log7("[lc-772] More -> \u65E0\u5B63\u5B50\u7EA7, \u56DE\u9000\u4E8C\u7EA7", fallback, r && r.error ? r.error : "");
+      log6("[lc-772] More -> \u65E0\u5B63\u5B50\u7EA7, \u56DE\u9000\u4E8C\u7EA7", fallback, r && r.error ? r.error : "");
     } catch (e) {
-      log7("[lc-772] More -> \u53D6\u5B63\u5931\u8D25, \u56DE\u9000\u4E8C\u7EA7", String(e).substring(0, 90));
+      log6("[lc-772] More -> \u53D6\u5B63\u5931\u8D25, \u56DE\u9000\u4E8C\u7EA7", String(e).substring(0, 90));
     }
     _seasonHrefCache.set(id, fallback);
     return fallback;
@@ -6657,7 +6411,7 @@ html.fnos-perf.dark{
 
   // src/preload/plugins/embyWall/carousel/styles.ts
   function buildCarouselStyle2(container, wrapper, shows, base, rebuild) {
-    const log22 = (...a) => log7("[s2]", ...a);
+    const log22 = (...a) => log6("[s2]", ...a);
     const imgUrl = (p, w) => {
       if (!p) return "";
       if (p.startsWith("http") || p.startsWith("/v/api/")) return p + (w ? "?w=" + w : "");
@@ -7030,7 +6784,7 @@ html.fnos-perf.dark{
     log22("\u6837\u5F0F2 \u8F6E\u64AD\u6CE8\u5165\u5B8C\u6210, slides=", slides.length);
   }
   function buildCarouselStyle3(container, wrapper, shows, base, rebuild) {
-    const log32 = (...a) => log7("[s3]", ...a);
+    const log32 = (...a) => log6("[s3]", ...a);
     const imgUrl = (p, w) => {
       if (!p) return "";
       if (p.startsWith("http") || p.startsWith("/v/api/")) return p + (w ? "?w=" + w : "");
@@ -7376,7 +7130,7 @@ html.fnos-perf.dark{
     (document.head || document.documentElement).appendChild(st);
   }
   function buildCarouselStyle4(container, wrapper, shows, base, rebuild) {
-    const log42 = (...a) => log7("[s4]", ...a);
+    const log42 = (...a) => log6("[s4]", ...a);
     const imgUrl = (p, w) => {
       if (!p) return "";
       if (p.startsWith("http") || p.startsWith("/v/api/")) return p + (w ? "?w=" + w : "");
@@ -8054,7 +7808,7 @@ html.fnos-perf.dark{
           });
           const json = await resp.json();
           const desc = (((_a = json == null ? void 0 : json.data) == null ? void 0 : _a.overview) || ((_b = json == null ? void 0 : json.data) == null ? void 0 : _b.tv_overview) || ((_c = json == null ? void 0 : json.data) == null ? void 0 : _c.parent_overview) || "").trim();
-          log7("desc API:", show.title, desc ? "OK(" + desc.length + ")" : "FAIL", "code=" + (json == null ? void 0 : json.code));
+          log6("desc API:", show.title, desc ? "OK(" + desc.length + ")" : "FAIL", "code=" + (json == null ? void 0 : json.code));
           if (!desc) return;
           show.desc = desc;
           const info = infos[i];
@@ -8071,7 +7825,7 @@ html.fnos-perf.dark{
             info.insertBefore(d, btn);
           }
         } catch (e) {
-          log7("desc error:", show.title, e);
+          log6("desc error:", show.title, e);
         }
       }, i * 800);
     });
@@ -8120,7 +7874,7 @@ html.fnos-perf.dark{
         S.apiShows.length = 0;
         Array.prototype.push.apply(S.apiShows, arr);
         S.carouselLoadedButNone = arr.length === 0;
-        log7("[lc-950] \u4ECE sessionStorage \u6062\u590D\u8F6E\u64AD\u7F13\u5B58", arr.length, "\u9879(\u542B\u6A2A\u7248\u6D77\u62A5 data URL + \u7B80\u4ECB)");
+        log6("[lc-950] \u4ECE sessionStorage \u6062\u590D\u8F6E\u64AD\u7F13\u5B58", arr.length, "\u9879(\u542B\u6A2A\u7248\u6D77\u62A5 data URL + \u7B80\u4ECB)");
       }
     } catch (_) {
     }
@@ -8211,15 +7965,15 @@ html.fnos-perf.dark{
       return t2.replace(/\s+/g, " ").trim();
     };
     try {
-      log7("[lc-564] waiting for library index (retry loop, max", timeoutMs, "ms)...");
+      log6("[lc-564] waiting for library index (retry loop, max", timeoutMs, "ms)...");
       const libIndex = await waitLibIndex(timeoutMs);
-      log7("[lc-564] library index ready:", libIndex.length, "items");
+      log6("[lc-564] library index ready:", libIndex.length, "items");
       const liveCards = scrapeVisibleCards();
       const posterById = /* @__PURE__ */ new Map();
       for (const c of liveCards) {
         if (c && c.id && c.poster) posterById.set(c.id, c.poster);
       }
-      log7("[lc-565] live-page posters by id:", posterById.size, "available (for poster merge)");
+      log6("[lc-565] live-page posters by id:", posterById.size, "available (for poster merge)");
       const cards = [];
       const seen = /* @__PURE__ */ new Set();
       for (let i = 0; i < libIndex.length && cards.length < CAROUSEL_SCRAPE_CAP; i++) {
@@ -8254,10 +8008,10 @@ html.fnos-perf.dark{
         } catch (e) {
         }
       }
-      log7("[lc-565] all-page first-screen scrape done:", cards.length, "cards; order:", cards.map((c) => c.title.substring(0, 8)).join(" \u2192 "));
+      log6("[lc-565] all-page first-screen scrape done:", cards.length, "cards; order:", cards.map((c) => c.title.substring(0, 8)).join(" \u2192 "));
       return cards;
     } catch (e) {
-      log7("[lc-564] ensureLibraryIndex error:", e);
+      log6("[lc-564] ensureLibraryIndex error:", e);
       return [];
     }
   }
@@ -8291,12 +8045,12 @@ html.fnos-perf.dark{
         clog("[lc-1083] item/list \u8FD4\u56DE 0, \u515C\u5E951: scraping /v/list/all first screen...");
         newShows = await scrapeAllPageFirstScreen(18e3, (n) => updateCarouselProgress(n));
         S.diagLastShows = newShows;
-        log7("[lc-561] all-page scrape returned", newShows.length, "cards");
+        log6("[lc-561] all-page scrape returned", newShows.length, "cards");
       }
       if (newShows.length === 0) {
-        log7("[lc-561] all-page scrape 0 cards, fallback: scrape current page live DOM");
+        log6("[lc-561] all-page scrape 0 cards, fallback: scrape current page live DOM");
         newShows = scrapeVisibleCards().slice(0, 10);
-        log7("[lc-561] live-DOM fallback got", newShows.length, "cards");
+        log6("[lc-561] live-DOM fallback got", newShows.length, "cards");
         if (newShows.length > 0) updateCarouselProgress(newShows.length);
       }
       clog("[lc-561] selected", newShows.length, "carousel items, order:", newShows.map((s) => {
@@ -8309,9 +8063,9 @@ html.fnos-perf.dark{
         S.apiLoaded = true;
         S.carouselInited = false;
         S.carouselLoadedButNone = false;
-        log7("[lc-569] fetching item details for", newShows.length, "items (live-DOM landscape + API)...");
+        log6("[lc-569] fetching item details for", newShows.length, "items (live-DOM landscape + API)...");
         const domLand = scrapeLandscapeBackdrops();
-        log7("[lc-569] live landscape backdrops by id:", domLand.size, "available");
+        log6("[lc-569] live landscape backdrops by id:", domLand.size, "available");
         const detailsPromise = Promise.all(newShows.map(async (s) => {
           const fromDom = domLand.get(s.id);
           if (fromDom) s.backdrop = fromDom;
@@ -8340,7 +8094,7 @@ html.fnos-perf.dark{
         let revealAttempts = 0;
         const revealOnce = () => {
           if (S.carouselRevealed) {
-            log7("[lc-622] carousel already revealed, skip re-render");
+            log6("[lc-622] carousel already revealed, skip re-render");
             return;
           }
           const landscapeCount = newShows.filter(isLandscapeBackdrop).length;
@@ -8375,7 +8129,7 @@ html.fnos-perf.dark{
             if (x.blob) {
               x.s._backdropBlob = x.blob;
               picked.push(x.s);
-            } else log7("[lc-768] \u8DF3\u8FC7\u65E0\u6CD5\u52A0\u8F7D\u6D77\u62A5\u7684\u9879(\u7591\u4F3C STR/\u7F51\u76D8):", (x.s.title || "").substring(0, 16), x.s.strmTag || "");
+            } else log6("[lc-768] \u8DF3\u8FC7\u65E0\u6CD5\u52A0\u8F7D\u6D77\u62A5\u7684\u9879(\u7591\u4F3C STR/\u7F51\u76D8):", (x.s.title || "").substring(0, 16), x.s.strmTag || "");
           }
           if (picked.length === 0) {
             clog("[lc-768] \u5168\u90E8\u5019\u9009\u9879\u6D77\u62A5\u5747\u65E0\u6CD5\u52A0\u8F7D(\u7591\u4F3C\u5747\u4E3A STR/\u7F51\u76D8)\uFF0C\u4E3B\u9875\u663E\u793A\u300C\u6682\u672A\u652F\u6301STRM\u6D77\u62A5\u300D");
@@ -8389,7 +8143,7 @@ html.fnos-perf.dark{
           completeCarouselProgress(revealOnce, "details-ready");
         }).catch((e) => {
           clearTimeout(revealTimer);
-          log7("[lc-569] item detail fetch error:", e);
+          log6("[lc-569] item detail fetch error:", e);
           completeCarouselProgress(revealOnce, "details-error");
         });
       } else {
@@ -8457,7 +8211,7 @@ html.fnos-perf.dark{
       }
       return null;
     } catch (e) {
-      log7("resolveShowLogo err:", show && show.title || "", e);
+      log6("resolveShowLogo err:", show && show.title || "", e);
       return null;
     }
   }
@@ -8473,10 +8227,10 @@ html.fnos-perf.dark{
             const b = await fetchImageAuth(full);
             if (b) {
               swapTitleToLogo(info, b);
-              log7("fnOS logo applied:", show.title);
-            } else log7("fnOS logo fetch fail:", show.title);
+              log6("fnOS logo applied:", show.title);
+            } else log6("fnOS logo fetch fail:", show.title);
           } catch (e) {
-            log7("local logo err:", show.title, e);
+            log6("local logo err:", show.title, e);
           }
         }, i * 600);
       } else if (show.tmdbId || show.title) {
@@ -8488,7 +8242,7 @@ html.fnos-perf.dark{
             else logoArg.title = show.title;
             const r = await ipcRenderer2.invoke("tmdb:logo", logoArg);
             if (!r || !r.ok) {
-              log7("tmdb logo none:", show.title, r && r.error || "\u65E0 logo");
+              log6("tmdb logo none:", show.title, r && r.error || "\u65E0 logo");
               return;
             }
             const paths = r.logoPaths && r.logoPaths.length ? r.logoPaths : r.logoPath ? [r.logoPath] : [];
@@ -8500,26 +8254,26 @@ html.fnos-perf.dark{
                 if (!img || !img.ok || !img.dataUrl) continue;
                 if (await isPureWhitePng(img.dataUrl)) {
                   if (!whiteFallback) whiteFallback = img.dataUrl;
-                  log7("tmdb logo \u7EAF\u767D\u5019\u9009(\u7559\u4F5C\u515C\u5E95):", show.title, p);
+                  log6("tmdb logo \u7EAF\u767D\u5019\u9009(\u7559\u4F5C\u515C\u5E95):", show.title, p);
                   continue;
                 }
                 show.tmdbLogo = img.dataUrl;
                 swapTitleToLogo(info, img.dataUrl);
-                log7("tmdb logo applied:", show.title);
+                log6("tmdb logo applied:", show.title);
                 return;
               } catch (e) {
-                log7("tmdb logo candidate err:", show.title, e);
+                log6("tmdb logo candidate err:", show.title, e);
               }
             }
             if (whiteFallback) {
               show.tmdbLogo = whiteFallback;
               swapTitleToLogo(info, whiteFallback);
-              log7("tmdb logo applied(\u7EAF\u767D\u515C\u5E95):", show.title);
+              log6("tmdb logo applied(\u7EAF\u767D\u515C\u5E95):", show.title);
               return;
             }
-            log7("tmdb logo \u5168\u90E8\u5019\u9009\u4E0D\u53EF\u7528:", show.title);
+            log6("tmdb logo \u5168\u90E8\u5019\u9009\u4E0D\u53EF\u7528:", show.title);
           } catch (e) {
-            log7("tmdb logo err:", show.title, e);
+            log6("tmdb logo err:", show.title, e);
           }
         }, i * 600);
       } else if (show.logo) {
@@ -8529,7 +8283,7 @@ html.fnos-perf.dark{
             const b = await fetchImageAuth(full);
             if (b) swapTitleToLogo(info, b);
           } catch (e) {
-            log7("local logo err:", show.title, e);
+            log6("local logo err:", show.title, e);
           }
         }, i * 600);
       }
@@ -8562,17 +8316,17 @@ html.fnos-perf.dark{
         body: JSON.stringify(body)
       });
       if (!resp.ok) {
-        log7("[\u56DE\u586B] getEditDetail HTTP", resp.status, guid);
+        log6("[\u56DE\u586B] getEditDetail HTTP", resp.status, guid);
         return null;
       }
       const j = await resp.json().catch(() => null);
       if (!j || j.code !== 0) {
-        log7("[\u56DE\u586B] getEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
+        log6("[\u56DE\u586B] getEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
         return null;
       }
       return j.data || null;
     } catch (e) {
-      log7("[\u56DE\u586B] getEditDetail \u5F02\u5E38", String(e).substring(0, 120));
+      log6("[\u56DE\u586B] getEditDetail \u5F02\u5E38", String(e).substring(0, 120));
       return null;
     }
   }
@@ -8593,17 +8347,17 @@ html.fnos-perf.dark{
         body: fd
       });
       if (!resp.ok) {
-        log7("[\u56DE\u586B] upload HTTP", resp.status);
+        log6("[\u56DE\u586B] upload HTTP", resp.status);
         return null;
       }
       const j = await resp.json().catch(() => null);
       if (!j || j.code !== 0 || !((_a = j.data) == null ? void 0 : _a.hash_path)) {
-        log7("[\u56DE\u586B] upload \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
+        log6("[\u56DE\u586B] upload \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
         return null;
       }
       return j.data.hash_path;
     } catch (e) {
-      log7("[\u56DE\u586B] upload \u5F02\u5E38", String(e).substring(0, 120));
+      log6("[\u56DE\u586B] upload \u5F02\u5E38", String(e).substring(0, 120));
       return null;
     }
   }
@@ -8619,17 +8373,17 @@ html.fnos-perf.dark{
         body: JSON.stringify(body)
       });
       if (!resp.ok) {
-        log7("[\u56DE\u586B] saveEditDetail HTTP", resp.status);
+        log6("[\u56DE\u586B] saveEditDetail HTTP", resp.status);
         return false;
       }
       const j = await resp.json().catch(() => null);
       if (!j || j.code !== 0) {
-        log7("[\u56DE\u586B] saveEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
+        log6("[\u56DE\u586B] saveEditDetail \u4E1A\u52A1\u5931\u8D25", JSON.stringify(j).substring(0, 200));
         return false;
       }
       return true;
     } catch (e) {
-      log7("[\u56DE\u586B] saveEditDetail \u5F02\u5E38", String(e).substring(0, 120));
+      log6("[\u56DE\u586B] saveEditDetail \u5F02\u5E38", String(e).substring(0, 120));
       return false;
     }
   }
@@ -8649,13 +8403,13 @@ html.fnos-perf.dark{
         const data = await fnosGetEditDetail(origin, guid);
         if (!data) return;
         if (data.logos && String(data.logos).trim()) {
-          log7("[\u56DE\u586B] \u5DF2\u6709 logo, \u8DF3\u8FC7", guid, String(data.logos).substring(0, 80));
+          log6("[\u56DE\u586B] \u5DF2\u6709 logo, \u8DF3\u8FC7", guid, String(data.logos).substring(0, 80));
           return;
         }
         const tmdbId = extractTmdbId(data);
         const title = (data.title || "").trim();
         if (!tmdbId && !title) {
-          log7("[\u56DE\u586B] \u65E0 tmdbId \u4E14\u65E0\u6807\u9898, \u8DF3\u8FC7", guid);
+          log6("[\u56DE\u586B] \u65E0 tmdbId \u4E14\u65E0\u6807\u9898, \u8DF3\u8FC7", guid);
           return;
         }
         const logoArg = { mediaType };
@@ -8663,7 +8417,7 @@ html.fnos-perf.dark{
         else logoArg.title = title;
         const r = await ipcRenderer2.invoke("tmdb:logo", logoArg);
         if (!r || !r.ok) {
-          log7("[\u56DE\u586B] TMDB \u65E0 logo", tmdbId || title);
+          log6("[\u56DE\u586B] TMDB \u65E0 logo", tmdbId || title);
           return;
         }
         const paths = r.logoPaths && r.logoPaths.length ? r.logoPaths : r.logoPath ? [r.logoPath] : [];
@@ -8673,27 +8427,27 @@ html.fnos-perf.dark{
             const img = await ipcRenderer2.invoke("tmdb:image", url);
             if (!img || !img.ok || !img.dataUrl) continue;
             if (await isPureWhitePng(img.dataUrl)) {
-              log7("[\u56DE\u586B] \u7EAF\u767D\u8DF3\u8FC7", p);
+              log6("[\u56DE\u586B] \u7EAF\u767D\u8DF3\u8FC7", p);
               continue;
             }
             const hashPath = await uploadLogoToFnos(origin, img.dataUrl);
             if (!hashPath) {
-              log7("[\u56DE\u586B] \u4E0A\u4F20\u5931\u8D25", p);
+              log6("[\u56DE\u586B] \u4E0A\u4F20\u5931\u8D25", p);
               continue;
             }
             const saved = await saveEditDetail(origin, data, hashPath);
             if (saved) {
-              log7("[\u56DE\u586B] \u2705 \u5DF2\u5199\u56DE logo \u2192 guid=" + guid + " path=" + hashPath);
+              log6("[\u56DE\u586B] \u2705 \u5DF2\u5199\u56DE logo \u2192 guid=" + guid + " path=" + hashPath);
               return;
             }
-            log7("[\u56DE\u586B] \u4FDD\u5B58\u5931\u8D25", p);
+            log6("[\u56DE\u586B] \u4FDD\u5B58\u5931\u8D25", p);
           } catch (e) {
-            log7("[\u56DE\u586B] \u5019\u9009\u5931\u8D25", p, String(e).substring(0, 80));
+            log6("[\u56DE\u586B] \u5019\u9009\u5931\u8D25", p, String(e).substring(0, 80));
           }
         }
-        log7("[\u56DE\u586B] \u65E0\u53EF\u7528 logo", guid);
+        log6("[\u56DE\u586B] \u65E0\u53EF\u7528 logo", guid);
       } catch (e) {
-        log7("[\u56DE\u586B] err", String(e).substring(0, 120));
+        log6("[\u56DE\u586B] err", String(e).substring(0, 120));
       }
     }, 800);
   }
@@ -8782,7 +8536,7 @@ html.fnos-perf.dark{
       try {
         S.carouselResume();
       } catch (e) {
-        log7("[lc-946] resumeCarousel error: " + String(e).substring(0, 80));
+        log6("[lc-946] resumeCarousel error: " + String(e).substring(0, 80));
       }
     }
   }
@@ -8817,7 +8571,7 @@ html.fnos-perf.dark{
     );
   }
   function injectCarousel() {
-    log7("injectCarousel called, S.carouselInited=", S.carouselInited, "S.apiShows.length=", S.apiShows.length);
+    log6("injectCarousel called, S.carouselInited=", S.carouselInited, "S.apiShows.length=", S.apiShows.length);
     if (S.carouselInited) return;
     destroyCarousel();
     const p = location.pathname;
@@ -8832,16 +8586,16 @@ html.fnos-perf.dark{
     if (S.carouselWrapper && document.body.contains(S.carouselWrapper)) {
       target = S.carouselWrapper.parentElement;
       rebuild = true;
-      log7("rebuild: reusing section(parent of existing wrapper)");
+      log6("rebuild: reusing section(parent of existing wrapper)");
     } else {
       target = findMediaLibrarySection();
-      if (target) log7("media-library section found via robust search");
+      if (target) log6("media-library section found via robust search");
     }
     if (!target) {
-      log7("no target");
+      log6("no target");
       return;
     }
-    log7("target found on", location.href, rebuild ? "(rebuild)" : "(first)");
+    log6("target found on", location.href, rebuild ? "(rebuild)" : "(first)");
     if (!document.getElementById("fnos-hero-action-style")) {
       const actSt = document.createElement("style");
       actSt.id = "fnos-hero-action-style";
@@ -8902,14 +8656,14 @@ html.fnos-perf.dark{
     if (S.apiShows.length === 0) {
       if (S.carouselLoadedButNone) {
         if (!S.placeholderInited) {
-          log7("all candidates unloadable(STR/\u7F51\u76D8), showing \u6682\u672A\u652F\u6301STRM\u6D77\u62A5 tip");
+          log6("all candidates unloadable(STR/\u7F51\u76D8), showing \u6682\u672A\u652F\u6301STRM\u6D77\u62A5 tip");
           buildStrmUnsupportedTip(target);
           S.placeholderInited = true;
         }
         return;
       }
       if (!S.placeholderInited) {
-        log7("api not ready, building loading skeleton with progress count");
+        log6("api not ready, building loading skeleton with progress count");
         buildLoadingPlaceholder(target);
         S.placeholderInited = true;
       }
@@ -8919,9 +8673,9 @@ html.fnos-perf.dark{
     S.carouselProgressEl = null;
     S.carouselInited = true;
     S.carouselUpdatedAt = Date.now();
-    log7("carousel data ready at", new Date(S.carouselUpdatedAt).toLocaleString("zh-CN"));
+    log6("carousel data ready at", new Date(S.carouselUpdatedAt).toLocaleString("zh-CN"));
     const shows = S.apiShows;
-    log7("injecting", shows.length, "shows (api:", S.apiShows.length, ")");
+    log6("injecting", shows.length, "shows (api:", S.apiShows.length, ")");
     const base = location.origin;
     let currentIdx = 0;
     const infos = [];
@@ -8999,7 +8753,7 @@ html.fnos-perf.dark{
       leftEl.appendChild(imgEl);
       const pic = imgUrl(show.backdrop);
       const blob = show._backdropBlob;
-      if (shows === S.apiShows && i === 0) log7("SLIDE0 src:", (blob || pic).substring(0, 80));
+      if (shows === S.apiShows && i === 0) log6("SLIDE0 src:", (blob || pic).substring(0, 80));
       const isSlideStrm = !!show.strmTag;
       const applyLandscapeCheck = () => {
         try {
@@ -9014,7 +8768,7 @@ html.fnos-perf.dark{
       };
       if (blob) {
         imgEl.onerror = () => {
-          log7("[DIAG] \u8F6E\u64AD\u4E3B\u56FE(blob\u7F13\u5B58)\u52A0\u8F7D\u5931\u8D25:", (show.title || "").substring(0, 16));
+          log6("[DIAG] \u8F6E\u64AD\u4E3B\u56FE(blob\u7F13\u5B58)\u52A0\u8F7D\u5931\u8D25:", (show.title || "").substring(0, 16));
         };
         imgEl.src = blob;
         try {
@@ -9024,11 +8778,11 @@ html.fnos-perf.dark{
       } else if (!show._backdropIsPortrait) {
         fetchImageAuth(pic, { label: "slide#" + i + ":" + (show.title || "").substring(0, 10), isStrm: isSlideStrm }).then((b) => {
           if (!b) {
-            if (isSlideStrm) log7("[DIAG] \u8F6E\u64AD\u4E3B\u56FE fetchImageAuth \u8FD4\u56DE\u7A7A(STRM item \u6D77\u62A5\u52A0\u8F7D\u5931\u8D25):", (show.title || "").substring(0, 16), pic.substring(0, 60));
+            if (isSlideStrm) log6("[DIAG] \u8F6E\u64AD\u4E3B\u56FE fetchImageAuth \u8FD4\u56DE\u7A7A(STRM item \u6D77\u62A5\u52A0\u8F7D\u5931\u8D25):", (show.title || "").substring(0, 16), pic.substring(0, 60));
             return;
           }
           imgEl.onerror = () => {
-            log7("[DIAG] \u8F6E\u64AD\u4E3B\u56FE\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pic.substring(0, 60));
+            log6("[DIAG] \u8F6E\u64AD\u4E3B\u56FE\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pic.substring(0, 60));
           };
           imgEl.onload = applyLandscapeCheck;
           imgEl.src = b;
@@ -9098,11 +8852,11 @@ html.fnos-perf.dark{
       let _navigating = false;
       const spaNav = (href, tag) => {
         if (_navigating) {
-          log7(tag + " -> ignored, navigation in progress");
+          log6(tag + " -> ignored, navigation in progress");
           return;
         }
         _navigating = true;
-        log7(tag + " -> SPA navigate", href);
+        log6(tag + " -> SPA navigate", href);
         history.pushState({}, "", href);
         window.dispatchEvent(new PopStateEvent("popstate"));
         setTimeout(() => {
@@ -9111,7 +8865,7 @@ html.fnos-perf.dark{
           const _cc = S.carouselContainer;
           const homeGone = !!_cc && (!document.body.contains(_cc) || _cc.getBoundingClientRect().width === 0 || _cc.getBoundingClientRect().height === 0);
           if (!backBtn && !seasonRendered && !homeGone) {
-            log7(tag + " fallback -> full page nav (popstate not handled)", href);
+            log6(tag + " fallback -> full page nav (popstate not handled)", href);
             location.href = href;
           }
           _navigating = false;
@@ -9173,7 +8927,7 @@ html.fnos-perf.dark{
         pImg.src = placeholderSvg;
         pImg.style.cssText = "width:120px;height:170px;object-fit:cover;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.18);display:block;background:rgba(200,190,220,.25)";
         pImg.onerror = () => {
-          log7("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pUrl ? pUrl.substring(0, 60) : "");
+          log6("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u52A0\u8F7D\u5931\u8D25(img.onerror):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag || "-", pUrl ? pUrl.substring(0, 60) : "");
           if (pImg.src !== placeholderSvg) pImg.src = placeholderSvg;
         };
         const pUrl = imgUrl(show.poster);
@@ -9182,7 +8936,7 @@ html.fnos-perf.dark{
             if (b) pImg.src = b;
           });
         } else if (show.strmTag) {
-          log7("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u65E0 poster URL(STRM item):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag);
+          log6("[DIAG] \u53F3\u4FA7\u6D77\u62A5\u6761\u65E0 poster URL(STRM item):", (show.title || "").substring(0, 16), "strmTag=", show.strmTag);
         }
         const pTitle = document.createElement("div");
         pTitle.style.cssText = "font-size:11.5px;font-weight:600;color:rgba(240,236,255,.95);text-align:center;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;line-height:1.35;letter-spacing:.3px;text-shadow:0 1px 4px rgba(0,0,0,.35)";
@@ -9281,7 +9035,7 @@ html.fnos-perf.dark{
     S.carouselShows = shows;
     S.carouselBase = base;
     applyTitleLogo(base, shows, infos);
-    log7("carousel injected");
+    log6("carousel injected");
   }
 
   // src/preload/plugins/embyWall/login.ts
@@ -9339,7 +9093,7 @@ html.fnos-perf.dark{
               }
             }
             if (!username) {
-              log7("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u8DF3\u8FC7: \u65E0\u4FDD\u5B58\u7684\u8D26\u53F7");
+              log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u8DF3\u8FC7: \u65E0\u4FDD\u5B58\u7684\u8D26\u53F7");
               return;
             }
             const uInput = document.getElementById("username") || document.querySelector('input[name="username"]') || document.querySelector('input[placeholder*="\u7528\u6237\u540D"]') || document.querySelector('input[placeholder*="\u8D26\u53F7"]') || function() {
@@ -9351,10 +9105,10 @@ html.fnos-perf.dark{
               return inputs.length > 0 ? inputs[0] : null;
             }();
             if (!uInput) {
-              log7("[lc-213] /v/login \u672A\u627E\u5230\u7528\u6237\u540D\u8F93\u5165\u6846");
+              log6("[lc-213] /v/login \u672A\u627E\u5230\u7528\u6237\u540D\u8F93\u5165\u6846");
               return;
             }
-            log7(`[lc-213] /v/login \u81EA\u52A8\u586B\u5145: \u7528\u6237\u540D=${username}, \u5BC6\u7801=${password ? "\u6709" : "\u65E0(\u672A\u8BB0\u4F4F\u5BC6\u7801)"}`);
+            log6(`[lc-213] /v/login \u81EA\u52A8\u586B\u5145: \u7528\u6237\u540D=${username}, \u5BC6\u7801=${password ? "\u6709" : "\u65E0(\u672A\u8BB0\u4F4F\u5BC6\u7801)"}`);
             triggerInput(uInput, username);
             if (password && pInput) {
               triggerInput(pInput, password);
@@ -9362,20 +9116,20 @@ html.fnos-perf.dark{
                 const btn = document.querySelector('button[type="submit"]') || Array.from(document.querySelectorAll("button")).find((b) => /登录/.test(b.innerText)) || document.querySelector('input[type="submit"]');
                 if (btn) {
                   btn.click();
-                  log7("[lc-213] /v/login \u5DF2\u81EA\u52A8\u70B9\u51FB\u767B\u5F55");
+                  log6("[lc-213] /v/login \u5DF2\u81EA\u52A8\u70B9\u51FB\u767B\u5F55");
                 } else {
-                  log7("[lc-213] /v/login \u672A\u627E\u5230\u767B\u5F55\u6309\u94AE");
+                  log6("[lc-213] /v/login \u672A\u627E\u5230\u767B\u5F55\u6309\u94AE");
                 }
               }, 400);
             } else {
-              log7('[lc-213] /v/login \u4EC5\u586B\u5145\u4E86\u7528\u6237\u540D, \u5BC6\u7801\u4E3A\u7A7A(\u9700\u7528\u6237\u624B\u52A8\u8F93\u5165\u6216\u52FE\u9009"\u8BB0\u4F4F\u5BC6\u7801")');
+              log6('[lc-213] /v/login \u4EC5\u586B\u5145\u4E86\u7528\u6237\u540D, \u5BC6\u7801\u4E3A\u7A7A(\u9700\u7528\u6237\u624B\u52A8\u8F93\u5165\u6216\u52FE\u9009"\u8BB0\u4F4F\u5BC6\u7801")');
             }
           } catch (e) {
-            log7("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5904\u7406\u5F02\u5E38:", String(e).slice(0, 120));
+            log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5904\u7406\u5F02\u5E38:", String(e).slice(0, 120));
           }
         });
       } catch (e) {
-        log7("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5F02\u5E38:", String(e).slice(0, 120));
+        log6("[lc-213] /v/login \u81EA\u52A8\u586B\u5145\u5F02\u5E38:", String(e).slice(0, 120));
       }
     }, 800);
   })();
@@ -11421,7 +11175,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     }
     return out;
   }
-  function handle2(v) {
+  function handle(v) {
     const s = String(v == null ? "" : v).trim();
     return /^[A-Za-z0-9_.\-]{1,60}$/.test(s) ? s : "";
   }
@@ -11554,11 +11308,11 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     if (imdb) link(imdb, "IMDb");
     if (d.trailerKey) link("https://www.youtube.com/watch?v=" + d.trailerKey, "\u9884\u544A\u7247");
     if (d.homepage) link(d.homepage, "\u5B98\u7F51");
-    const ig = handle2(ex.instagram);
+    const ig = handle(ex.instagram);
     if (ig) link("https://www.instagram.com/" + ig, "Instagram");
-    const tw = handle2(ex.twitter);
+    const tw = handle(ex.twitter);
     if (tw) link("https://x.com/" + tw, "X");
-    const fb = handle2(ex.facebook);
+    const fb = handle(ex.facebook);
     if (fb) link("https://www.facebook.com/" + fb, "Facebook");
     const wd = /^Q\d{1,12}$/.test(String(ex.wikidata || "")) ? String(ex.wikidata) : "";
     if (wd) link("https://www.wikidata.org/wiki/" + wd, "Wikidata");
@@ -11817,7 +11571,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           _tmdbInfoData = r.data;
           _tmdbInfoFetchedAt = r.fetchedAt || Date.now();
           _tmdbInfoError = "";
-          log7("[lc-980] TMDB \u5361\u5C31\u7EEA: " + (r.data.title || ""));
+          log6("[lc-980] TMDB \u5361\u5C31\u7EEA: " + (r.data.title || ""));
         } else {
           _tmdbInfoError = r && r.error || "TMDB \u83B7\u53D6\u5931\u8D25";
           if (_isOneLevel()) {
@@ -12556,7 +12310,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       const title = ((titleEl == null ? void 0 : titleEl.textContent) || "fnOS \u89C6\u9891").trim();
       const m = rawUrl.match(/\/v\/api\/v1\/media\/range\/([a-f0-9]{32})/i);
       if (m) {
-        log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u8D70 fnOS \u64AD\u653E\u94FE\u8DEF:", title, m[1]);
+        log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u8D70 fnOS \u64AD\u653E\u94FE\u8DEF:", title, m[1]);
         ipcRenderer.send("external-play", { kind: "fnos", id: m[1], title });
         setTimeout(() => {
           const closeBtn = modal.querySelector(".app-layout-header-close");
@@ -12568,11 +12322,11 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       let url = rawUrl;
       if (url && url.startsWith("/")) url = location.origin + url;
       if (!url || !/^https?:\/\//i.test(url)) {
-        log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u672A\u53D6\u5230\u6709\u6548\u76F4\u94FE:", url);
+        log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u672A\u53D6\u5230\u6709\u6548\u76F4\u94FE:", url);
         alert("\u672A\u80FD\u83B7\u53D6\u89C6\u9891\u76F4\u94FE\uFF0C\u65E0\u6CD5\u5916\u90E8\u6253\u5F00");
         return;
       }
-      log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5916\u90E8\u6253\u5F00:", title, url);
+      log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5916\u90E8\u6253\u5F00:", title, url);
       ipcRenderer.send("external-play", { kind: "url", url, title });
       setTimeout(() => {
         const closeBtn = modal.querySelector(".app-layout-header-close");
@@ -12626,7 +12380,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       });
       overlay.addEventListener("mousedown", (e) => e.stopPropagation());
       document.body.appendChild(overlay);
-      log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u5F39\u51FA\u64AD\u653E\u65B9\u5F0F\u9009\u62E9\u5F39\u7A97");
+      log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u5F39\u51FA\u64AD\u653E\u65B9\u5F0F\u9009\u62E9\u5F39\u7A97");
     }
     function ensureButton2(modal) {
       if (modal.querySelector(".fntv-ext-open")) return;
@@ -12658,7 +12412,7 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
     });
     observer.observe(document.body, { childList: true, subtree: true });
     document.querySelectorAll(".trim-ui__app-layout--window").forEach((m) => handleModal(m));
-    log7("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u6CE8\u5165(\u81EA\u52A8\u5F39\u7A97\u9009\u62E9 + \u6807\u9898\u680F\u5916\u90E8\u6253\u5F00\u6309\u94AE)");
+    log6("[\u89C6\u9891\u9884\u89C8\u5916\u653E] \u5DF2\u6CE8\u5165(\u81EA\u52A8\u5F39\u7A97\u9009\u62E9 + \u6807\u9898\u680F\u5916\u90E8\u6253\u5F00\u6309\u94AE)");
   }
 
   // src/preload/plugins/embyWall/detail/epBackfill.ts
@@ -12990,10 +12744,10 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
       } else {
         setBtn(btn, "\u2713 \u6570\u636E\u5DF2\u6700\u65B0", "\u6BCF\u96C6\u6807\u9898/\u7B80\u4ECB\u90FD\u4E0E TMDB \u4E00\u81F4\uFF0C\u65E0\u9700\u8865\u5168\u3002");
       }
-      log7("[epBackfill] \u5B8C\u6210 S" + seasonNumber + " total=" + stats.total + " filled=" + stats.filled + " fallback=" + stats.upgraded + " unchanged=" + stats.unchanged + " unmatched=" + stats.unmatched + " failed=" + stats.failed);
+      log6("[epBackfill] \u5B8C\u6210 S" + seasonNumber + " total=" + stats.total + " filled=" + stats.filled + " fallback=" + stats.upgraded + " unchanged=" + stats.unchanged + " unmatched=" + stats.unmatched + " failed=" + stats.failed);
     } catch (e) {
       const msg = String(e && e.message || e).substring(0, 80);
-      log7("[epBackfill] \u5931\u8D25: " + msg);
+      log6("[epBackfill] \u5931\u8D25: " + msg);
       if (btn.isConnected) {
         setBtn(btn, "\u26A0 " + msg, msg);
         btn.style.color = "var(--fnos-ui-warn,#b06a3a)";
@@ -13085,9 +12839,9 @@ html.fntv-boot-hide #root{visibility:hidden}
   // src/preload/plugins/embyWall.ts
   init_electron();
   setOnShowsReady(injectCarousel);
-  function handle3() {
+  function handle2() {
     const base = location.origin;
-    log7("handle start");
+    log6("handle start");
     try {
       if (localStorage.getItem("fntv-perf-mode") === "1") {
         document.documentElement.classList.add("fnos-perf");
@@ -13151,13 +12905,13 @@ html.fntv-boot-hide #root{visibility:hidden}
       if (location.pathname !== _lastPath) {
         _lastPath = location.pathname;
         syncTvPageClass();
-        log7("[TV\u7C7B\u540C\u6B65]", location.pathname, "isTv=", isFntvTvPage());
+        log6("[TV\u7C7B\u540C\u6B65]", location.pathname, "isTv=", isFntvTvPage());
       }
     }, 400);
     window.addEventListener("beforeunload", () => window.clearInterval(_tvClassTimer));
     if (!isFntvTvPage()) return;
     document.documentElement.classList.add("fnos-tv-page");
-    const logNav = (label) => log7("NAV", label, location.href);
+    const logNav = (label) => log6("NAV", label, location.href);
     logNav("init");
     injectUiThemeStyle();
     applyUiTheme();
@@ -13299,7 +13053,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         else if (r === "skip") skippedCount++;
       }
       if (_whitewashPasses % 20 === 1 || fixedCount > 0) {
-        log7("whitewash pass", _whitewashPasses, "fixed", fixedCount, "skipped-overlay", skippedCount);
+        log6("whitewash pass", _whitewashPasses, "fixed", fixedCount, "skipped-overlay", skippedCount);
       }
     };
     let _rcPasses = 0;
@@ -13349,7 +13103,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         if (_roundedCheck(all[i])) fixedCount++;
       }
       if (_rcPasses % 20 === 1 || fixedCount > 0) {
-        log7("rounded-corner pass", _rcPasses, "fixed-fullscreen", fixedCount);
+        log6("rounded-corner pass", _rcPasses, "fixed-fullscreen", fixedCount);
       }
     };
     setTimeout(_globalRoundedCornerEnforcer, 800);
@@ -13379,7 +13133,7 @@ html.fntv-boot-hide #root{visibility:hidden}
             if (_roundedCheck(sub[i])) fixed++;
           }
         }
-        if (fixed > 0) log7("rounded-corner incremental fixed", fixed);
+        if (fixed > 0) log6("rounded-corner incremental fixed", fixed);
       }, 200);
     });
     _rcObs.observe(document.body, { childList: true, subtree: true });
@@ -13408,7 +13162,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         const batch = _pendingClear.splice(0, _pendingClear.length);
         let fixed = 0;
         for (const root of batch) fixed += _whitewashSubtree(root);
-        if (fixed > 0) log7("whitewash incremental fixed", fixed);
+        if (fixed > 0) log6("whitewash incremental fixed", fixed);
         _forceDatePickerDark();
       }, 200);
     });
@@ -13686,22 +13440,22 @@ html.fntv-boot-hide #root{visibility:hidden}
       const swNas = addToggle("NAS \u672C\u5730\u7F51\u76D8\u4EE3\u7406", secBodyNet);
       const swWheel = addToggle("\u9F20\u6807\u6EDA\u8F6E\u6A2A\u5411\u6EDA\u52A8", secBodyUX);
       swProxy.addEventListener("change", () => {
-        log7("[\u5F00\u5173\u4FDD\u5B58] swProxy=" + swProxy.checked);
-        ipcRenderer.invoke("settings:set-download-proxy", swProxy.checked).catch((e) => log7("set-download-proxy failed", e));
+        log6("[\u5F00\u5173\u4FDD\u5B58] swProxy=" + swProxy.checked);
+        ipcRenderer.invoke("settings:set-download-proxy", swProxy.checked).catch((e) => log6("set-download-proxy failed", e));
       });
       swHide.addEventListener("change", () => {
-        log7("[\u5F00\u5173\u4FDD\u5B58] swHide=" + swHide.checked);
-        ipcRenderer.invoke("settings:set-hide-play", swHide.checked).catch((e) => log7("set-hide-play failed", e));
+        log6("[\u5F00\u5173\u4FDD\u5B58] swHide=" + swHide.checked);
+        ipcRenderer.invoke("settings:set-hide-play", swHide.checked).catch((e) => log6("set-hide-play failed", e));
       });
       swNas.addEventListener("change", () => {
-        log7("[\u5F00\u5173\u4FDD\u5B58] swNas=" + swNas.checked);
-        ipcRenderer.invoke("settings:set-nas-proxy", swNas.checked).catch((e) => log7("set-nas-proxy failed", e));
+        log6("[\u5F00\u5173\u4FDD\u5B58] swNas=" + swNas.checked);
+        ipcRenderer.invoke("settings:set-nas-proxy", swNas.checked).catch((e) => log6("set-nas-proxy failed", e));
       });
       swWheel.checked = S.wheelHScrollEnabled;
       swWheel.addEventListener("change", () => {
         S.wheelHScrollEnabled = swWheel.checked;
-        log7("[\u5F00\u5173\u4FDD\u5B58] swWheel=" + swWheel.checked);
-        ipcRenderer.invoke("settings:set-wheel-hscroll", swWheel.checked).catch((e) => log7("set-wheel-hscroll failed", e));
+        log6("[\u5F00\u5173\u4FDD\u5B58] swWheel=" + swWheel.checked);
+        ipcRenderer.invoke("settings:set-wheel-hscroll", swWheel.checked).catch((e) => log6("set-wheel-hscroll failed", e));
         wheelToScroll();
       });
       const themeRow = document.createElement("div");
@@ -13784,7 +13538,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       biliFoldBody.appendChild(aggRow);
       aggInput.addEventListener("change", () => {
         const v = parseInt(aggInput.value, 10);
-        ipcRenderer.invoke("settings:set-mpv-bili-aggregate-threshold", isNaN(v) ? 0 : v).catch((err) => log7("set-mpv-bili-aggregate-threshold failed", err));
+        ipcRenderer.invoke("settings:set-mpv-bili-aggregate-threshold", isNaN(v) ? 0 : v).catch((err) => log6("set-mpv-bili-aggregate-threshold failed", err));
       });
       const secBangumi = section("Bangumi \u767B\u5F55");
       const secBodyBangumi = secBangumi.body;
@@ -13839,7 +13593,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       bangumiSyncRow.appendChild(swBangumiSync);
       secBodyBangumi.appendChild(bangumiSyncRow);
       swBangumiSync.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-bangumi-sync-enabled", swBangumiSync.checked).catch((err) => log7("set-bangumi-sync-enabled failed", err));
+        ipcRenderer.invoke("settings:set-bangumi-sync-enabled", swBangumiSync.checked).catch((err) => log6("set-bangumi-sync-enabled failed", err));
       });
       const bangumiThrRow = document.createElement("div");
       bangumiThrRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-radius:6px;transition:background .12s;";
@@ -13856,7 +13610,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       secBodyBangumi.appendChild(bangumiThrRow);
       bangumiThresholdInput.addEventListener("change", () => {
         const v = Number(bangumiThresholdInput.value) || 80;
-        ipcRenderer.invoke("settings:set-bangumi-sync-threshold", v).catch((err) => log7("set-bangumi-sync-threshold failed", err));
+        ipcRenderer.invoke("settings:set-bangumi-sync-threshold", v).catch((err) => log6("set-bangumi-sync-threshold failed", err));
       });
       const bangumiHintBottom = document.createElement("div");
       bangumiHintBottom.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted);margin-top:10px;line-height:1.5;";
@@ -14200,7 +13954,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       };
       const swDouban = addDoubanToggle("\u542F\u7528\u8C46\u74E3\u540C\u6B65");
       swDouban.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-douban-enabled", swDouban.checked).catch((err) => log7("set-douban-enabled failed", err));
+        ipcRenderer.invoke("settings:set-douban-enabled", swDouban.checked).catch((err) => log6("set-douban-enabled failed", err));
       });
       const doubanBtns = document.createElement("div");
       doubanBtns.style.cssText = "display:flex;gap:6px;margin-top:6px;";
@@ -14626,7 +14380,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         const payload = { blockTypes, blacklist };
         if (_danTimer) clearTimeout(_danTimer);
         _danTimer = setTimeout(() => {
-          ipcRenderer.invoke("settings:set-bili-danmaku-style", payload).catch((err) => log7("set-bili-danmaku-style failed", err));
+          ipcRenderer.invoke("settings:set-bili-danmaku-style", payload).catch((err) => log6("set-bili-danmaku-style failed", err));
         }, 300);
       }
       for (const bt of BLOCK_TYPES) {
@@ -14943,7 +14697,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       debugTarget = secDebugBody;
       const swDebug = addDebugToggle("\u542F\u7528\u8C03\u8BD5\u65E5\u5FD7\uFF08\u8BE6\u7EC6\u6A21\u5F0F\uFF09");
       swDebug.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-debug-enabled", swDebug.checked).catch((err) => log7("set-debug-enabled failed", err));
+        ipcRenderer.invoke("settings:set-debug-enabled", swDebug.checked).catch((err) => log6("set-debug-enabled failed", err));
       });
       const dbgFold = mkFold2("\u7EC4\u4EF6\u65E5\u5FD7\uFF08\u6309\u7EC4\u4EF6\u5355\u72EC\u63A7\u5236\uFF09");
       secDebugBody.appendChild(dbgFold.fold);
@@ -14967,7 +14721,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           debugComps.forEach(([k]) => {
             cur[k] = !!swDebugComps[k].checked;
           });
-          ipcRenderer.invoke("settings:set-debug-components", cur).catch((err) => log7("set-debug-components failed", err));
+          ipcRenderer.invoke("settings:set-debug-components", cur).catch((err) => log6("set-debug-components failed", err));
         });
       });
       const logFooter = document.createElement("div");
@@ -15031,7 +14785,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       skipRow.appendChild(swSkip);
       skipBody.appendChild(skipRow);
       swSkip.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-smart-skip-enabled", swSkip.checked).catch((err) => log7("set-smart-skip-enabled failed", err));
+        ipcRenderer.invoke("settings:set-smart-skip-enabled", swSkip.checked).catch((err) => log6("set-smart-skip-enabled failed", err));
       });
       ipcRenderer.invoke("settings:get-smart-skip-enabled").then((v) => {
         swSkip.checked = !!v;
@@ -15167,15 +14921,16 @@ html.fntv-boot-hide #root{visibility:hidden}
       swLogo.checked = S.carouselLogoEnabled;
       swLogo.addEventListener("change", () => {
         S.carouselLogoEnabled = swLogo.checked;
-        ipcRenderer.invoke("settings:set-carousel-logo", swLogo.checked).catch((err) => log7("set-carousel-logo failed", err));
+        ipcRenderer.invoke("settings:set-carousel-logo", swLogo.checked).catch((err) => log6("set-carousel-logo failed", err));
         try {
           applyCarouselLogoNow();
         } catch (e) {
-          log7("applyCarouselLogoNow failed", e);
+          log6("applyCarouselLogoNow failed", e);
         }
       });
       overlay._swLogo = swLogo;
       secBodyAppearance.appendChild(logoRow);
+      buildCustomLogoUI(secBodyAppearance);
       const beautifyRow = document.createElement("div");
       beautifyRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;";
       const beautifyTextWrap = document.createElement("div");
@@ -15212,8 +14967,8 @@ html.fntv-boot-hide #root{visibility:hidden}
       paintBeautify();
       beautifyInput.addEventListener("change", () => {
         S.detailBoxless = !beautifyInput.checked;
-        log7("[\u5F00\u5173\u4FDD\u5B58] \u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316=" + beautifyInput.checked + " (detailBoxless=" + S.detailBoxless + ")");
-        ipcRenderer.invoke("settings:set-detail-boxless", S.detailBoxless).catch((e) => log7("set-detail-boxless failed", e));
+        log6("[\u5F00\u5173\u4FDD\u5B58] \u5267\u96C6\u8BE6\u60C5\u9875\u7F8E\u5316=" + beautifyInput.checked + " (detailBoxless=" + S.detailBoxless + ")");
+        ipcRenderer.invoke("settings:set-detail-boxless", S.detailBoxless).catch((e) => log6("set-detail-boxless failed", e));
         paintBeautify();
         try {
           if (S.detailBoxless) teardownDetailBeautify();
@@ -15925,18 +15680,18 @@ html.fntv-boot-hide #root{visibility:hidden}
         try {
           s = await ipcRenderer.invoke("settings:get");
         } catch (err) {
-          log7("SETTINGS refresh failed: settings:get invoke error", err);
+          log6("SETTINGS refresh failed: settings:get invoke error", err);
           return;
         }
         if (!s || typeof s !== "object") {
-          log7("SETTINGS refresh failed: settings:get returned", s);
+          log6("SETTINGS refresh failed: settings:get returned", s);
           return;
         }
         const seg2 = (name, fn) => {
           try {
             fn();
           } catch (err) {
-            log7(`SETTINGS refresh segment [${name}] failed`, err);
+            log6(`SETTINGS refresh segment [${name}] failed`, err);
           }
         };
         seg2("switches", () => {
@@ -15951,7 +15706,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           }
           swWheel.checked = !!s.wheelHScroll;
           S.wheelHScrollEnabled = !!s.wheelHScroll;
-          log7("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
+          log6("[\u5F00\u5173\u56DE\u586B] swProxy=" + swProxy.checked + " swHide=" + swHide.checked + " swNas=" + swNas.checked + " \u7F8E\u5316=" + (!!_beautifyToggle && _beautifyToggle.checked) + " swWheel=" + swWheel.checked);
           S.carouselLogoEnabled = s.carouselLogoEnabled !== false;
           const _swLogoRef = overlay._swLogo;
           if (_swLogoRef) _swLogoRef.checked = S.carouselLogoEnabled;
@@ -16025,7 +15780,7 @@ html.fntv-boot-hide #root{visibility:hidden}
             dmApiStatus.style.color = dmApiInput.value ? "var(--fnos-ui-sub)" : "var(--fnos-ui-warn)";
           }
         });
-        log7("SETTINGS refresh done: bangumiSyncEnabled=" + String(s.bangumiSyncEnabled) + " swChecked=" + String(swBangumiSync.checked) + " token=" + (s.bangumiToken ? "set" : "none"));
+        log6("SETTINGS refresh done: bangumiSyncEnabled=" + String(s.bangumiSyncEnabled) + " swChecked=" + String(swBangumiSync.checked) + " token=" + (s.bangumiToken ? "set" : "none"));
       };
       document.addEventListener("click", (ev) => {
         if (overlay.style.display !== "flex") return;
@@ -16125,7 +15880,7 @@ html.fntv-boot-hide #root{visibility:hidden}
             el.style.setProperty("background-color", "transparent", "important");
             el.style.setProperty("backdrop-filter", "none", "important");
             el.style.setProperty("-webkit-backdrop-filter", "none", "important");
-            log7("[lc-875] top-nav transparentized:", (el.className || el.tagName).slice(0, 60));
+            log6("[lc-875] top-nav transparentized:", (el.className || el.tagName).slice(0, 60));
             break;
           }
         }
@@ -16150,13 +15905,13 @@ html.fntv-boot-hide #root{visibility:hidden}
           if (!drawer2) return;
           if (drawer2.classList.contains("drawer-open")) {
             animateCloseDrawer(drawer2);
-            log7("BURGER -> CLOSE (anim)");
+            log6("BURGER -> CLOSE (anim)");
           } else {
             openDrawer(drawer2);
-            log7("BURGER -> OPEN (anim)");
+            log6("BURGER -> OPEN (anim)");
           }
         }, true);
-        log7("BURGER click-hook installed (capture+stop)");
+        log6("BURGER click-hook installed (capture+stop)");
       }
       const drawer = document.querySelector('.fixed.inset-0[class*="lg:!hidden"]');
       if (drawer && !drawer.dataset.maskHooked) {
@@ -16171,10 +15926,10 @@ html.fntv-boot-hide #root{visibility:hidden}
           e.stopImmediatePropagation();
           if (drawer.classList.contains("drawer-open")) {
             animateCloseDrawer(drawer);
-            log7("MASK -> CLOSED (anim)");
+            log6("MASK -> CLOSED (anim)");
           }
         }, true);
-        log7("MASK click-close-hook installed (capture+stop)");
+        log6("MASK click-close-hook installed (capture+stop)");
       }
       applyTopNavTransparent();
       scheduleTopLeftIconContrast(500);
@@ -16374,7 +16129,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         paintTopLeftIcons(icons, lum);
         _tlLastApply = Date.now();
       } catch (e) {
-        log7("[lc-925] \u5DE6\u4E0A\u89D2\u53CD\u8272\u5F02\u5E38: " + String(e).substring(0, 80));
+        log6("[lc-925] \u5DE6\u4E0A\u89D2\u53CD\u8272\u5F02\u5E38: " + String(e).substring(0, 80));
       } finally {
         _tlBusy = false;
       }
@@ -16414,7 +16169,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         }))
       };
       console.log("[fntvTopLeftIconDiag]", JSON.stringify(info, null, 2));
-      log7("[fntvTopLeftIconDiag] " + JSON.stringify(info));
+      log6("[fntvTopLeftIconDiag] " + JSON.stringify(info));
       return info;
     };
     ensureBurgerVisible();
@@ -16470,7 +16225,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       }
       info.seasonTitleCandidates = cand;
       console.log("[fntvDumpSeasonDOM]", JSON.stringify(info, null, 2));
-      log7("[fntvDumpSeasonDOM] " + JSON.stringify(info));
+      log6("[fntvDumpSeasonDOM] " + JSON.stringify(info));
       return info;
     };
     const injectRefreshButton = () => {
@@ -16522,7 +16277,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         location.reload();
       });
       (_b = anchorEl.parentNode) == null ? void 0 : _b.insertBefore(btn, anchorEl.nextSibling);
-      log7("Refresh button injected after anchor (burger/\u9996\u9875)");
+      log6("Refresh button injected after anchor (burger/\u9996\u9875)");
     };
     injectRefreshButton();
     [1e3, 3e3, 6e3].forEach((t2) => setTimeout(injectRefreshButton, t2));
@@ -16542,11 +16297,11 @@ html.fntv-boot-hide #root{visibility:hidden}
     const hideStaleViews = () => {
       const vw = window.innerWidth, vh = window.innerHeight;
       if (document.querySelector("video")) {
-        log7("hideStaleViews: SKIP \u2014 <video> present, avoid hiding video page");
+        log6("hideStaleViews: SKIP \u2014 <video> present, avoid hiding video page");
         return;
       }
       if (document.querySelector('.videoPlayer, .playerPage, #videoPlayer, [data-itemtype="Video"]')) {
-        log7("hideStaleViews: SKIP \u2014 video container present");
+        log6("hideStaleViews: SKIP \u2014 video container present");
         return;
       }
       const candidates = [];
@@ -16575,12 +16330,12 @@ html.fntv-boot-hide #root{visibility:hidden}
         for (let i = 0; i < views.length - 1; i++) {
           const _v = views[i];
           if (!_lastHasDetail && _v.querySelector('[data-id="details"], .fnos-season-2col, .card-root')) {
-            log7("hideStaleViews: SKIP \u2014 \u89C6\u56FE\u542B\u771F\u5B9E\u8BE6\u60C5\u5185\u5BB9, \u907F\u514D\u767D\u5C4F | class=", _v.className.slice(0, 40));
+            log6("hideStaleViews: SKIP \u2014 \u89C6\u56FE\u542B\u771F\u5B9E\u8BE6\u60C5\u5185\u5BB9, \u907F\u514D\u767D\u5C4F | class=", _v.className.slice(0, 40));
             continue;
           }
           if (getComputedStyle(_v).display !== "none") {
             _v.style.display = "none";
-            log7("hideStaleViews: hid stacked view", i + 1, "/", views.length, "| class=", _v.className.slice(0, 40));
+            log6("hideStaleViews: hid stacked view", i + 1, "/", views.length, "| class=", _v.className.slice(0, 40));
           }
         }
       }
@@ -16589,7 +16344,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       const d = document.querySelector('.fixed.inset-0[class*="lg:!hidden"]');
       if (d && d.classList.contains("drawer-open")) {
         animateCloseDrawer(d);
-        log7("NAV -> DRAWER CLOSED (anim)");
+        log6("NAV -> DRAWER CLOSED (anim)");
       }
     };
     const ensureHomepageEnhanced = () => {
@@ -16610,7 +16365,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           S.carouselInited = true;
           S.carouselRevealed = true;
           resumeCarousel();
-          log7("[lc-950] wrapper \u4ECD\u6302\u8F7D, \u76F4\u63A5 resume(\u96F6\u91CD\u8F7D, \u6D77\u62A5\u4FDD\u7559)");
+          log6("[lc-950] wrapper \u4ECD\u6302\u8F7D, \u76F4\u63A5 resume(\u96F6\u91CD\u8F7D, \u6D77\u62A5\u4FDD\u7559)");
           return;
         }
         const target = findMediaLibrarySection();
@@ -16621,7 +16376,7 @@ html.fntv-boot-hide #root{visibility:hidden}
             S.carouselInited = true;
             S.carouselRevealed = true;
             resumeCarousel();
-            log7("[lc-950] \u590D\u7528\u6E38\u79BB wrapper \u6302\u56DE\u65B0 section(\u96F6\u91CD\u8F7D, \u6D77\u62A5/\u7B80\u4ECB\u4FDD\u7559)");
+            log6("[lc-950] \u590D\u7528\u6E38\u79BB wrapper \u6302\u56DE\u65B0 section(\u96F6\u91CD\u8F7D, \u6D77\u62A5/\u7B80\u4ECB\u4FDD\u7559)");
             return;
           } catch (_) {
           }
@@ -16648,20 +16403,20 @@ html.fntv-boot-hide #root{visibility:hidden}
           }
           const heads = document.querySelectorAll("strong,h2,h3").length;
           const known = document.querySelectorAll(".relative.flex.flex-col.gap-6 > div").length;
-          log7("[lc-939] ensureHomepageEnhanced: \u91CD\u8BD5 6 \u6B21\u4ECD\u672A\u627E\u5230\u5A92\u4F53\u5E93\u533A\u5757, \u653E\u5F03\u91CD\u5EFA; diag headings=" + heads + " knownLayoutDivs=" + known + " pathname=" + location.pathname);
+          log6("[lc-939] ensureHomepageEnhanced: \u91CD\u8BD5 6 \u6B21\u4ECD\u672A\u627E\u5230\u5A92\u4F53\u5E93\u533A\u5757, \u653E\u5F03\u91CD\u5EFA; diag headings=" + heads + " knownLayoutDivs=" + known + " pathname=" + location.pathname);
           return;
         }
         const diagShows = (S.apiShows || []).slice(0, 12).map((s) => ({ t: (s.title || "").substring(0, 8), hasBlob: !!s._backdropBlob, portrait: !!s._backdropIsPortrait, back: !!s.backdrop }));
-        log7("[lc-939] ensureHomepageEnhanced \u91CD\u5EFA\u524D S.apiShows.len=", S.apiShows.length, "sample=", JSON.stringify(diagShows));
+        log6("[lc-939] ensureHomepageEnhanced \u91CD\u5EFA\u524D S.apiShows.len=", S.apiShows.length, "sample=", JSON.stringify(diagShows));
         injectCarousel();
-        log7("ensureHomepageEnhanced: \u5DF2\u5F3A\u5236\u91CD\u6CE8\u5165\u8F6E\u64AD(\u8FD4\u56DE\u9996\u9875\u4E0D\u518D\u89E6\u53D1 backdrop \u7F51\u7EDC\u91CD\u62C9/\u5237\u65B0)");
+        log6("ensureHomepageEnhanced: \u5DF2\u5F3A\u5236\u91CD\u6CE8\u5165\u8F6E\u64AD(\u8FD4\u56DE\u9996\u9875\u4E0D\u518D\u89E6\u53D1 backdrop \u7F51\u7EDC\u91CD\u62C9/\u5237\u65B0)");
       };
       rebuild();
       if (S.apiShows.length === 0) {
         S.apiLoaded = false;
         S.carouselRevealed = false;
         fetchShowsViaIPC(location.origin).then(() => {
-        }).catch((e) => log7("[lc-939] ensureHomepageEnhanced \u91CD\u65B0\u62C9\u53D6\u5F02\u5E38:", e));
+        }).catch((e) => log6("[lc-939] ensureHomepageEnhanced \u91CD\u65B0\u62C9\u53D6\u5F02\u5E38:", e));
       }
     };
     try {
@@ -16731,7 +16486,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       window.addEventListener("hashchange", () => logNav("hashchange"));
       setTimeout(hideStaleViews, 1500);
     } catch (e) {
-      log7("NAV hook err", String(e).substring(0, 60));
+      log6("NAV hook err", String(e).substring(0, 60));
     }
     if (isDetailPage()) {
       backfillDetailLogo();
@@ -16757,15 +16512,15 @@ html.fntv-boot-hide #root{visibility:hidden}
     injectCarousel();
     fetchShowsViaIPC(base).then(() => {
       if (S.apiShows.length === 0) {
-        log7("API empty");
+        log6("API empty");
         return;
       }
-      log7("got", S.apiShows.length, "shows from API (carousel revealed by fetchShowsViaIPC)");
+      log6("got", S.apiShows.length, "shows from API (carousel revealed by fetchShowsViaIPC)");
       if (!S.carouselInited && S.carouselRevealed) {
         S.carouselInited = false;
         injectCarousel();
       }
-    }).catch((e) => log7("fetch error:", e));
+    }).catch((e) => log6("fetch error:", e));
     function refreshCarouselPosters() {
       if (S.apiLoading) return;
       if (document.hidden) return;
@@ -16773,15 +16528,15 @@ html.fntv-boot-hide #root{visibility:hidden}
       S.apiLoaded = false;
       S.carouselRevealed = false;
       const base2 = location.origin;
-      log7("carousel refresh: re-fetching");
+      log6("carousel refresh: re-fetching");
       fetchShowsViaIPC(base2).then(() => {
         if (S.apiShows.length === 0) return;
-        log7("carousel refresh: got", S.apiShows.length, "shows");
+        log6("carousel refresh: got", S.apiShows.length, "shows");
         if (!S.carouselInited && S.carouselRevealed) {
           S.carouselInited = false;
           injectCarousel();
         }
-      }).catch((e) => log7("carousel refresh error:", e));
+      }).catch((e) => log6("carousel refresh error:", e));
     }
     const CAROUSEL_REFRESH_MS = 10 * 60 * 1e3;
     setInterval(refreshCarouselPosters, CAROUSEL_REFRESH_MS);
@@ -16790,7 +16545,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       if (document.hidden) return;
       const vid = document.querySelector("video");
       if (vid && !vid.paused) return;
-      log7("[lc-932] \u5B9A\u65F6\u6574\u9875\u91CD\u8F7D(\u6BCF 10 \u5206\u949F)");
+      log6("[lc-932] \u5B9A\u65F6\u6574\u9875\u91CD\u8F7D(\u6BCF 10 \u5206\u949F)");
       try {
         location.reload();
       } catch (_) {
@@ -16814,12 +16569,12 @@ html.fntv-boot-hide #root{visibility:hidden}
         _moHits = 0;
       }
       if (++_moHits > 40) {
-        if (_moHits === 41) log7("[web] MutationObserver \u89E6\u53D1\u98CE\u66B4(>40/s)\uFF0C\u672C\u79D2\u8DF3\u8FC7\u8F6E\u64AD\u91CD\u5EFA\uFF0C\u9632\u81EA\u6FC0\u5361\u6B7B");
+        if (_moHits === 41) log6("[web] MutationObserver \u89E6\u53D1\u98CE\u66B4(>40/s)\uFF0C\u672C\u79D2\u8DF3\u8FC7\u8F6E\u64AD\u91CD\u5EFA\uFF0C\u9632\u81EA\u6FC0\u5361\u6B7B");
         return;
       }
       if (!_isHomePath()) return;
       if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
-        log7("carousel lost, re-inject");
+        log6("carousel lost, re-inject");
         destroyCarousel();
         S.carouselContainer = null;
         S.carouselInited = false;
@@ -16830,7 +16585,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       wheelToScroll();
       if (!_isHomePath()) return;
       if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
-        log7("watchdog: carousel lost");
+        log6("watchdog: carousel lost");
         destroyCarousel();
         S.carouselContainer = null;
         S.carouselInited = false;
@@ -16899,7 +16654,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       // [lc-984] 清晰度胶囊诊断: 标题后没出现胶囊时跑它, 看原生角标是否被文本启发式命中、标题 p 是谁
       epResolution: () => epResolutionDiag()
     };
-    log7("[lc-940][DIAG] window._fntvDiag \u5DF2\u66B4\u9732, \u4F7F\u7528: _fntvDiag.rebuildSnapshot() / _fntvDiag.dumpBackdropState()");
+    log6("[lc-940][DIAG] window._fntvDiag \u5DF2\u66B4\u9732, \u4F7F\u7528: _fntvDiag.rebuildSnapshot() / _fntvDiag.dumpBackdropState()");
     const _syncVideoActiveClass = () => {
       const hasVideo = !!document.querySelector("video");
       document.documentElement.classList.toggle("fnos-video-active", hasVideo);
@@ -16907,7 +16662,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     _syncVideoActiveClass();
     setInterval(_syncVideoActiveClass, 1e3);
   }
-  registerHook("onReady" /* OnReady */, handle3);
+  registerHook("onReady" /* OnReady */, handle2);
 
   // src/preload/plugins/glassUI.ts
   var LOG = "[GlassUI]";
@@ -17796,7 +17551,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       }
     }, 4e3);
   }
-  function handle4() {
+  function handle3() {
     try {
       migrateSchema();
       styleEl = document.createElement("style");
@@ -17824,7 +17579,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       console.error(LOG, "handle failed", err);
     }
   }
-  registerHook("onReady" /* OnReady */, handle4);
+  registerHook("onReady" /* OnReady */, handle3);
 
   // src/preload/plugins/listLayout.ts
   var MIN_PAD = 20;
@@ -18590,7 +18345,7 @@ html.fntv-boot-hide #root{visibility:hidden}
     _loadError = "";
     waitForColumn(guid, 0);
   }
-  function handle5() {
+  function handle4() {
     try {
       setInterval(checkRoute, 1200);
       checkRoute();
@@ -18598,7 +18353,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       log.warn("\u521D\u59CB\u5316\u5931\u8D25:", e && e.message);
     }
   }
-  registerHook("onReady" /* OnReady */, handle5);
+  registerHook("onReady" /* OnReady */, handle4);
 
   // src/preload/plugins/playMemory.ts
   var LS_RATE = "fntv-play-rate";
@@ -18838,9 +18593,9 @@ html.fntv-boot-hide #root{visibility:hidden}
     if (!b) return;
     wired = true;
     wireBar(b, v);
-    log8("\u8FDB\u5EA6\u6761\u5DF2\u5B9A\u4F4D\u5E76\u63A5\u7EBF: " + (b.className || b.tagName).toString().slice(0, 80));
+    log7("\u8FDB\u5EA6\u6761\u5DF2\u5B9A\u4F4D\u5E76\u63A5\u7EBF: " + (b.className || b.tagName).toString().slice(0, 80));
   }
-  function log8(msg) {
+  function log7(msg) {
     try {
       console.info("[previewThumb]", msg);
     } catch {
@@ -20866,7 +20621,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       }
     }
   }
-  function handle6() {
+  function handle5() {
     try {
       bindWindowTopBtns();
       if (!injectEntry()) {
@@ -20885,7 +20640,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       logger_default.error(LOG2, "handle failed", err);
     }
   }
-  registerHook("onReady" /* OnReady */, handle6);
+  registerHook("onReady" /* OnReady */, handle5);
   function getWatchReportData() {
     return curData.slice();
   }

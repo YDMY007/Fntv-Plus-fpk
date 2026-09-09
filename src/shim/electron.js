@@ -169,7 +169,6 @@ const SETTINGS_KEY_MAP = {
   'debug-enabled': 'debugEnabled',
   'debug-components': 'debugComponents',
   'danmu-api': 'danmuApi',
-  'carousel-logo': 'carouselLogoEnabled',
   'hot-source': 'hotSource',
 };
 

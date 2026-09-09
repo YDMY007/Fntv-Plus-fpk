@@ -98,6 +98,7 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/bili/qr-lib", b.biliQrLib)
 	mux.HandleFunc("/app/fntvplus/api/bridge/danmu/test", b.danmuTest)
 	mux.HandleFunc("/app/fntvplus/api/bridge/danmu/diag", b.danmuDiag)
+	mux.HandleFunc("/app/fntvplus/api/bridge/logos/", b.handleLogoFile)
 	mux.HandleFunc("/app/fntvplus/api/bridge/danmaku/prepare", b.danmakuPrepare)
 	mux.HandleFunc("/app/fntvplus/api/bridge/skip/external", b.skipExternal)
 	mux.HandleFunc("/app/fntvplus/api/bridge/danmaku/candidates", b.danmakuCandidates)

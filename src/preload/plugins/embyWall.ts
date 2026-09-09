@@ -1,6 +1,7 @@
 import { ABOUT_LINK_URL, openFeedbackChoiceModal } from './embyWall/modals/feedback';
 import { UiThemeMode, applyUiTheme, getEffectiveDark, getUiTheme, injectUiThemeStyle, removeThemeModeSetting, setUiTheme } from './embyWall/theme';
 import { applyCarouselLogoNow, backfillDetailLogo } from './embyWall/carousel/logo';
+import { buildCustomLogoUI } from './customLogo';
 import { applyLoginBgVar } from './embyWall/login';
 import { destroyCarousel, findMediaLibrarySection, injectCarousel, isModalOpen, resumeCarousel } from './embyWall/carousel/render';
 import { fntvOpenPatchApplyPopup } from './embyWall/modals/patch';
@@ -2486,6 +2487,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     });
     (overlay as any)._swLogo = swLogo; // 回填引用（SETTINGS refresh 刷新用）
     secBodyAppearance.appendChild(logoRow);
+    // [v0.92.0] 「首页 Logo」自定义（预设/上传/恢复默认）——同一卡片紧随其后
+    buildCustomLogoUI(secBodyAppearance);
 
     // ===== [lc-980] 「剧集详情页美化」开关（外观卡，与轮播样式同批被 v0.12.0 精简误删）=====
     //   开=套用美化（沉浸底图 / 两栏布局 / 磨砂卡），关=恢复飞牛原生详情页。
