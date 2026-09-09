@@ -1,8 +1,10 @@
 // Package bridge —— danmaku.go：网页端弹幕数据链（danmaku:prepare 的 Go 后端）。
 // 移植桌面版 third_party/uosc_danmaku/bili_danmaku.js 的核心流程（第一版走经典稳态链）：
-//   WBI 签名搜索 PGC（番剧 season_type=1 / 国创 4）→ season_id → pgc/view/web/season
-//   → 按 ep 选集（序号直取 → 标题含集数 → 首集）→ list.so?oid=cid 拉 XML 弹幕 → 解析
-//   → 屏蔽过滤（类型 + 黑名单）→ 磁盘缓存（config 同目录 danmaku-cache/）。
+//
+//	WBI 签名搜索 PGC（番剧 season_type=1 / 国创 4）→ season_id → pgc/view/web/season
+//	→ 按 ep 选集（序号直取 → 标题含集数 → 首集）→ list.so?oid=cid 拉 XML 弹幕 → 解析
+//	→ 屏蔽过滤（类型 + 黑名单）→ 磁盘缓存（config 同目录 danmaku-cache/）。
+//
 // 登录态：可选携带设置面板粘贴的 bili_cookie（SESSDATA），弹幕数量更全；匿名亦可用。
 // 元数据（标题/集数/季）由前端直连 play/info 解析后传入（httpOnly 断链，见 lc-057/061）。
 package bridge
@@ -12,6 +14,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"fntvplus/internal/config"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,8 +24,8 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,7 +35,7 @@ const biliWebAPI = "https://api.bilibili.com"
 var biliEncTable = [64]int{46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52}
 
 var biliNavKey struct {
-	once  sync.Once
+	once   sync.Once
 	ik, sk string
 }
 
@@ -127,6 +130,43 @@ func (b *Bridge) danmakuGetJSON(rawURL string) (int, map[string]any, error) {
 }
 
 var reEpInTitle = regexp.MustCompile(`(?i)(?:^|[^A-Za-z\d])(?:e\.?p\.?\s*|episode\s*|#\s*)\s*0*([0-9]+)`)
+
+// biliSearchVideos 视频区（UP主搬运）WBI 搜索 → [{bvid,title}]（前 n 条）。
+// 桌面 MPV 实测命中来源就是「视频区(UP主搬运)」——番剧区/影视区没有条目时它是弹幕主力。
+func (b *Bridge) biliSearchVideos(title string, limit int) []map[string]any {
+	signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "video", "page": "1"})
+	_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
+	if err != nil || out == nil {
+		return nil
+	}
+	result, _ := out["result"].([]any)
+	out2 := []map[string]any{}
+	for _, v := range result {
+		m, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		bvid := jsStr(m["bvid"])
+		if bvid == "" {
+			continue
+		}
+		t := jsStr(m["title"])
+		t = strings.ReplaceAll(strings.ReplaceAll(t, "<em class=\"keyword\">", ""), "</em>", "")
+		out2 = append(out2, map[string]any{"bvid": bvid, "title": t})
+		if len(out2) >= limit {
+			break
+		}
+	}
+	return out2
+}
+
+// cookieStatusOf 登录态摘要（渲染端「来源详情→登录状态」显示用；有 cookie 即 valid）。
+func cookieStatusOf(cfg *config.Config) string {
+	if strings.TrimSpace(getSetting(cfg, "biliCookie")) != "" {
+		return "valid"
+	}
+	return "missing"
+}
 
 // biliPickEpisode 选集（桌面版 _pick_episode 同逻辑）：序号直取 → 标题含集数 → 首集。
 func biliPickEpisode(eps []map[string]any, epNum int64) map[string]any {
@@ -356,11 +396,11 @@ func (b *Bridge) biliFilterDanmaku(items []map[string]any) []map[string]any {
 // 元数据（标题/集数/季）由前端直连 play/info 解析后传入；返回桌面版 danmaku:prepare 同形状。
 func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Title      string  `json:"title"`
-		Ep         int64   `json:"ep"`
-		Season     int64   `json:"season"`
-		IsMovie    bool    `json:"isMovie"`
-		BiliSearch *bool   `json:"biliSearch"`
+		Title      string `json:"title"`
+		Ep         int64  `json:"ep"`
+		Season     int64  `json:"season"`
+		IsMovie    bool   `json:"isMovie"`
+		BiliSearch *bool  `json:"biliSearch"`
 	}
 	_ = json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req)
 	title := strings.TrimSpace(req.Title)
@@ -382,6 +422,7 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 			meta := map[string]any{
 				"searchTitle": title, "matchedTitle": title, "source": danmuSourceLabel,
 				"ep": req.Ep, "isMovie": req.IsMovie, "season": req.Season, "count": len(kept),
+				"cookieStatus": cookieStatusOf(b.cfg),
 			}
 			if base := b.cfg.Dir(); base != "" {
 				dir := filepath.Join(base, "danmaku-cache")
@@ -471,7 +512,22 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	// ② 影视区兜底（media_ft 经通用 WBI 搜索）：取首个命中的普通视频 cid
+	// ② B站 兜底：视频区（UP主搬运，弹幕主力）优先 → 影视区 media_ft
+	if best == nil {
+		for _, v := range b.biliSearchVideos(title, 5) {
+			bvid := jsStr(v["bvid"])
+			_, vo, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/view?bvid=" + url.QueryEscape(bvid))
+			if err != nil || vo == nil {
+				continue
+			}
+			cid := int64(jsNum(vo["cid"]))
+			if cid <= 0 {
+				continue
+			}
+			best = &hit{cid: cid, title: jsStr(v["title"]), source: "video", sim: 0.6}
+			break
+		}
+	}
 	if best == nil {
 		signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
 		_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
@@ -522,6 +578,7 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		failMeta := map[string]any{
 			"searchTitle": title, "matchedTitle": title, "source": "",
 			"ep": req.Ep, "isMovie": req.IsMovie, "season": req.Season, "count": 0,
+			"cookieStatus": cookieStatusOf(b.cfg),
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": errMsg, "meta": failMeta})
 		return
@@ -539,6 +596,7 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		"searchTitle": title, "matchedTitle": best.title, "source": best.source,
 		"cid": best.cid, "sim": best.sim, "ep": req.Ep, "isMovie": req.IsMovie,
 		"season": req.Season, "count": len(kept),
+		"cookieStatus": cookieStatusOf(b.cfg),
 	}
 	// 成功结果落盘（存未过滤原始条目，屏蔽设置改动即时生效）
 	if cachePath != "" {
@@ -581,41 +639,53 @@ func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "candidates": cands})
 		return
 	}
-	// ② B站视频区兜底（media_ft，取有 bvid 的前 5 条；番剧区条目无 bvid 不进候选）
-	signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
-	_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
-	if err != nil || out == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "候选搜索失败"})
-		return
-	}
+	// ② B站候选：视频区（UP主搬运，主力）优先 → 影视区 media_ft 兜底
 	candidates := []map[string]any{}
-	if result, _ := out["result"].([]any); len(result) > 0 {
-		for _, v := range result {
-			m, ok := v.(map[string]any)
-			if !ok {
-				continue
-			}
-			var bvid string
-			if data, _ := m["data"].([]any); len(data) > 0 {
-				if dm, _ := data[0].(map[string]any); dm != nil {
-					bvid = jsStr(dm["bvid"])
+	for _, v := range b.biliSearchVideos(title, 5) {
+		candidates = append(candidates, map[string]any{
+			"bvid":           jsStr(v["bvid"]),
+			"title":          jsStr(v["title"]),
+			"source":         "video",
+			"is_compilation": false,
+			"sim":            nil,
+		})
+		if len(candidates) >= 5 {
+			break
+		}
+	}
+	if len(candidates) == 0 {
+		signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
+		_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
+		if err == nil && out != nil {
+			if result, _ := out["result"].([]any); len(result) > 0 {
+				for _, v := range result {
+					m, ok := v.(map[string]any)
+					if !ok {
+						continue
+					}
+					var bvid string
+					if data, _ := m["data"].([]any); len(data) > 0 {
+						if dm, _ := data[0].(map[string]any); dm != nil {
+							bvid = jsStr(dm["bvid"])
+						}
+					}
+					if bvid == "" {
+						bvid = jsStr(m["bvid"])
+					}
+					if bvid == "" {
+						continue
+					}
+					candidates = append(candidates, map[string]any{
+						"bvid":           bvid,
+						"title":          jsStr(m["title"]),
+						"source":         "video",
+						"is_compilation": false,
+						"sim":            nil,
+					})
+					if len(candidates) >= 5 {
+						break
+					}
 				}
-			}
-			if bvid == "" {
-				bvid = jsStr(m["bvid"])
-			}
-			if bvid == "" {
-				continue
-			}
-			candidates = append(candidates, map[string]any{
-				"bvid":           bvid,
-				"title":          jsStr(m["title"]),
-				"source":         "video",
-				"is_compilation": false,
-				"sim":            nil,
-			})
-			if len(candidates) >= 5 {
-				break
 			}
 		}
 	}
