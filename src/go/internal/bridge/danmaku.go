@@ -165,6 +165,10 @@ func (b *Bridge) biliSearchPGC(title string, seasonNum int64, seasonType string)
 	Title string
 	Sim   float64
 } {
+	// 桌面同语义：无登录态 Cookie 跳过官方番剧搜索（匿名 media_bangumi 必返回 0，白打两次请求）
+	if strings.TrimSpace(getSetting(b.cfg, "biliCookie")) == "" {
+		return nil
+	}
 	type cand struct {
 		ID    int64
 		Title string
@@ -510,7 +514,16 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		if danmuReason != "" {
 			errMsg = "自建源(" + danmuReason + ")；" + errMsg
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": errMsg})
+		hasCookie := strings.TrimSpace(getSetting(b.cfg, "biliCookie")) != ""
+		if !hasCookie {
+			errMsg += "；未登录B站——番剧/动漫需登录态搜索，请在设置→B站弹幕登录扫码后重试"
+		}
+		// [v0.85.0] 失败也带 meta（渲染端手动搜索的自动填标题取 meta.searchTitle）
+		failMeta := map[string]any{
+			"searchTitle": title, "matchedTitle": title, "source": "",
+			"ep": req.Ep, "isMovie": req.IsMovie, "season": req.Season, "count": 0,
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": errMsg, "meta": failMeta})
 		return
 	}
 
