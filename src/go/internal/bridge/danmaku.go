@@ -273,7 +273,12 @@ func (b *Bridge) biliFetchDanmakuXML(cid int64) []map[string]any {
 	if len(data) < 16 {
 		return nil
 	}
-	// XML 转义还原 + 属性解析
+	return parseDanmakuXML(data)
+}
+
+// parseDanmakuXML 解析 B站/danmu_api 弹幕 XML（<d p="time,mode,size,color,...">text</d>），
+// 按 time 升序。danmu_api 的 format=xml 输出同构，共用此解析器。
+func parseDanmakuXML(data []byte) []map[string]any {
 	reD := regexp.MustCompile(`<d p="([^"]+)"[^>]*>(.*?)</d>`)
 	unescape := strings.NewReplacer("&lt;", "<", "&gt;", ">", "&quot;", "\"", "&#39;", "'", "&apos;", "'", "&amp;", "&")
 	items := []map[string]any{}
@@ -360,6 +365,41 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	biliSearch := req.BiliSearch == nil || *req.BiliSearch
+
+	// [v0.75.0] danmu_api 自建源优选：启用时最先尝试（命中直接返回；未命中降级下面的 B站链路）。
+	// 自建源启用期间旧 B站缓存不命中（桌面 lc-1101 同语义：缓存来源要与当前设置匹配）。
+	if b.danmuIsActive() {
+		if items := b.danmuAutoFetch(title, req.Ep, req.Season); len(items) > 0 {
+			kept := b.biliFilterDanmaku(items)
+			meta := map[string]any{
+				"searchTitle": title, "matchedTitle": title, "source": danmuSourceLabel,
+				"ep": req.Ep, "isMovie": req.IsMovie, "season": req.Season, "count": len(kept),
+			}
+			if base := b.cfg.Dir(); base != "" {
+				dir := filepath.Join(base, "danmaku-cache")
+				_ = os.MkdirAll(dir, 0o755)
+				sum := md5.Sum([]byte(title + "|" + strconv.FormatInt(req.Season, 10) + "|" + strconv.FormatInt(req.Ep, 10)))
+				dmPath := filepath.Join(dir, "dm_"+hex.EncodeToString(sum[:10])+".json")
+				if data, err := json.Marshal(map[string]any{"items": items, "meta": meta}); err == nil {
+					tmp := dmPath + ".tmp"
+					if os.WriteFile(tmp, data, 0o644) == nil {
+						_ = os.Rename(tmp, dmPath)
+					}
+				}
+			}
+			maxScreen := int64(0)
+			if ms, err := strconv.ParseInt(strings.TrimSpace(getSetting(b.cfg, "biliDanmakuMaxScreen")), 10, 64); err == nil && ms >= 0 {
+				maxScreen = ms
+			}
+			logf("[danmaku] ✅ 自建源弹幕就绪: title=%q count=%d", title, len(kept))
+			writeJSON(w, http.StatusOK, map[string]any{
+				"ok": true, "title": title, "ep": req.Ep, "isMovie": req.IsMovie,
+				"count": len(kept), "items": kept, "source": danmuSourceLabel,
+				"meta": meta, "maxScreen": maxScreen,
+			})
+			return
+		}
+	}
 
 	// 磁盘缓存（title|season|ep 键；缓存存未过滤原始条目，屏蔽设置改动即时生效）
 	var cachePath string
@@ -501,10 +541,140 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 }
 
 // danmakuCandidates / danmakuPick 手动搜索与选定：网页端暂未实现（占位明确报错）。
+// danmakuCandidates POST {title, ep, season} → 手动搜索候选（danmu_api 优选 → B站视频区兜底）。
+// [lc-1118] 复刻：只回可直接拉取的（bvid 非空）前 5 条；番剧区（无 bvid）不进候选。
 func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "网页端暂不支持手动搜索候选"})
+	var req struct {
+		Title  string `json:"title"`
+		Ep     int64  `json:"ep"`
+		Season int64  `json:"season"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req)
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "缺少搜索关键词"})
+		return
+	}
+	// ① 自建源候选（dmapi:<episodeId> 伪 id，sim=1）
+	if cands := b.danmuCandidates(title, req.Ep, req.Season); cands != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "candidates": cands})
+		return
+	}
+	// ② B站视频区兜底（media_ft，取有 bvid 的前 5 条；番剧区条目无 bvid 不进候选）
+	signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
+	_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
+	if err != nil || out == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "候选搜索失败"})
+		return
+	}
+	candidates := []map[string]any{}
+	if result, _ := out["result"].([]any); len(result) > 0 {
+		for _, v := range result {
+			m, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			var bvid string
+			if data, _ := m["data"].([]any); len(data) > 0 {
+				if dm, _ := data[0].(map[string]any); dm != nil {
+					bvid = jsStr(dm["bvid"])
+				}
+			}
+			if bvid == "" {
+				bvid = jsStr(m["bvid"])
+			}
+			if bvid == "" {
+				continue
+			}
+			candidates = append(candidates, map[string]any{
+				"bvid":           bvid,
+				"title":          jsStr(m["title"]),
+				"source":         "video",
+				"is_compilation": false,
+				"sim":            nil,
+			})
+			if len(candidates) >= 5 {
+				break
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "candidates": candidates})
 }
 
+// danmakuPick POST {title, ep, season, isMovie, bvid} → 用户选定条目直接拉弹幕并落缓存。
+// bvid 支持 `dmapi:<episodeId>`（自建源）与 B站 bvid；选定结果落缓存后下次自动加载直接命中。
 func (b *Bridge) danmakuPick(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "网页端暂不支持手动选定弹幕"})
+	var req struct {
+		Title   string `json:"title"`
+		Ep      int64  `json:"ep"`
+		Season  int64  `json:"season"`
+		IsMovie bool   `json:"isMovie"`
+		Bvid    string `json:"bvid"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 64*1024)).Decode(&req)
+	title := strings.TrimSpace(req.Title)
+	bvid := strings.TrimSpace(req.Bvid)
+	if title == "" || bvid == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "缺少 title/bvid"})
+		return
+	}
+	var items []map[string]any
+	source := "bilibili"
+	if strings.HasPrefix(bvid, danmuIDPrefix) {
+		// 自建源：按 episodeId 直取
+		id := jsNum(map[string]any{"v": strings.TrimPrefix(bvid, danmuIDPrefix)}["v"])
+		if id <= 0 {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "自建源候选 id 无效"})
+			return
+		}
+		items = b.danmuFetchItems(id)
+		source = danmuSourceLabel
+	} else {
+		// B站：bvid → view 接口拿 cid → list.so
+		_, vo, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/view?bvid=" + url.QueryEscape(bvid))
+		if err != nil || vo == nil {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "B站视频信息获取失败"})
+			return
+		}
+		cid := int64(jsNum(vo["cid"]))
+		if cid <= 0 {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "未找到视频 cid"})
+			return
+		}
+		items = b.biliFetchDanmakuXML(cid)
+	}
+	if len(items) == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "error": "该条目没有弹幕"})
+		return
+	}
+	kept := b.biliFilterDanmaku(items)
+	// 落缓存（与 prepare 同键：title|season|ep → 下次自动加载直接命中用户选定）
+	var cachePath string
+	if base := b.cfg.Dir(); base != "" {
+		dir := filepath.Join(base, "danmaku-cache")
+		_ = os.MkdirAll(dir, 0o755)
+		sum := md5.Sum([]byte(title + "|" + strconv.FormatInt(req.Season, 10) + "|" + strconv.FormatInt(req.Ep, 10)))
+		cachePath = filepath.Join(dir, "dm_"+hex.EncodeToString(sum[:10])+".json")
+	}
+	meta := map[string]any{
+		"searchTitle": title, "matchedTitle": title, "source": source,
+		"ep": req.Ep, "isMovie": req.IsMovie, "season": req.Season, "count": len(kept),
+	}
+	if cachePath != "" {
+		if data, err := json.Marshal(map[string]any{"items": items, "meta": meta}); err == nil {
+			tmp := cachePath + ".tmp"
+			if os.WriteFile(tmp, data, 0o644) == nil {
+				_ = os.Rename(tmp, cachePath)
+			}
+		}
+	}
+	maxScreen := int64(0)
+	if ms, err := strconv.ParseInt(strings.TrimSpace(getSetting(b.cfg, "biliDanmakuMaxScreen")), 10, 64); err == nil && ms >= 0 {
+		maxScreen = ms
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true, "title": title, "ep": req.Ep, "isMovie": req.IsMovie,
+		"count": len(kept), "items": kept, "source": source,
+		"meta": meta, "maxScreen": maxScreen,
+	})
 }
