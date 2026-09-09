@@ -470,6 +470,14 @@ function detectPlayTarget(target: HTMLElement): PlayHit {
 }
 
 function installPlayClickInterceptor(): void {
+    // [v0.69.0] 网页端门禁：本插件是「外部播放器(MPV/PotPlayer)」播放链——全局拦截所有
+    // 播放入口（首页卡片播放图标/详情选集/下一集/播放按钮）后发 ipcRenderer.send('play-movie')。
+    // 网页端没有外部播放器（shim 对 play-movie 是 no-op）→ 拦截后什么都不发生 = 用户看到
+    // 「所有播放按钮点击无反应」。网页端播放一律走 fnOS 原生播放器，直接不装拦截器。
+    if (typeof window !== 'undefined' && (window as any).__FNTV_WEB__) {
+        logger.info('[playMask] 网页端：外部播放器链不可用，跳过播放点击拦截（原生播放）');
+        return;
+    }
     if (_playClickInstalled) return;
     _playClickInstalled = true;
 

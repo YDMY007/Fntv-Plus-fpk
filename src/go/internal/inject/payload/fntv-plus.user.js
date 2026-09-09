@@ -10409,6 +10409,27 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           const sn = (_c = (_b = (_a = data.index_number) != null ? _a : data.IndexNumber) != null ? _b : data.index) != null ? _c : data.season_number;
           if (typeof sn === "number" && !isNaN(sn)) _seasonNumberCache = sn;
         }
+        if ((!title || !tmdbId) && data) {
+          const pg = String(data.parent_guid || data.parentGuid || "");
+          if (pg && pg !== page.guid) {
+            try {
+              const pd = await fnosGetEditDetail(location.origin, pg);
+              if (pd) {
+                if (!title) {
+                  const pt = String(pd.title || pd.name || "").trim();
+                  if (pt && !_isSysTitle(pt)) title = pt;
+                }
+                if (!tmdbId) tmdbId = extractTmdbId(pd) || "";
+                if (!year) {
+                  const pyRaw = pd.year || pd.production_year || pd.first_aired || pd.premiere_date || "";
+                  const pym = String(pyRaw).match(/(\d{4})/);
+                  if (pym) year = pym[1];
+                }
+              }
+            } catch (_) {
+            }
+          }
+        }
       }
     } catch (e) {
       dlog("[lc-980] getEditDetail \u5931\u8D25, \u9000\u56DE\u9875\u9762\u89E3\u6790: " + String(e).substring(0, 60));
@@ -18554,6 +18575,10 @@ html.fntv-boot-hide #root{visibility:hidden}
     return null;
   }
   function installPlayClickInterceptor() {
+    if (typeof window !== "undefined" && window.__FNTV_WEB__) {
+      logger_default.info("[playMask] \u7F51\u9875\u7AEF\uFF1A\u5916\u90E8\u64AD\u653E\u5668\u94FE\u4E0D\u53EF\u7528\uFF0C\u8DF3\u8FC7\u64AD\u653E\u70B9\u51FB\u62E6\u622A\uFF08\u539F\u751F\u64AD\u653E\uFF09");
+      return;
+    }
     if (_playClickInstalled) return;
     _playClickInstalled = true;
     const blockPress = (e) => {
