@@ -2148,6 +2148,11 @@ function handle(): void {
             const obs = new MutationObserver(() => { if (injectEntry()) obs.disconnect(); });
             obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
         }
+        // [v0.83.0] 常驻观察：fnOS（React）重渲染侧栏会冲掉我们注入的容器/按钮——覆盖更新后
+        // 首次加载时序变化最明显（按钮消失，等 keepAlive 轮询才重现）。检测到被删立即重挂；
+        // injectEntry 幂等（按钮已存在直接返回），常驻观察无副作用、无循环风险。
+        const keepObs = new MutationObserver(() => { injectEntry(); });
+        keepObs.observe(document.body || document.documentElement, { childList: true, subtree: true });
         startKeepAlive();
         log.info(LOG, '插件已加载');
     } catch (err) {
