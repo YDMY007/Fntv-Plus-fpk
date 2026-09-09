@@ -82,48 +82,82 @@ function isHomePage(): boolean {
   return /^\/v\/?$/.test(location.pathname || '');
 }
 
-/** 首页 fnOS 原生 logo 元素试探单（用户实测 logo 在 table 布局中；逐个尝试取首个可见项）。 */
-function findHomeLogo(): HTMLImageElement | null {
-  const candidates = [
-    'img[src*="logo" i]',
-    'header img',
-    'table img',
-  ];
-  for (const sel of candidates) {
-    try {
-      const el = document.querySelector(sel) as HTMLImageElement | null;
-      if (el && el.offsetParent !== null && el.getBoundingClientRect().width > 10) return el;
-    } catch { /* ignore */ }
+/** 首页 fnOS 原生 logo 定位（[v0.93.0] 重写）：
+ *  限定首页顶部区域（top<160px）+ 「飞牛」特征（alt/title/src 含 飞牛/logo/brand），
+ *  上一版宽泛试探单（header img/table img）会误中头像等无关图片（用户实测"功能有问题"）。
+ *  返回 {el, isImg}：img 直接换 src；文字版 logo 换 innerHTML。 */
+function findHomeLogo(): { el: HTMLElement; isImg: boolean } | null {
+  const scope = document.querySelectorAll('img, [class*="logo" i], [alt*="logo" i], [title*="logo" i]');
+  let fallbackText: HTMLElement | null = null;
+  for (const node of Array.from(scope)) {
+    const el = node as HTMLElement;
+    if (!el.getBoundingClientRect || !el.isConnected) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.top > 160 || rect.width < 8 || rect.width > 600) continue;
+    const tag = el.tagName.toLowerCase();
+    const attrs = ((el.getAttribute('alt') || '') + ' ' + (el.getAttribute('title') || '') + ' '
+      + (el.getAttribute('src') || '') + ' ' + (el.className || '')).toLowerCase();
+    if (tag === 'img') {
+      if (/飞牛|fnos|logo|brand/.test(attrs)) return { el, isImg: true };
+      // 顶部区域的孤立 img 且明显是标识（宽<300 高<80）→ 弱匹配兜底
+      if (rect.height <= 80 && !el.closest('a')) fallbackText = fallbackText || el;
+    } else if ((el.textContent || '').includes('飞牛影视')) {
+      fallbackText = fallbackText || el;
+    }
   }
-  return null;
+  // 文字版兜底：找包含「飞牛影视」的最小元素（含该文本的最深层节点）
+  if (!fallbackText) {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n: Node | null;
+    while ((n = walker.nextNode())) {
+      const t = (n.textContent || '');
+      if (t.includes('飞牛影视')) {
+        const pe = n.parentElement;
+        if (pe) {
+          const r = pe.getBoundingClientRect();
+          if (r.top <= 160 && r.width < 600) fallbackText = pe;
+        }
+        break;
+      }
+    }
+  }
+  return fallbackText ? { el: fallbackText, isImg: fallbackText.tagName.toLowerCase() === 'img' } : null;
 }
 
-/** 应用当前选择到首页 logo（首次替换时记原 src，恢复默认时还原）。 */
+/** 应用当前选择到首页 logo（首次替换记原始内容，恢复默认时还原）。 */
 function applyLogo(): void {
   if (!isHomePage()) return;
-  const img = findHomeLogo();
-  if (!img) {
-    // 试探单全部未中：一次性提示回传 DOM 便于精确锚定
+  const found = findHomeLogo();
+  if (!found) {
     const w = window as any;
     if (!w.__fntvLogoHintShown) {
       w.__fntvLogoHintShown = true;
-      console.log('[customLogo] 未定位到首页 Logo 元素——请在 F12 选中该 Logo 复制 outerHTML 发给开发者以精确适配');
+      console.log('[customLogo] 未定位到首页 Logo——请在 F12 选中该 Logo 元素复制 outerHTML 发给开发者以精确适配');
     }
     return;
   }
-  if (!img.getAttribute(ORIG_ATTR)) {
-    img.setAttribute(ORIG_ATTR, img.getAttribute('src') || '');
-  }
+  const el = found.el;
   const src = resolveLogoSrc();
   if (!src) {
-    const orig = img.getAttribute(ORIG_ATTR);
-    if (orig) img.setAttribute('src', orig);
-    img.removeAttribute(MARK_ATTR);
+    // 恢复默认：还原首次替换前保存的原始内容
+    const orig = el.getAttribute(ORIG_ATTR);
+    if (orig) {
+      if (found.isImg) el.setAttribute('src', orig);
+      else el.innerHTML = orig;
+    }
+    el.removeAttribute(MARK_ATTR);
     return;
   }
-  if (img.getAttribute('src') === src) return; // 已是目标图，避免 MO 循环
-  img.setAttribute('src', src);
-  img.setAttribute(MARK_ATTR, '1');
+  if (found.isImg) {
+    if (!el.getAttribute(ORIG_ATTR)) el.setAttribute(ORIG_ATTR, el.getAttribute('src') || '');
+    if (el.getAttribute('src') === src) return; // 已是目标图，防 MO 循环
+    el.setAttribute('src', src);
+  } else {
+    if (!el.getAttribute(ORIG_ATTR)) el.setAttribute(ORIG_ATTR, el.innerHTML);
+    if (el.getAttribute(MARK_ATTR) === '1') return;
+    el.innerHTML = '<img src="' + src + '" alt="飞牛影视" style="height:30px;width:auto;object-fit:contain;display:block;pointer-events:none">';
+  }
+  el.setAttribute(MARK_ATTR, '1');
 }
 
 /** 通用卡内嵌 UI（embyWall 设置面板「通用」卡调用）：分组预设 chips + 自定义上传 + 恢复默认。 */
