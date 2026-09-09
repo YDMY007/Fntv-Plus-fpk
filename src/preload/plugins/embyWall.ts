@@ -1,7 +1,7 @@
 import { ABOUT_LINK_URL, openFeedbackChoiceModal } from './embyWall/modals/feedback';
 import { UiThemeMode, applyUiTheme, getEffectiveDark, getUiTheme, injectUiThemeStyle, removeThemeModeSetting, setUiTheme } from './embyWall/theme';
 import { applyCarouselLogoNow, backfillDetailLogo } from './embyWall/carousel/logo';
-import { buildCustomLogoUI } from './customLogo';
+import { buildCard as buildCustomLogoCard, refreshCard as refreshCustomLogoCard } from './customLogo';
 import { applyLoginBgVar } from './embyWall/login';
 import { destroyCarousel, findMediaLibrarySection, injectCarousel, isModalOpen, resumeCarousel } from './embyWall/carousel/render';
 import { fntvOpenPatchApplyPopup } from './embyWall/modals/patch';
@@ -2487,8 +2487,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     });
     (overlay as any)._swLogo = swLogo; // 回填引用（SETTINGS refresh 刷新用）
     secBodyAppearance.appendChild(logoRow);
-    // [v0.92.0] 「首页 Logo」自定义（预设/上传/恢复默认）——同一卡片紧随其后
-    buildCustomLogoUI(secBodyAppearance);
+    // [v0.95.0] 「自定义 Logo」卡片（桌面完整版：当前缩略图/预设弹窗/上传/恢复默认）
+    secBodyAppearance.appendChild(buildCustomLogoCard());
+    (overlay as any)._refreshCustomLogoCard = refreshCustomLogoCard;
 
     // ===== [lc-980] 「剧集详情页美化」开关（外观卡，与轮播样式同批被 v0.12.0 精简误删）=====
     //   开=套用美化（沉浸底图 / 两栏布局 / 磨砂卡），关=恢复飞牛原生详情页。
@@ -3277,6 +3278,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         S.carouselLogoEnabled = s.carouselLogoEnabled !== false;
         const _swLogoRef = (overlay as any)._swLogo as HTMLInputElement | undefined;
         if (_swLogoRef) _swLogoRef.checked = S.carouselLogoEnabled;
+        try { (overlay as any)._refreshCustomLogoCard?.(); } catch { /* ignore */ }
       });
       // [v0.82.0] seg('players') 已删（MPV/Pot 路径卡随外部播放器链一并移除，lc-078）
       seg('accounts', () => {
