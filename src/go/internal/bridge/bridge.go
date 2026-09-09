@@ -862,30 +862,58 @@ func (b *Bridge) tmdbGet(path string, params map[string]string) (int, map[string
 		q.Set("api_key", queryKey)
 	}
 	u.RawQuery = q.Encode()
-	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
-	req.Header.Set("Accept", "application/json")
-	if bearer != "" {
-		req.Header.Set("Authorization", bearer)
+
+	// [v0.74.0] 多路尝试：自定义代理 → 免梯子直连 IP → 系统直连。
+	// 网络层错误（EOF/超时/重置——典型为代理 keep-alive 复用了已被服务端关闭的连接，
+	// 表现为「第一个请求成功、紧接着的下一个请求 EOF」）自动换下一路；服务器有响应
+	//（401/429 等）不换路，原样返回状态与错误。
+	type tmAttempt struct {
+		c   *http.Client
+		via string
 	}
-	resp, err := b.tmdbClient().Do(req)
-	if err != nil {
-		return 0, nil, err
+	attempts := []tmAttempt{}
+	if proxy := b.customProxyURL(); proxy != "" {
+		pu, _ := url.Parse(proxy)
+		attempts = append(attempts, tmAttempt{&http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}, "自定义代理"})
 	}
-	defer resp.Body.Close()
-	var out map[string]any
-	_ = json.NewDecoder(io.LimitReader(resp.Body, 16*1024*1024)).Decode(&out)
-	if resp.StatusCode != http.StatusOK {
-		format := "未配置"
-		if key != "" {
-			if bearer != "" {
-				format = "v4长Token(JWT Bearer)"
-			} else {
-				format = "v3短Key(api_key)"
-			}
+	if dc := b.tmdbDirectClient(); dc != nil {
+		attempts = append(attempts, tmAttempt{dc, "免梯子直连"})
+	}
+	attempts = append(attempts, tmAttempt{b.client, "系统直连"})
+
+	var lastNetErr error
+	for _, a := range attempts {
+		req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
+		req.Header.Set("Accept", "application/json")
+		if bearer != "" {
+			req.Header.Set("Authorization", bearer)
 		}
-		return resp.StatusCode, out, fmt.Errorf("Key格式=%s", format)
+		resp, err := a.c.Do(req)
+		if err != nil {
+			lastNetErr = fmt.Errorf("%s：%v", a.via, err)
+			continue
+		}
+		var out map[string]any
+		decodeErr := json.NewDecoder(io.LimitReader(resp.Body, 16*1024*1024)).Decode(&out)
+		resp.Body.Close()
+		if decodeErr != nil {
+			lastNetErr = fmt.Errorf("%s：响应解析失败 %v", a.via, decodeErr)
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			format := "未配置"
+			if key != "" {
+				if bearer != "" {
+					format = "v4长Token(JWT Bearer)"
+				} else {
+					format = "v3短Key(api_key)"
+				}
+			}
+			return resp.StatusCode, out, fmt.Errorf("Key格式=%s", format)
+		}
+		return resp.StatusCode, out, nil
 	}
-	return resp.StatusCode, out, nil
+	return 0, nil, lastNetErr
 }
 
 // tmdbLogo {mediaType, id|title} → {ok, logoPaths:[...]}（/images logos，zh/en/null 语言）。
