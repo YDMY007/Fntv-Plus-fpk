@@ -993,24 +993,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     biliManualWrap.appendChild(biliManualTa);
     biliFoldBody.appendChild(biliManualWrap);
 
-    // MPV B站弹幕搜索开关（联动 MPV uosc_danmaku 的 script-opts/uosc_danmaku.conf）
-    const biliSearchRow = document.createElement('div');
-    biliSearchRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 6px;margin-top:4px;'
-      + 'cursor:pointer;border-radius:6px;transition:background .12s;';
-    biliSearchRow.onmouseenter = () => { biliSearchRow.style.background = 'var(--fnos-ui-row-hover)'; };
-    biliSearchRow.onmouseleave = () => { biliSearchRow.style.background = 'transparent'; };
-    const biliSearchLabel = document.createElement('span');
-    biliSearchLabel.textContent = t('启用 MPV B站弹幕搜索');
-    biliSearchLabel.style.cssText = 'color:var(--fnos-ui-text);font-weight:500;';
-    const swMpvBiliSearch = document.createElement('input');
-    swMpvBiliSearch.type = 'checkbox';
-    swMpvBiliSearch.style.cssText = 'width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);';
-    biliSearchRow.appendChild(biliSearchLabel); biliSearchRow.appendChild(swMpvBiliSearch);
-    secBodyBili.appendChild(biliSearchRow);
+    // [v0.86.0] 「启用 MPV B站弹幕搜索」开关已删（外部播放器残留；B站搜索开关在播放页弹幕设置里）
     secBodyBili.appendChild(biliFold.fold);
-    swMpvBiliSearch.addEventListener('change', () => {
-      ipcRenderer.invoke('settings:set-mpv-bili-search-enabled', swMpvBiliSearch.checked).catch((err) => log('set-mpv-bili-search-enabled failed', err));
-    });
 
     // B站弹幕聚合阈值（单个视频弹幕 < 此值时，自动合并多个同类候选的弹幕）
     const aggRow = document.createElement('div');
@@ -1892,7 +1876,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
     const danHint = document.createElement('div');
     danHint.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-sec);padding:2px 6px 4px;line-height:1.5;';
-    danHint.textContent = t('「弹幕样式」（透明度/字号/描边等）请在播放时通过 MPV 底部控制栏调整；本卡管理 B站 弹幕的屏蔽。');
+    danHint.textContent = t('「弹幕样式」（透明度/字号/描边等）请在播放页弹幕设置里调整；本卡管理 B站 弹幕的屏蔽。');
     danBody.appendChild(danHint);
 
     const danFold = mkFold('屏蔽类型、屏蔽词、弹幕文件夹');
@@ -1958,7 +1942,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
     const ddHint = document.createElement('div');
     ddHint.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-sec);padding:0 6px 6px;line-height:1.5;';
-    ddHint.textContent = t('内置共享凭证已被弹弹play官方接口封禁（弹幕恒「无数据」）。在弹弹play开放平台注册应用后，填入专属 AppId 与 Secret 即可恢复；两项都填才生效，清除后回落内置凭证。下次 MPV 播放时生效。');
+    ddHint.textContent = t('内置共享凭证已被弹弹play官方接口封禁（弹幕恒「无数据」）。在弹弹play开放平台注册应用后，填入专属 AppId 与 Secret 即可恢复；两项都填才生效，清除后回落内置凭证。下次播放时生效。');
     ddFoldBody.appendChild(ddHint);
 
     // 掩码输入（交互同 Bangumi token：已保存显示星号，聚焦自动清空进入编辑）
@@ -2018,7 +2002,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
           ddRealId = id; ddRealSecret = secret;
           ddIdInput.value = maskDd(id); ddIdInput.readOnly = true;
           ddSecretInput.value = maskDd(secret); ddSecretInput.readOnly = true;
-          ddStatus.textContent = t('已保存，下次 MPV 播放时生效。');
+          ddStatus.textContent = t('已保存，下次播放时生效。');
           ddStatus.style.color = 'var(--fnos-ui-sub)';
           ddSetState(true);
         })
@@ -2031,7 +2015,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
           ddRealId = ''; ddRealSecret = '';
           ddIdInput.value = ''; ddIdInput.readOnly = false;
           ddSecretInput.value = ''; ddSecretInput.readOnly = false;
-          ddStatus.textContent = t('已清除，回落脚本内置共享凭证，下次 MPV 播放时生效。');
+          ddStatus.textContent = t('已清除，回落脚本内置共享凭证，下次播放时生效。');
           ddSetState(false);
         })
         .catch((err) => { ddStatus.textContent = '清除失败: ' + (err && err.message ? err.message : err); ddStatus.style.color = 'var(--fnos-ui-warn)'; });
@@ -2072,7 +2056,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
     const dmApiHint = document.createElement('div');
     dmApiHint.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-sec);padding:0 6px 6px;line-height:1.5;';
-    dmApiHint.textContent = t('填入 NAS 上部署的 danmu_api 服务地址（聚合哔哩/爱奇艺/优酷/腾讯等多平台弹幕，密度通常高于单源 B站）。开启后作为弹幕优选源，未命中或未启用时自动降级到内置 B站 弹幕获取。下次 MPV 播放时生效。');
+    dmApiHint.textContent = t('填入 NAS 上部署的 danmu_api 服务地址（聚合哔哩/爱奇艺/优酷/腾讯等多平台弹幕，密度通常高于单源 B站）。开启后作为弹幕优选源，未命中或未启用时自动降级到内置 B站 弹幕获取。下次播放时生效。');
     dmApiFoldBody.appendChild(dmApiHint);
 
     const dmApiInput = document.createElement('input');
@@ -2376,7 +2360,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
     const aboutDesc = document.createElement('div');
     aboutDesc.style.cssText = 'font-size:13px;line-height:1.9;color:var(--fnos-ui-text);opacity:.82;max-width:440px;';
-    aboutDesc.textContent = t('基于飞牛影视（fnOS TV）打造的增强桌面客户端，采用 Electron + 亚克力玻璃 UI。支持 MPV 播放器、B站弹幕、自定义透明度与模糊效果。');
+    aboutDesc.textContent = t('基于飞牛影视（fnOS TV）打造的增强桌面客户端，采用 Electron + 亚克力玻璃 UI。支持 B站弹幕、自定义透明度与模糊效果。');
     secBodyAbout.appendChild(aboutDesc);
 
     const aboutVer = document.createElement('div');
@@ -3311,8 +3295,6 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         dcImgInput.value = (dip && dip.img) || '';
       });
       seg('bili-search', () => {
-        // MPV B站弹幕搜索开关回填（默认开启）
-        swMpvBiliSearch.checked = s.mpvBiliSearchEnabled !== false;
         // B站弹幕聚合阈值回填（默认 1500；<0 视为禁用=0）
         aggInput.value = String(s.mpvBiliAggregateThreshold == null ? 1500 : (s.mpvBiliAggregateThreshold < 0 ? 0 : s.mpvBiliAggregateThreshold));
       });
@@ -3328,7 +3310,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         ddIdInput.readOnly = !!ddRealId;
         ddSecretInput.value = ddRealSecret ? maskDd(ddRealSecret) : '';
         ddSecretInput.readOnly = !!ddRealSecret;
-        if (ddRealId) ddStatus.textContent = t('已保存自定义凭证，下次 MPV 播放时生效。');
+        if (ddRealId) ddStatus.textContent = t('已保存自定义凭证，下次播放时生效。');
         ddSetState(!!ddRealId);
         // [lc-1101] 自建弹幕接口回填（地址非敏感，明文显示；程序化赋值不触发 change，不会误保存）
         swDanmuApi.checked = s.danmuApiEnabled === true;

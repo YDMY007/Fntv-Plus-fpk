@@ -29,7 +29,7 @@ import (
 )
 
 // appVersion 与根目录 manifest 的 version 保持一致（改动版本时两处同步）。
-const appVersion = "0.85.0"
+const appVersion = "0.86.0"
 
 func main() {
 	port := flag.String("port", envOr("TRIM_SERVICE_PORT", "22350"), "监听端口")

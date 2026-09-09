@@ -13724,27 +13724,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       biliManualTa.style.cssText = "width:100%;height:32px;font-size:10.5px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;box-sizing:border-box;";
       biliManualWrap.appendChild(biliManualTa);
       biliFoldBody.appendChild(biliManualWrap);
-      const biliSearchRow = document.createElement("div");
-      biliSearchRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;margin-top:4px;cursor:pointer;border-radius:6px;transition:background .12s;";
-      biliSearchRow.onmouseenter = () => {
-        biliSearchRow.style.background = "var(--fnos-ui-row-hover)";
-      };
-      biliSearchRow.onmouseleave = () => {
-        biliSearchRow.style.background = "transparent";
-      };
-      const biliSearchLabel = document.createElement("span");
-      biliSearchLabel.textContent = t("\u542F\u7528 MPV B\u7AD9\u5F39\u5E55\u641C\u7D22");
-      biliSearchLabel.style.cssText = "color:var(--fnos-ui-text);font-weight:500;";
-      const swMpvBiliSearch = document.createElement("input");
-      swMpvBiliSearch.type = "checkbox";
-      swMpvBiliSearch.style.cssText = "width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
-      biliSearchRow.appendChild(biliSearchLabel);
-      biliSearchRow.appendChild(swMpvBiliSearch);
-      secBodyBili.appendChild(biliSearchRow);
       secBodyBili.appendChild(biliFold.fold);
-      swMpvBiliSearch.addEventListener("change", () => {
-        ipcRenderer.invoke("settings:set-mpv-bili-search-enabled", swMpvBiliSearch.checked).catch((err) => log7("set-mpv-bili-search-enabled failed", err));
-      });
       const aggRow = document.createElement("div");
       aggRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;margin-top:4px;gap:10px;";
       const aggLabel = document.createElement("span");
@@ -14581,7 +14561,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       let _danTimer = null;
       const danHint = document.createElement("div");
       danHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sec);padding:2px 6px 4px;line-height:1.5;";
-      danHint.textContent = t("\u300C\u5F39\u5E55\u6837\u5F0F\u300D\uFF08\u900F\u660E\u5EA6/\u5B57\u53F7/\u63CF\u8FB9\u7B49\uFF09\u8BF7\u5728\u64AD\u653E\u65F6\u901A\u8FC7 MPV \u5E95\u90E8\u63A7\u5236\u680F\u8C03\u6574\uFF1B\u672C\u5361\u7BA1\u7406 B\u7AD9 \u5F39\u5E55\u7684\u5C4F\u853D\u3002");
+      danHint.textContent = t("\u300C\u5F39\u5E55\u6837\u5F0F\u300D\uFF08\u900F\u660E\u5EA6/\u5B57\u53F7/\u63CF\u8FB9\u7B49\uFF09\u8BF7\u5728\u64AD\u653E\u9875\u5F39\u5E55\u8BBE\u7F6E\u91CC\u8C03\u6574\uFF1B\u672C\u5361\u7BA1\u7406 B\u7AD9 \u5F39\u5E55\u7684\u5C4F\u853D\u3002");
       danBody.appendChild(danHint);
       const danFold = mkFold2("\u5C4F\u853D\u7C7B\u578B\u3001\u5C4F\u853D\u8BCD\u3001\u5F39\u5E55\u6587\u4EF6\u5939");
       danBody.appendChild(danFold.fold);
@@ -14629,7 +14609,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       const ddFoldBody = ddFold.body;
       const ddHint = document.createElement("div");
       ddHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sec);padding:0 6px 6px;line-height:1.5;";
-      ddHint.textContent = t("\u5185\u7F6E\u5171\u4EAB\u51ED\u8BC1\u5DF2\u88AB\u5F39\u5F39play\u5B98\u65B9\u63A5\u53E3\u5C01\u7981\uFF08\u5F39\u5E55\u6052\u300C\u65E0\u6570\u636E\u300D\uFF09\u3002\u5728\u5F39\u5F39play\u5F00\u653E\u5E73\u53F0\u6CE8\u518C\u5E94\u7528\u540E\uFF0C\u586B\u5165\u4E13\u5C5E AppId \u4E0E Secret \u5373\u53EF\u6062\u590D\uFF1B\u4E24\u9879\u90FD\u586B\u624D\u751F\u6548\uFF0C\u6E05\u9664\u540E\u56DE\u843D\u5185\u7F6E\u51ED\u8BC1\u3002\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002");
+      ddHint.textContent = t("\u5185\u7F6E\u5171\u4EAB\u51ED\u8BC1\u5DF2\u88AB\u5F39\u5F39play\u5B98\u65B9\u63A5\u53E3\u5C01\u7981\uFF08\u5F39\u5E55\u6052\u300C\u65E0\u6570\u636E\u300D\uFF09\u3002\u5728\u5F39\u5F39play\u5F00\u653E\u5E73\u53F0\u6CE8\u518C\u5E94\u7528\u540E\uFF0C\u586B\u5165\u4E13\u5C5E AppId \u4E0E Secret \u5373\u53EF\u6062\u590D\uFF1B\u4E24\u9879\u90FD\u586B\u624D\u751F\u6548\uFF0C\u6E05\u9664\u540E\u56DE\u843D\u5185\u7F6E\u51ED\u8BC1\u3002\u4E0B\u6B21\u64AD\u653E\u65F6\u751F\u6548\u3002");
       ddFoldBody.appendChild(ddHint);
       const maskDd = (t2) => "*".repeat(Math.max(0, t2.length));
       let ddRealId = "";
@@ -14689,7 +14669,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           ddIdInput.readOnly = true;
           ddSecretInput.value = maskDd(secret);
           ddSecretInput.readOnly = true;
-          ddStatus.textContent = t("\u5DF2\u4FDD\u5B58\uFF0C\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002");
+          ddStatus.textContent = t("\u5DF2\u4FDD\u5B58\uFF0C\u4E0B\u6B21\u64AD\u653E\u65F6\u751F\u6548\u3002");
           ddStatus.style.color = "var(--fnos-ui-sub)";
           ddSetState(true);
         }).catch((err) => {
@@ -14706,7 +14686,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           ddIdInput.readOnly = false;
           ddSecretInput.value = "";
           ddSecretInput.readOnly = false;
-          ddStatus.textContent = t("\u5DF2\u6E05\u9664\uFF0C\u56DE\u843D\u811A\u672C\u5185\u7F6E\u5171\u4EAB\u51ED\u8BC1\uFF0C\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002");
+          ddStatus.textContent = t("\u5DF2\u6E05\u9664\uFF0C\u56DE\u843D\u811A\u672C\u5185\u7F6E\u5171\u4EAB\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u64AD\u653E\u65F6\u751F\u6548\u3002");
           ddSetState(false);
         }).catch((err) => {
           ddStatus.textContent = "\u6E05\u9664\u5931\u8D25: " + (err && err.message ? err.message : err);
@@ -14743,7 +14723,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       const dmApiFoldBody = dmApiFold.body;
       const dmApiHint = document.createElement("div");
       dmApiHint.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sec);padding:0 6px 6px;line-height:1.5;";
-      dmApiHint.textContent = t("\u586B\u5165 NAS \u4E0A\u90E8\u7F72\u7684 danmu_api \u670D\u52A1\u5730\u5740\uFF08\u805A\u5408\u54D4\u54E9/\u7231\u5947\u827A/\u4F18\u9177/\u817E\u8BAF\u7B49\u591A\u5E73\u53F0\u5F39\u5E55\uFF0C\u5BC6\u5EA6\u901A\u5E38\u9AD8\u4E8E\u5355\u6E90 B\u7AD9\uFF09\u3002\u5F00\u542F\u540E\u4F5C\u4E3A\u5F39\u5E55\u4F18\u9009\u6E90\uFF0C\u672A\u547D\u4E2D\u6216\u672A\u542F\u7528\u65F6\u81EA\u52A8\u964D\u7EA7\u5230\u5185\u7F6E B\u7AD9 \u5F39\u5E55\u83B7\u53D6\u3002\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002");
+      dmApiHint.textContent = t("\u586B\u5165 NAS \u4E0A\u90E8\u7F72\u7684 danmu_api \u670D\u52A1\u5730\u5740\uFF08\u805A\u5408\u54D4\u54E9/\u7231\u5947\u827A/\u4F18\u9177/\u817E\u8BAF\u7B49\u591A\u5E73\u53F0\u5F39\u5E55\uFF0C\u5BC6\u5EA6\u901A\u5E38\u9AD8\u4E8E\u5355\u6E90 B\u7AD9\uFF09\u3002\u5F00\u542F\u540E\u4F5C\u4E3A\u5F39\u5E55\u4F18\u9009\u6E90\uFF0C\u672A\u547D\u4E2D\u6216\u672A\u542F\u7528\u65F6\u81EA\u52A8\u964D\u7EA7\u5230\u5185\u7F6E B\u7AD9 \u5F39\u5E55\u83B7\u53D6\u3002\u4E0B\u6B21\u64AD\u653E\u65F6\u751F\u6548\u3002");
       dmApiFoldBody.appendChild(dmApiHint);
       const dmApiInput = document.createElement("input");
       dmApiInput.type = "text";
@@ -15028,7 +15008,7 @@ html.fntv-boot-hide #root{visibility:hidden}
       secBodyAbout.appendChild(aboutAuthor);
       const aboutDesc = document.createElement("div");
       aboutDesc.style.cssText = "font-size:13px;line-height:1.9;color:var(--fnos-ui-text);opacity:.82;max-width:440px;";
-      aboutDesc.textContent = t("\u57FA\u4E8E\u98DE\u725B\u5F71\u89C6\uFF08fnOS TV\uFF09\u6253\u9020\u7684\u589E\u5F3A\u684C\u9762\u5BA2\u6237\u7AEF\uFF0C\u91C7\u7528 Electron + \u4E9A\u514B\u529B\u73BB\u7483 UI\u3002\u652F\u6301 MPV \u64AD\u653E\u5668\u3001B\u7AD9\u5F39\u5E55\u3001\u81EA\u5B9A\u4E49\u900F\u660E\u5EA6\u4E0E\u6A21\u7CCA\u6548\u679C\u3002");
+      aboutDesc.textContent = t("\u57FA\u4E8E\u98DE\u725B\u5F71\u89C6\uFF08fnOS TV\uFF09\u6253\u9020\u7684\u589E\u5F3A\u684C\u9762\u5BA2\u6237\u7AEF\uFF0C\u91C7\u7528 Electron + \u4E9A\u514B\u529B\u73BB\u7483 UI\u3002\u652F\u6301 B\u7AD9\u5F39\u5E55\u3001\u81EA\u5B9A\u4E49\u900F\u660E\u5EA6\u4E0E\u6A21\u7CCA\u6548\u679C\u3002");
       secBodyAbout.appendChild(aboutDesc);
       const aboutVer = document.createElement("div");
       aboutVer.id = "fnos-about-version";
@@ -15949,7 +15929,6 @@ html.fntv-boot-hide #root{visibility:hidden}
           dcImgInput.value = dip && dip.img || "";
         });
         seg2("bili-search", () => {
-          swMpvBiliSearch.checked = s.mpvBiliSearchEnabled !== false;
           aggInput.value = String(s.mpvBiliAggregateThreshold == null ? 1500 : s.mpvBiliAggregateThreshold < 0 ? 0 : s.mpvBiliAggregateThreshold);
         });
         seg2("danmaku", () => {
@@ -15962,7 +15941,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           ddIdInput.readOnly = !!ddRealId;
           ddSecretInput.value = ddRealSecret ? maskDd(ddRealSecret) : "";
           ddSecretInput.readOnly = !!ddRealSecret;
-          if (ddRealId) ddStatus.textContent = t("\u5DF2\u4FDD\u5B58\u81EA\u5B9A\u4E49\u51ED\u8BC1\uFF0C\u4E0B\u6B21 MPV \u64AD\u653E\u65F6\u751F\u6548\u3002");
+          if (ddRealId) ddStatus.textContent = t("\u5DF2\u4FDD\u5B58\u81EA\u5B9A\u4E49\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u64AD\u653E\u65F6\u751F\u6548\u3002");
           ddSetState(!!ddRealId);
           swDanmuApi.checked = s.danmuApiEnabled === true;
           dmApiInput.value = s.danmuApiBase || "";
@@ -20821,6 +20800,10 @@ html.fntv-boot-hide #root{visibility:hidden}
         });
         obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
       }
+      const keepObs = new MutationObserver(() => {
+        injectEntry();
+      });
+      keepObs.observe(document.body || document.documentElement, { childList: true, subtree: true });
       startKeepAlive2();
       logger_default.info(LOG2, "\u63D2\u4EF6\u5DF2\u52A0\u8F7D");
     } catch (err) {
