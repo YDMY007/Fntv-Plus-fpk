@@ -188,7 +188,7 @@ func (b *Bridge) handleFnOS(w http.ResponseWriter, r *http.Request) {
 		bodyReader = strings.NewReader(string(req.Body))
 		dataJSON = string(req.Body)
 	}
-	req2, err := http.NewRequest(method, b.upstream+req.Path, bodyReader)
+	req2, err := http.NewRequest(method, b.effectiveUpstream()+req.Path, bodyReader)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "bad request: "+err.Error())
 		return
@@ -567,7 +567,7 @@ func (b *Bridge) traktScrobble(w http.ResponseWriter, r *http.Request) {
 	}
 	// fnOS play/info（签名 + cookie 转发）
 	body, _ := json.Marshal(map[string]any{"item_guid": req.GUID})
-	req2, _ := http.NewRequest(http.MethodPost, b.upstream+"/v/api/v1/play/info", strings.NewReader(string(body)))
+	req2, _ := http.NewRequest(http.MethodPost, b.effectiveUpstream()+"/v/api/v1/play/info", strings.NewReader(string(body)))
 	req2.Header.Set("Authx", genAuthx("/v/api/v1/play/info", string(body)))
 	req2.Header.Set("Content-Type", "application/json")
 	if req.Cookie != "" {
@@ -709,6 +709,16 @@ func (b *Bridge) tmdbDirectIPs() (apiIP, imgIP string) {
 		return "", ""
 	}
 	return parse(m["tmdbDirectIp"])
+}
+
+// effectiveUpstream 当前生效的 fnOS 上游：config 覆盖值优先（管理页可热改），回退启动推导值。
+// [v0.73.0] 修复：bridge 此前固定用启动推导值（如 127.0.0.1:5666），而用户配置的上游覆盖
+//（如 18888）只作用于反代主链路 → fnOS 桥（演员作品/跳过片头/播放同步等）连错端口被拒。
+func (b *Bridge) effectiveUpstream() string {
+	if s := strings.TrimSpace(b.cfg.Get().Upstream); s != "" {
+		return strings.TrimRight(s, "/")
+	}
+	return strings.TrimRight(b.upstream, "/")
 }
 
 // tmdbDirectClient 免梯子直连专属客户端（CheckTMDB IP + 域名 SNI）。
@@ -967,7 +977,7 @@ func (b *Bridge) callFnOSJSON(method, path string, body json.RawMessage, cookie 
 		bodyReader = strings.NewReader(string(body))
 		dataJSON = string(body)
 	}
-	req, err := http.NewRequest(method, b.upstream+path, bodyReader)
+	req, err := http.NewRequest(method, b.effectiveUpstream()+path, bodyReader)
 	if err != nil {
 		return nil, err
 	}
