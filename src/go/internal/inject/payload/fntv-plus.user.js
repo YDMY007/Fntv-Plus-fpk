@@ -706,7 +706,81 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (channel === "play-movie" || channel === "external-play" || channel === "pause" || channel === "media:control") {
             return Promise.resolve(void 0);
           }
-          if (channel === "media:season-guid" || channel === "skip:fetch-and-fill" || channel === "skip:next-episode") {
+          if (channel === "skip:fetch-and-fill") {
+            const guid = String(args[0] && args[0].guid || "");
+            const empty = { filled: false, skipStart: 0, skipEnd: 0, source: "none", recapStart: 0, recapEnd: 0, message: "" };
+            if (!guid) return Promise.resolve(Object.assign({}, empty, { message: "\u7F3A\u5C11 guid" }));
+            const signedFetch = async (method, path, payload) => {
+              const headers = { "Content-Type": "application/json" };
+              headers.Authx = await genAuthx(path, payload || void 0);
+              const resp = await fetch(location.origin + path, {
+                method,
+                credentials: "include",
+                headers,
+                body: payload ? JSON.stringify(payload) : void 0
+              });
+              if (!resp.ok) throw new Error("HTTP " + resp.status);
+              return resp.json();
+            };
+            return (async () => {
+              const info = await signedFetch("POST", "/v/api/v1/play/info", { item_guid: guid }).catch(() => null);
+              const item = info && info.data && info.data.item;
+              if (!item) return Object.assign({}, empty, { message: "\u83B7\u53D6\u64AD\u653E\u4FE1\u606F\u5931\u8D25" });
+              const trimId = String(item.trim_id || "");
+              const season = Number(item.season_number) || 0;
+              const episode = Number(item.episode_number) || 0;
+              const duration = Number(item.duration) || 0;
+              let title = String(item.parent_title || item.title || "").trim();
+              title = title.replace(/^第\s*\d+\s*[集话話期]\s*/, "").trim();
+              const trySkipInfoGet = async () => {
+                for (const p of ["/v/api/v1/skipinfo/" + guid, "/api/v1/skipinfo/" + guid]) {
+                  try {
+                    const j = await signedFetch("GET", p);
+                    if (j && j.code === 0 && j.data) return j.data;
+                  } catch (e) {
+                  }
+                }
+                return null;
+              };
+              const existing = await trySkipInfoGet();
+              if (existing && (Number(existing.skipStart) > 0 || Number(existing.skipEnd) > 0)) {
+                return {
+                  filled: true,
+                  skipStart: Number(existing.skipStart) || 0,
+                  skipEnd: Number(existing.skipEnd) || 0,
+                  source: "fnos",
+                  recapStart: 0,
+                  recapEnd: 0
+                };
+              }
+              const ext = await apiPost("/app/fntvplus/api/bridge/skip/external", {
+                trimId,
+                season,
+                episode,
+                duration,
+                title
+              }).catch(() => null);
+              if (!ext || !ext.ok || !(Number(ext.skipStart) > 0 || Number(ext.skipEnd) > 0)) {
+                return Object.assign({}, empty, { message: ext && ext.message || "\u65E0\u53EF\u7528\u8DF3\u8FC7\u6570\u636E" });
+              }
+              for (const p of ["/v/api/v1/skipinfo", "/api/v1/skipinfo"]) {
+                try {
+                  const j = await signedFetch("POST", p, { guid, skipStart: Number(ext.skipStart), skipEnd: Number(ext.skipEnd) });
+                  if (j && j.code === 0) break;
+                } catch (e) {
+                }
+              }
+              return {
+                filled: true,
+                skipStart: Number(ext.skipStart) || 0,
+                skipEnd: Number(ext.skipEnd) || 0,
+                source: ext.source,
+                recapStart: Number(ext.recapStart) || 0,
+                recapEnd: Number(ext.recapEnd) || 0
+              };
+            })();
+          }
+          if (channel === "media:season-guid" || channel === "skip:next-episode") {
             return Promise.resolve(void 0);
           }
           if (channel === "mpv:get-render-preset") return apiGet("/app/fntvplus/api/settings").then((s) => s.mpvRenderPreset);
@@ -1649,12 +1723,6 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
   var externalPlayActive = false;
   function extractCurrentGuid() {
     return extractGuidFromUrl() || extractGuidFromDom();
-  }
-  function setExternalPlayActive(active2) {
-    externalPlayActive = active2;
-  }
-  function getInterceptedGuid() {
-    return interceptedGuid;
   }
   function extractGuidFromUrl() {
     const url = window.location.href;
@@ -12982,153 +13050,6 @@ html.fntv-boot-hide #root{visibility:hidden}
       refreshThemeSeg();
       themeRow.appendChild(themeLabel);
       themeRow.appendChild(seg);
-      const sec2 = section("\u64AD\u653E\u5668");
-      const secBody2 = sec2.body;
-      const playerCols = document.createElement("div");
-      playerCols.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:16px;margin-top:4px;";
-      const colMpv = document.createElement("div");
-      colMpv.style.cssText = "min-width:0;display:flex;flex-direction:column;gap:8px;";
-      const colPot = document.createElement("div");
-      colPot.style.cssText = "min-width:0;display:flex;flex-direction:column;gap:8px;padding-left:16px;border-left:1px solid var(--fnos-ui-border2);";
-      const subHead = (text) => {
-        const d = document.createElement("div");
-        d.textContent = text;
-        d.style.cssText = "font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--fnos-ui-sec);margin-bottom:2px;";
-        return d;
-      };
-      colMpv.appendChild(subHead("MPV"));
-      colPot.appendChild(subHead("PotPlayer"));
-      playerCols.appendChild(colMpv);
-      playerCols.appendChild(colPot);
-      secBody2.appendChild(playerCols);
-      const mpvLabel = document.createElement("div");
-      mpvLabel.textContent = t("MPV \u8DEF\u5F84\uFF08\u7559\u7A7A\u5219\u4F7F\u7528\u5E94\u7528\u5185\u7F6E\uFF09");
-      mpvLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:0 0 5px;";
-      colMpv.appendChild(mpvLabel);
-      const mpvPath = document.createElement("div");
-      mpvPath.id = "fnos-mpv-path";
-      mpvPath.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted2);word-break:break-all;margin-bottom:7px;min-height:28px;max-height:72px;overflow-y:auto;padding:6px 9px;background:var(--fnos-ui-input-bg);border-radius:7px;border:1px solid var(--fnos-ui-border);line-height:1.5;";
-      mpvPath.textContent = t("\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09");
-      colMpv.appendChild(mpvPath);
-      const mpvBtns = document.createElement("div");
-      mpvBtns.style.cssText = "display:flex;gap:6px;";
-      const pickBtn = mkBtn("\u9009\u62E9\u6587\u4EF6", true);
-      const clearBtn = mkBtn("\u6E05\u7A7A", true);
-      const iccToggleBtn = mkBtn("ICC \u6821\u8272\uFF1A\u5F00", true);
-      iccToggleBtn.style.fontWeight = "600";
-      iccToggleBtn.style.color = "var(--fnos-ui-accent)";
-      mpvBtns.appendChild(pickBtn);
-      mpvBtns.appendChild(clearBtn);
-      mpvBtns.appendChild(iccToggleBtn);
-      colMpv.appendChild(mpvBtns);
-      pickBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const p = await ipcRenderer.invoke("settings:pick-mpv-path");
-        if (p) mpvPath.textContent = p;
-      });
-      clearBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await ipcRenderer.invoke("settings:clear-mpv-path");
-        mpvPath.textContent = t("\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09");
-      });
-      const shaderLabel = document.createElement("div");
-      shaderLabel.textContent = t("\u9ED8\u8BA4 MPV \u7740\u8272\u5668");
-      shaderLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:12px 0 5px;";
-      colMpv.appendChild(shaderLabel);
-      const shaderSel = document.createElement("select");
-      shaderSel.id = "fnos-mpv-shader";
-      shaderSel.style.cssText = "width:100%;font-size:12px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;cursor:pointer;";
-      const shaderOptions = [
-        ["off", "\u9ED8\u8BA4\u4E0D\u751F\u6548\u4EFB\u4F55\u7740\u8272\u5668"],
-        ["a", "\u6A21\u5F0FA\uFF08\u5927\u591A\u65701080p\u52A8\u753B\uFF09"],
-        ["b", "\u6A21\u5F0FB\uFF08\u5927\u591A\u6570720p\u52A8\u753B\uFF09"],
-        ["aa", "\u6A21\u5F0FA+A\uFF08\u9AD8\u8D28\u91CF1080p\uFF09"],
-        ["bb", "\u6A21\u5F0FB+B\uFF08\u9AD8\u8D28\u91CF720p\uFF09"],
-        ["lite", "\u8F7B\u91CF\u6A21\u5F0F\uFF08\u4F4E\u914D\u7F6E\u8BBE\u5907\uFF09"],
-        ["denoise", "\u4EC5\u964D\u566A"],
-        ["real", "\u771F\u5B9E\u7CFB\uFF08\u771F\u4EBA/\u7EAA\u5F55\u7247\uFF09"],
-        ["cinema", "\u7535\u5F71\u611F"],
-        ["ultra", "\u5168\u589E\u5F3A\uFF08\u6781\u81F4\u753B\u8D28\uFF09"]
-      ];
-      shaderOptions.forEach(([k, label]) => {
-        const o = document.createElement("option");
-        o.value = k;
-        o.textContent = label;
-        shaderSel.appendChild(o);
-      });
-      colMpv.appendChild(shaderSel);
-      const applyShaderConfig = () => {
-        var _a, _b;
-        const iccOn = (_b = (_a = iccToggleBtn.textContent) == null ? void 0 : _a.includes("\u5F00")) != null ? _b : false;
-        ipcRenderer.invoke("settings:set-mpv-shader-config", { shader: shaderSel.value, icc: iccOn }).catch((err) => log7("set-mpv-shader-config failed", err));
-      };
-      const renderIccBtn = (on) => {
-        iccToggleBtn.textContent = on ? "ICC \u6821\u8272\uFF1A\u5F00" : "ICC \u6821\u8272\uFF1A\u5173";
-        iccToggleBtn.style.color = on ? "var(--fnos-ui-accent)" : "var(--fnos-ui-muted2)";
-      };
-      shaderSel.addEventListener("change", applyShaderConfig);
-      iccToggleBtn.addEventListener("click", (e) => {
-        var _a, _b;
-        e.stopPropagation();
-        const nowOn = !((_b = (_a = iccToggleBtn.textContent) == null ? void 0 : _a.includes("\u5F00")) != null ? _b : false);
-        renderIccBtn(nowOn);
-        applyShaderConfig();
-      });
-      const potLabel = document.createElement("div");
-      potLabel.textContent = t("PotPlayer \u8DEF\u5F84\uFF08\u7559\u7A7A\u5219\u4F7F\u7528\u5E94\u7528\u5185\u7F6E\uFF09");
-      potLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:0 0 5px;";
-      colPot.appendChild(potLabel);
-      const potPathEl = document.createElement("div");
-      potPathEl.id = "fnos-pot-path";
-      potPathEl.style.cssText = "font-size:10.5px;color:var(--fnos-ui-muted2);word-break:break-all;margin-bottom:7px;min-height:28px;max-height:72px;overflow-y:auto;padding:6px 9px;background:var(--fnos-ui-input-bg);border-radius:7px;border:1px solid var(--fnos-ui-border);line-height:1.5;";
-      potPathEl.textContent = t("\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09");
-      colPot.appendChild(potPathEl);
-      const potBtns = document.createElement("div");
-      potBtns.style.cssText = "display:flex;gap:6px;";
-      const pickPotBtn = mkBtn("\u9009\u62E9\u6587\u4EF6", true);
-      const clearPotBtn = mkBtn("\u6E05\u7A7A", true);
-      potBtns.appendChild(pickPotBtn);
-      potBtns.appendChild(clearPotBtn);
-      colPot.appendChild(potBtns);
-      pickPotBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const p = await ipcRenderer.invoke("settings:pick-pot-path");
-        if (p) potPathEl.textContent = p;
-      });
-      clearPotBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await ipcRenderer.invoke("settings:clear-pot-path");
-        potPathEl.textContent = t("\u5E94\u7528\u5185\u7F6E\uFF08\u5DF2\u968F\u5B89\u88C5\u5305\u5206\u53D1\uFF0C\u65E0\u9700\u672C\u673A\u5B89\u88C5\uFF09");
-      });
-      const defLabel = document.createElement("div");
-      defLabel.textContent = t("\u9ED8\u8BA4\u64AD\u653E\u5668\uFF08\u76F4\u63A5\u64AD\u653E\u65F6\u4F7F\u7528\uFF09");
-      defLabel.style.cssText = "color:var(--fnos-ui-muted);font-size:11.5px;margin:10px 0 5px;";
-      colPot.appendChild(defLabel);
-      const defGrid = document.createElement("div");
-      defGrid.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:5px;";
-      const defModes = [["mpv", "\u5185\u7F6E MPV"], ["potplayer", "PotPlayer"]];
-      const defEls = [];
-      defModes.forEach(([mode, text]) => {
-        const b = mkBtn(text);
-        b.dataset.dmode = mode;
-        b.addEventListener("click", (e) => {
-          e.stopPropagation();
-          overlay._defaultPlayer = mode;
-          refreshDefaultPlayer();
-          ipcRenderer.invoke("settings:set-default-player", mode).catch((err) => log7("set-default-player failed", err));
-        });
-        defGrid.appendChild(b);
-        defEls.push(b);
-      });
-      colPot.appendChild(defGrid);
-      const refreshDefaultPlayer = () => {
-        const cur = overlay._defaultPlayer || "mpv";
-        defEls.forEach((b) => {
-          const on = b.dataset.dmode === cur;
-          b.style.background = on ? "var(--fnos-ui-btn-hover2)!important" : "var(--fnos-ui-btn-bg2)!important";
-          b.style.borderColor = on ? "var(--fnos-ui-accent)!important" : "var(--fnos-ui-border3)";
-        });
-      };
       const secBili = section("B\u7AD9\u5F39\u5E55");
       const secBodyBili = secBili.body;
       const biliStatus = document.createElement("div");
@@ -14260,13 +14181,6 @@ html.fntv-boot-hide #root{visibility:hidden}
           lines.push(`\u8D26\u53F7: ${r.account}  \u767B\u5F55\u65B9\u5F0F: ${r.loginType}  Token: ${r.hasToken ? "\u5DF2\u4FDD\u5B58" : "\u65E0"}`);
           lines.push(`\u8C46\u74E3\u540C\u6B65: ${r.doubanEnabled ? "\u5F00" : "\u5173"}${r.doubanLoggedIn ? "(\u5DF2\u767B\u5F55)" : ""}   Bangumi: ${r.bangumiEnabled ? "\u5F00" : "\u5173"}${r.bangumiHasToken ? "(\u6709Token)" : ""}`);
           lines.push("");
-          lines.push("== \u64AD\u653E\u5668 ==");
-          lines.push(`\u9ED8\u8BA4\u64AD\u653E\u5668: ${r.defaultPlayer}`);
-          lines.push(`MPV \u8DEF\u5F84: ${r.mpvPath}   PotPlayer \u8DEF\u5F84: ${r.potPath}`);
-          lines.push(`MPV \u914D\u7F6E\u76EE\u5F55: ${r.mpvConfigDir}`);
-          lines.push("");
-          lines.push("== MPV \u6E32\u67D3 ==");
-          lines.push(`\u9ED8\u8BA4\u7740\u8272\u5668: ${r.mpvShader || "off"}   ICC \u6821\u8272: ${r.mpvIcc ? "\u5F00" : "\u5173"}`);
           lines.push("");
           lines.push("--- mpv-user.conf ---");
           lines.push(r.mpvUserConf || "(\u7A7A)");
@@ -14342,9 +14256,6 @@ html.fntv-boot-hide #root{visibility:hidden}
       const debugComps = [
         ["douban", "\u8C46\u74E3\u540C\u6B65"],
         ["danmaku", "B\u7AD9\u5F39\u5E55"],
-        ["mpv", "MPV \u64AD\u653E\u5668"],
-        ["potplayer", "PotPlayer"],
-        ["media", "\u64AD\u653E\u5668/\u5A92\u4F53"],
         ["embywall", "EmbyWall \u5899"]
       ];
       const swDebugComps = {};
@@ -17965,823 +17876,6 @@ html.fntv-boot-hide #root{visibility:hidden}
     }
   }
   registerHook("onReady" /* OnReady */, handle5);
-
-  // src/preload/plugins/playButton.ts
-  init_electron();
-
-  // src/preload/core/utils.ts
-  function getCookie(name) {
-    const cookies = document.cookie.split(";");
-    const nameEQ = name + "=";
-    for (const cookie of cookies) {
-      const trimmed = cookie.trim();
-      if (trimmed.startsWith(nameEQ)) {
-        return trimmed.substring(nameEQ.length);
-      }
-    }
-    return null;
-  }
-
-  // src/preload/plugins/playChoice.ts
-  init_electron();
-  var _configCache = null;
-  var _configCacheTime = 0;
-  function getPlayButtonConfig() {
-    if (_configCache && Date.now() - _configCacheTime < 1e4) {
-      return Promise.resolve(_configCache);
-    }
-    return new Promise((resolve2) => {
-      ipcRenderer.send("get-play-button-config");
-      const handler = (event, data) => {
-        ipcRenderer.off("play-button-config-info", handler);
-        const cfg = data || { hideOriginalPlayButton: true, defaultPlayer: "mpv", potPath: "" };
-        _configCache = cfg;
-        _configCacheTime = Date.now();
-        resolve2(cfg);
-      };
-      ipcRenderer.once("play-button-config-info", handler);
-      setTimeout(() => {
-        ipcRenderer.off("play-button-config-info", handler);
-        const cfg = _configCache || { hideOriginalPlayButton: true, defaultPlayer: "mpv", potPath: "" };
-        _configCache = cfg;
-        _configCacheTime = Date.now();
-        resolve2(cfg);
-      }, 2e3);
-    });
-  }
-  function createPlayModal(originalButton, config, playExternal) {
-    const existingModal = document.getElementById("play-choice-modal");
-    if (existingModal) {
-      existingModal.remove();
-    }
-    const modalOverlay = document.createElement("div");
-    modalOverlay.id = "play-choice-modal";
-    modalOverlay.setAttribute("data-fnos-ui", "1");
-    modalOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        /* [lc-1077] \u900F\u660E\u7A97\u53E3(transparent:true)\u4E0B, \u534A\u900F\u660E\u5168\u5C4F\u906E\u7F69\u5728 add \u7684\u77AC\u95F4\u5408\u6210\u5668\u4F1A\u628A
-           \u7A97\u53E3\u9ED8\u8BA4\u767D\u8272\u753B\u5E03\u900F\u51FA(\u91CD\u7ED8\u5E27\u91CC\u534A\u900F\u660E\u5C42\u5C1A\u672A\u753B\u597D, \u5E95\u4E0B\u662F\u767D canvas \u800C\u975E\u6DF1\u8272 fnOS \u9875)
-           \u2192 \u6574\u5C4F\u5148\u95EA\u767D\u518D"\u6263\u51FA"\u5F39\u7A97\u3002\u6539\u4E3A\u4E0D\u900F\u660E\u6DF1\u975B\u6E10\u53D8\u5E95, \u5F7B\u5E95\u675C\u7EDD\u767D\u900F; \u5F39\u7A97\u5361\u7247\u4ECD\u4FDD\u7559\u73BB\u7483\u8D28\u611F\u3002
-           \u4E0D\u900F\u660E\u906E\u7F69\u540C\u65F6\u76D6\u4F4F"fnOS \u8DF3\u5230\u767D\u5E95\u65B0\u89C6\u56FE"\u7684\u53EF\u80FD\u767D\u95EA, \u4E00\u4E3E\u4E24\u5F97\u3002 */
-        background: linear-gradient(160deg, #0e1330 0%, #080b1c 100%);
-        z-index: 2147483600;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    `;
-    const modalContent = document.createElement("div");
-    modalContent.style.cssText = `
-        background: rgba(28, 30, 46, 0.78);
-        border-radius: 20px;
-        padding: 32px;
-        min-width: 380px;
-        box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.45),
-            inset 0 1px 0 rgba(255, 255, 255, 0.25),
-            inset 0 -1px 0 rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-    `;
-    const title = document.createElement("h3");
-    title.textContent = t("\u9009\u62E9\u64AD\u653E\u65B9\u5F0F");
-    title.style.cssText = `
-        margin: 0 0 24px 0;
-        font-size: 20px;
-        font-weight: 600;
-        text-align: center;
-        color: #ffffff;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        letter-spacing: 0.5px;
-    `;
-    const buttonContainer = document.createElement("div");
-    buttonContainer.style.cssText = `
-        display: flex;
-        gap: 16px;
-        justify-content: center;
-        flex-wrap: wrap;
-    `;
-    const nativePlayBtn = document.createElement("button");
-    nativePlayBtn.textContent = t("\u539F\u751F\u64AD\u653E");
-    nativePlayBtn.style.cssText = `
-        padding: 12px 24px;
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 12px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        color: #ffffff;
-        transition: all 0.3s ease;
-        min-width: 100px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    `;
-    const externalPlayer = config.defaultPlayer;
-    const extPlayBtn = document.createElement("button");
-    extPlayBtn.textContent = externalPlayer === "potplayer" ? "PotPlayer" : t("MPV\u64AD\u653E");
-    extPlayBtn.style.cssText = externalPlayer === "potplayer" ? `
-        padding: 12px 24px;
-        background: rgba(255, 138, 0, 0.8);
-        border: 1px solid rgba(255, 138, 0, 0.6);
-        border-radius: 12px;
-        color: white;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(255, 138, 0, 0.4);
-        min-width: 100px;
-        ` : `
-        padding: 12px 24px;
-        background: rgba(102, 126, 234, 0.8);
-        border: 1px solid rgba(102, 126, 234, 0.6);
-        border-radius: 12px;
-        color: white;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        min-width: 100px;
-        `;
-    const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = t("\u53D6\u6D88");
-    cancelBtn.style.cssText = `
-        padding: 12px 24px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.8);
-        transition: all 0.3s ease;
-        min-width: 100px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    `;
-    const addHoverEffect = (btn, hoverStyle, normalStyle) => {
-      btn.addEventListener("mouseenter", () => {
-        Object.assign(btn.style, hoverStyle);
-      });
-      btn.addEventListener("mouseleave", () => {
-        Object.assign(btn.style, normalStyle);
-      });
-    };
-    addHoverEffect(nativePlayBtn, {
-      background: "rgba(255, 255, 255, 0.25)",
-      borderColor: "rgba(255, 255, 255, 0.5)",
-      transform: "translateY(-3px)",
-      boxShadow: "0 8px 20px rgba(0, 0, 0, 0.2)"
-    }, {
-      background: "rgba(255, 255, 255, 0.15)",
-      borderColor: "rgba(255, 255, 255, 0.3)",
-      transform: "translateY(0)",
-      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
-    });
-    addHoverEffect(extPlayBtn, {
-      transform: "translateY(-3px)"
-    }, {
-      transform: "translateY(0)"
-    });
-    if (externalPlayer === "potplayer") {
-      extPlayBtn.style.background = "rgba(255, 138, 0, 0.8)";
-      addHoverEffect(extPlayBtn, {
-        background: "rgba(255, 138, 0, 0.9)",
-        boxShadow: "0 8px 25px rgba(255, 138, 0, 0.6)"
-      }, {
-        background: "rgba(255, 138, 0, 0.8)",
-        boxShadow: "0 4px 15px rgba(255, 138, 0, 0.4)"
-      });
-    } else {
-      extPlayBtn.style.background = "rgba(102, 126, 234, 0.8)";
-      addHoverEffect(extPlayBtn, {
-        background: "rgba(102, 126, 234, 0.9)",
-        boxShadow: "0 8px 25px rgba(102, 126, 234, 0.6)"
-      }, {
-        background: "rgba(102, 126, 234, 0.8)",
-        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)"
-      });
-    }
-    addHoverEffect(cancelBtn, {
-      background: "rgba(255, 255, 255, 0.2)",
-      borderColor: "rgba(255, 255, 255, 0.4)",
-      color: "#ffffff",
-      transform: "translateY(-3px)",
-      boxShadow: "0 8px 20px rgba(0, 0, 0, 0.15)"
-    }, {
-      background: "rgba(255, 255, 255, 0.1)",
-      borderColor: "rgba(255, 255, 255, 0.2)",
-      color: "rgba(255, 255, 255, 0.8)",
-      transform: "translateY(0)",
-      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
-    });
-    nativePlayBtn.addEventListener("click", () => {
-      modalOverlay.remove();
-      logger_default.info("\u7528\u6237\u9009\u62E9\u4E86\u539F\u751F\u64AD\u653E");
-      if (originalButton) {
-        originalButton.setAttribute("data-allow-original-play", "true");
-        setTimeout(() => {
-          const clickEvent = new MouseEvent("click", {
-            view: window,
-            bubbles: true,
-            cancelable: true
-          });
-          originalButton.dispatchEvent(clickEvent);
-          setTimeout(() => {
-            originalButton.removeAttribute("data-allow-original-play");
-          }, 1e3);
-        }, 50);
-      }
-    });
-    extPlayBtn.addEventListener("click", () => {
-      modalOverlay.remove();
-      logger_default.info(`\u7528\u6237\u9009\u62E9\u4E86\u5916\u90E8\u64AD\u653E\u5668: ${externalPlayer}`);
-      playExternal(externalPlayer);
-    });
-    cancelBtn.addEventListener("click", () => {
-      modalOverlay.remove();
-    });
-    modalOverlay.addEventListener("click", (e) => {
-      if (e.target === modalOverlay) {
-        modalOverlay.remove();
-      }
-    });
-    const escHandler = (e) => {
-      if (e.key === "Escape") {
-        modalOverlay.remove();
-        document.removeEventListener("keydown", escHandler);
-      }
-    };
-    document.addEventListener("keydown", escHandler);
-    if (!config.hideOriginalPlayButton) {
-      buttonContainer.appendChild(nativePlayBtn);
-    }
-    buttonContainer.appendChild(extPlayBtn);
-    buttonContainer.appendChild(cancelBtn);
-    modalContent.appendChild(title);
-    modalContent.appendChild(buttonContainer);
-    modalOverlay.appendChild(modalContent);
-    document.body.appendChild(modalOverlay);
-  }
-
-  // src/preload/plugins/playMaskButton.ts
-  init_electron();
-  async function playWithPlayer(button, player) {
-    const domResult = sendPlayEventToMain(button, player);
-    if (!domResult) {
-      logger_default.info("DOM method failed, trying original logic interception...");
-      const itemGuid = await tryGetItemGuidFromOriginalLogic(button);
-      if (itemGuid) {
-        logger_default.info("Successfully obtained item_guid from original logic:", itemGuid);
-        const token = getCookie("Trim-MC-token");
-        if (token) {
-          const playData = { id: itemGuid, token, sourceIndex: 0, player };
-          ipcRenderer.send("play-movie", playData);
-          return;
-        }
-        logger_default.error("No token found");
-        return;
-      }
-      logger_default.error("All methods failed to get item_guid");
-    } else {
-      logger_default.info("Successfully used DOM method to get item_guid");
-    }
-  }
-  var _playErrorModalObs = null;
-  function suppressFnosPlayErrorModal() {
-    if (_playErrorModalObs) return;
-    const tryClose = () => {
-      try {
-        const modal2 = Array.from(document.querySelectorAll('.semi-modal, [role="dialog"]')).find((el) => {
-          const t2 = (el.textContent || "").trim();
-          return (t2.includes("\u64AD\u653E\u5931\u8D25") || t2.includes("\u672A\u77E5\u9519\u8BEF")) && el.querySelector(".semi-button-primary");
-        });
-        if (modal2) {
-          const okBtn = modal2.querySelector(".semi-button-primary");
-          if (okBtn) {
-            okBtn.click();
-          }
-          logger_default.info("[lc-629] \u5DF2\u81EA\u52A8\u5173\u95ED\u98DE\u725B\u300C\u64AD\u653E\u5931\u8D25\u300D\u5F39\u7A97");
-        }
-      } catch {
-      }
-    };
-    _playErrorModalObs = new MutationObserver(() => {
-      tryClose();
-    });
-    _playErrorModalObs.observe(document.body, { childList: true, subtree: true });
-    tryClose();
-    setTimeout(() => {
-      try {
-        if (_playErrorModalObs) {
-          _playErrorModalObs.disconnect();
-          _playErrorModalObs = null;
-        }
-      } catch {
-      }
-    }, 5e3);
-  }
-  function tryGetItemGuidFromOriginalLogic(button) {
-    return new Promise((resolve2) => {
-      try {
-        const before = getInterceptedGuid();
-        setExternalPlayActive(true);
-        let done = false;
-        const cleanup = () => {
-          if (done) return;
-          done = true;
-          setExternalPlayActive(false);
-          button.removeAttribute("data-allow-original-play");
-        };
-        const timeout = setTimeout(() => {
-          cleanup();
-          resolve2(null);
-        }, 2500);
-        button.setAttribute("data-allow-original-play", "true");
-        suppressFnosPlayErrorModal();
-        setTimeout(() => {
-          try {
-            const clickEvent = new MouseEvent("click", {
-              view: window,
-              bubbles: true,
-              cancelable: true
-            });
-            button.dispatchEvent(clickEvent);
-          } catch {
-          }
-          const pollStart = Date.now();
-          const poll = () => {
-            if (done) return;
-            const cur = getInterceptedGuid();
-            if (cur && cur !== before) {
-              cleanup();
-              logger_default.info("[lc-614] \u4ECE skipInject \u62E6\u622A\u5230\u5F53\u524D item_guid:", cur);
-              resolve2(cur);
-              return;
-            }
-            if (Date.now() - pollStart > 2500) {
-              cleanup();
-              resolve2(null);
-              return;
-            }
-            setTimeout(poll, 150);
-          };
-          setTimeout(poll, 200);
-        }, 50);
-      } catch (error) {
-        setExternalPlayActive(false);
-        logger_default.error("Error in tryGetItemGuidFromOriginalLogic:", error);
-        resolve2(null);
-      }
-    });
-  }
-  var GUID_RE3 = /\/v\/(?:movie|tv|video|live|other)\/(?:season\/|episode\/)?([a-f0-9]{32,64})/i;
-  function getGuidFromContinueCard(card) {
-    try {
-      const imgs = card.querySelectorAll("img");
-      for (const im of Array.from(imgs)) {
-        const m = (im.currentSrc || im.src || im.getAttribute("src") || "").match(/poster-([a-f0-9]{32})/i);
-        if (m && m[1]) return m[1];
-      }
-      const all = card.querySelectorAll('[style*="background"]');
-      for (const el of Array.from(all)) {
-        const m = (el.getAttribute("style") || "").match(/([a-f0-9]{32})/i);
-        if (m && m[1]) return m[1];
-      }
-      const g = card.getAttribute("data-guid") || card.getAttribute("data-item-id") || card.getAttribute("data-id") || "";
-      const gm = g.match(/[a-f0-9]{32}/i);
-      if (gm && gm[0] && !/^fv_/.test(gm[0])) return gm[0];
-    } catch {
-    }
-    return null;
-  }
-  function getItemGuidFromDOM(button) {
-    try {
-      const continueCard = button.classList && button.classList.contains("continue-card-root") ? button : button.closest(".continue-card-root");
-      if (continueCard) {
-        const g = getGuidFromContinueCard(continueCard);
-        if (g) {
-          logger_default.info("Found guid in continue-card poster:", g);
-          return g;
-        }
-      }
-      let container = button;
-      while (container && container !== document.body) {
-        if (container.getAttribute && container.getAttribute("data-id") === "details") {
-          const links = container.querySelectorAll("a[href]");
-          for (const a of Array.from(links)) {
-            const m = a.href.match(GUID_RE3);
-            if (m && m[1]) {
-              logger_default.info("Found guid in details:", m[1]);
-              return m[1];
-            }
-          }
-          break;
-        }
-        container = container.parentElement;
-      }
-      const selfGuid = button.getAttribute("data-item-guid") || button.getAttribute("data-guid") || button.getAttribute("data-id") || "";
-      if (selfGuid) {
-        const m = selfGuid.match(GUID_RE3);
-        if (m && m[1]) {
-          logger_default.info("Found guid in button data attr:", m[1]);
-          return m[1];
-        }
-      }
-      if (button.tagName === "A") {
-        const m = button.href.match(GUID_RE3);
-        if (m && m[1]) {
-          logger_default.info("Found guid in button anchor:", m[1]);
-          return m[1];
-        }
-      }
-      const card = button.closest(".card-root") || button.closest('[class*="card"]') || button.closest("a") || button.closest('[class*="dropdown"]') || button.closest('[class*="popover"]') || button.closest('[class*="menu"]') || button.closest('[role="menu"]') || button.closest('[role="listbox"]') || button.closest(".semi-portal");
-      const scope = card || button;
-      const cardLinks = scope.querySelectorAll("a[href]");
-      for (const a of Array.from(cardLinks)) {
-        const m = a.href.match(GUID_RE3);
-        if (m && m[1]) {
-          logger_default.info("Found guid in card/floating link:", m[1]);
-          return m[1];
-        }
-      }
-      if (scope !== button && scope.tagName === "A") {
-        const m = scope.href.match(GUID_RE3);
-        if (m && m[1]) {
-          logger_default.info("Found guid in card anchor:", m[1]);
-          return m[1];
-        }
-      }
-      try {
-        const imgs = scope.querySelectorAll("img");
-        for (const im of Array.from(imgs)) {
-          const src = im.currentSrc || im.src || im.getAttribute("src") || "";
-          const m = src.match(/(?:poster|resource)[-_]([a-f0-9]{32,64})/i);
-          if (m && m[1]) {
-            logger_default.info("Found guid in card poster:", m[1].substring(0, 20));
-            return m[1];
-          }
-        }
-      } catch {
-      }
-      const url = window.location.href;
-      const urlMatch = url.match(GUID_RE3);
-      if (urlMatch && urlMatch[1]) {
-        logger_default.info("Found guid from URL:", urlMatch[1]);
-        return urlMatch[1];
-      }
-      return null;
-    } catch (error) {
-      logger_default.error("Error extracting guid from DOM:", error);
-      return null;
-    }
-  }
-  function sendPlayEventToMain(button = null, player = "mpv") {
-    let id = "";
-    if (button) {
-      id = getItemGuidFromDOM(button) || "";
-    }
-    if (!id) {
-      return null;
-    }
-    const token = getCookie("Trim-MC-token");
-    if (id && token) {
-      const playData = { id, token, sourceIndex: 0, player };
-      ipcRenderer.send("play-movie", playData);
-      return id;
-    } else {
-      logger_default.error("Failed to extract ID or token. ID:", id, "Token:", token);
-      return null;
-    }
-  }
-  async function playEpisodeByGuid(guid) {
-    const token = getCookie("Trim-MC-token");
-    if (!guid || !token) {
-      logger_default.error("playEpisodeByGuid: \u7F3A\u5C11 guid \u6216 token");
-      return;
-    }
-    const config = await getPlayButtonConfig();
-    const playData = { id: guid, token, sourceIndex: 0, player: config.defaultPlayer };
-    logger_default.info("[\u9009\u96C6/\u4E0B\u4E00\u96C6] \u8DEF\u7531\u5230\u5916\u90E8\u64AD\u653E\u5668:", guid, config.defaultPlayer);
-    ipcRenderer.send("play-movie", playData);
-  }
-  function findNextEpisodeGuid() {
-    try {
-      const cur = (location.pathname || "").match(GUID_RE3);
-      const curGuid = cur && cur[1];
-      const anchors = Array.from(document.querySelectorAll("a[href]"));
-      const eps = [];
-      for (const a of anchors) {
-        if (/season\//i.test(a.href)) continue;
-        const m = a.href.match(GUID_RE3);
-        if (m && m[1] && !eps.includes(m[1])) eps.push(m[1]);
-      }
-      if (eps.length === 0) return null;
-      if (!curGuid) return eps[0];
-      const idx = eps.indexOf(curGuid);
-      if (idx >= 0 && idx + 1 < eps.length) return eps[idx + 1];
-      return null;
-    } catch {
-      return null;
-    }
-  }
-  function isPlayLabel(text) {
-    const t2 = (text || "").trim();
-    if (!t2) return false;
-    if (/(预览|试看|预告|trailer|preview|设置|配置|管理)/i.test(t2)) return false;
-    return /^(播放|立即播放|播放全片|继续播放|从头播放|play)$/i.test(t2) || /播放/.test(t2) || /^play\b/i.test(t2);
-  }
-  function findHomeCardPlay(target) {
-    const path = (location.pathname || "").replace(/\/+$/, "");
-    if (path !== "/v" && path !== "") return null;
-    const continueCard = target.closest(".continue-card-root");
-    if (continueCard) {
-      const opBtn = target.closest("[title], [aria-haspopup], [aria-expanded], [data-popupid], [tabindex], [aria-label]");
-      if (opBtn && opBtn !== continueCard) {
-        logger_default.info("[lc-618] \u7EE7\u7EED\u89C2\u770B\u5361\u7247\u5185\u64CD\u4F5C\u6309\u94AE\u70B9\u51FB, \u653E\u884C\u539F\u751F:", (opBtn.getAttribute("title") || opBtn.getAttribute("aria-label") || opBtn.tagName).substring(0, 30));
-        return null;
-      }
-      const hasGuid = !!getGuidFromContinueCard(continueCard);
-      if (hasGuid) {
-        logger_default.info("[lc-604] \u7EE7\u7EED\u89C2\u770B\u5361\u7247\u70B9\u51FB\u62E6\u622A(\u6D77\u62A5 guid \u63D0\u53D6\u6210\u529F)");
-        return continueCard;
-      }
-      logger_default.info("[lc-604] \u7EE7\u7EED\u89C2\u770B\u5361\u7247\u65E0 guid, \u653E\u884C\u539F\u751F");
-      return null;
-    }
-    const el = target.closest('button, a, [role="button"]');
-    if (!el) return null;
-    if (el.classList.contains("play-mask__btn--play")) return null;
-    if (el.hasAttribute("data-mpv-intercepted")) return null;
-    const label = (el.getAttribute("aria-label") || el.textContent || "").trim();
-    let ok = isPlayLabel(label);
-    if (!ok) {
-      const pathEl = el.querySelector("svg path[d]");
-      const d = pathEl ? pathEl.getAttribute("d") || "" : "";
-      ok = d.startsWith("M5.984") || d.includes("18.819") || /M8 5v14|M6 4l14 8-14 8/.test(d);
-    }
-    if (!ok) return null;
-    const inCard = el.closest(".card-root") || el.closest('[class*="card"]') || el.closest("a") || el.closest('[class*="dropdown"]') || el.closest('[class*="popover"]') || el.closest('[class*="menu"]') || el.closest('[role="menu"]') || el.closest('[role="listbox"]') || el.closest(".semi-portal");
-    if (!inCard) return null;
-    return el;
-  }
-  function handleMaskPlay(mask) {
-    (async () => {
-      try {
-        const config = await getPlayButtonConfig();
-        if (config.hideOriginalPlayButton) {
-          logger_default.info(`Mask button click intercepted, directly playing with ${config.defaultPlayer}`);
-          await playWithPlayer(mask, config.defaultPlayer);
-        } else {
-          logger_default.info("Original play button NOT hidden, showing player choice modal");
-          await createPlayModal(mask, { ...config, hideOriginalPlayButton: false }, (p) => playWithPlayer(mask, p));
-        }
-      } catch (err) {
-        logger_default.error("Error in handleMaskPlay:", err);
-      }
-    })();
-  }
-  var _playClickInstalled = false;
-  function detectPlayTarget(target) {
-    if (!target || typeof target.closest !== "function") return null;
-    if (target.closest('[data-allow-original-play="true"]')) return null;
-    if (target.closest("[data-fnos-ui]")) return null;
-    const mask = target.closest(".play-mask__btn--play");
-    if (mask) return { kind: "mask", el: mask };
-    const cardPlay = findHomeCardPlay(target);
-    if (cardPlay) return { kind: "card", el: cardPlay };
-    const detailPath = (location.pathname || "").replace(/\/+$/, "");
-    if (/^\/v\/(tv|movie)\//.test(detailPath) && !/\/season\//.test(detailPath)) {
-      const epAnchor = target.closest("a[href]");
-      if (epAnchor && epAnchor.href && !/season\//i.test(epAnchor.href)) {
-        const em = epAnchor.href.match(GUID_RE3);
-        if (em && em[1]) {
-          if (target.closest("[data-mpv-btn],[data-custom-play],[data-mask-intercepted],[data-mpv-intercepted]")) return null;
-          const curGuid = (detailPath.match(GUID_RE3) || [])[1];
-          if (em[1] !== curGuid) return { kind: "ep", el: epAnchor, guid: em[1] };
-        }
-      }
-      const clickable = target.closest('button, [role="button"], a');
-      if (clickable) {
-        const label = (clickable.getAttribute("aria-label") || clickable.textContent || "").trim();
-        if (/下一集|下一話|next\s*episode/i.test(label)) {
-          const nextGuid = findNextEpisodeGuid();
-          if (nextGuid) return { kind: "next", el: clickable, guid: nextGuid };
-        }
-      }
-    }
-    return null;
-  }
-  function installPlayClickInterceptor() {
-    if (typeof window !== "undefined" && window.__FNTV_WEB__) {
-      logger_default.info("[playMask] \u7F51\u9875\u7AEF\uFF1A\u5916\u90E8\u64AD\u653E\u5668\u94FE\u4E0D\u53EF\u7528\uFF0C\u8DF3\u8FC7\u64AD\u653E\u70B9\u51FB\u62E6\u622A\uFF08\u539F\u751F\u64AD\u653E\uFF09");
-      return;
-    }
-    if (_playClickInstalled) return;
-    _playClickInstalled = true;
-    const blockPress = (e) => {
-      const target = e.target;
-      if (!target || typeof target.closest !== "function") return;
-      if (detectPlayTarget(target)) {
-        e.stopImmediatePropagation();
-      }
-    };
-    window.addEventListener("pointerdown", blockPress, true);
-    window.addEventListener("mousedown", blockPress, true);
-    window.addEventListener("pointerup", blockPress, true);
-    window.addEventListener("mouseup", blockPress, true);
-    window.addEventListener("click", (e) => {
-      const target = e.target;
-      if (!target || typeof target.closest !== "function") return;
-      if (target.closest('[data-allow-original-play="true"]')) return;
-      const hit = detectPlayTarget(target);
-      if (!hit) return;
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      if (hit.kind === "mask") {
-        hit.el.setAttribute("data-mask-intercepted", "true");
-        handleMaskPlay(hit.el);
-      } else if (hit.kind === "card") {
-        hit.el.setAttribute("data-home-intercepted", "true");
-        (async () => {
-          const config = await getPlayButtonConfig();
-          logger_default.info("Home card play icon intercepted, playing with", config.defaultPlayer);
-          await playWithPlayer(hit.el, config.defaultPlayer);
-        })();
-      } else if (hit.kind === "ep" || hit.kind === "next") {
-        (async () => {
-          await playEpisodeByGuid(hit.guid);
-        })();
-      }
-    }, true);
-  }
-  registerHook("onReady" /* OnReady */, installPlayClickInterceptor);
-
-  // src/preload/plugins/playButton.ts
-  function sendPlayEventToMain2(button = null, player = "mpv") {
-    const id = button ? getItemGuidFromDOM(button) : "";
-    if (!id) {
-      logger_default.error("Failed to extract item guid from button/DOM");
-      return null;
-    }
-    const token = getCookie("Trim-MC-token");
-    const sourceIndex = getCurrentSelectedVersionIndex();
-    if (id && token) {
-      const playData = { id, token, sourceIndex, player };
-      ipcRenderer.send("play-movie", playData);
-      return id;
-    } else {
-      logger_default.error("Failed to extract ID or token. ID:", id, "Token:", token);
-      return null;
-    }
-  }
-  function getCurrentSelectedVersionIndex() {
-    try {
-      const buttons = Array.from(document.querySelectorAll("button.semi-button.\\!h-9.\\!px-6"));
-      if (buttons.length === 0) {
-        logger_default.warn("No version buttons found via selector.");
-        return 0;
-      }
-      const selectedIndex = buttons.findIndex(
-        (btn) => btn.classList.contains("semi-button-primary")
-      );
-      const result = selectedIndex === -1 ? 0 : selectedIndex;
-      logger_default.info(`Found ${buttons.length} buttons, selected index: ${result}`);
-      return result;
-    } catch (e) {
-      logger_default.error("Error calculating version index:", e);
-      return 0;
-    }
-  }
-  function isPlaySemanticText(text) {
-    const t2 = (text || "").trim();
-    if (!t2) return false;
-    if (/(预览|试看|预告|trailer|preview|设置|配置|管理|播放器)/i.test(t2)) return false;
-    return /^(播放|立即播放|播放全片|继续播放|从头播放|播放影片|play)$/i.test(t2) || /^播放/.test(t2) || /^play\b/i.test(t2);
-  }
-  function findReferenceButton(context = document) {
-    const buttons = Array.from(context.querySelectorAll("button")).filter((b) => !b.hasAttribute("data-mpv-btn") && !b.hasAttribute("data-custom-play") && !(b.closest && b.closest("[data-fnos-ui]")) && b.offsetParent !== null);
-    if (buttons.length === 0) return null;
-    let btn = buttons.find(
-      (b) => b.classList.contains("semi-button-primary") && isPlaySemanticText(b.innerText)
-    );
-    if (btn) return btn;
-    btn = buttons.find(
-      (b) => isPlaySemanticText(b.innerText) && b.offsetParent !== null
-    );
-    if (btn) return btn;
-    btn = buttons.find((b) => isPlaySemanticText(b.getAttribute("aria-label") || ""));
-    if (btn) return btn;
-    for (const b of buttons) {
-      const icon = b.querySelector("svg > path[d]");
-      const d = icon ? icon.getAttribute("d") || "" : "";
-      const semantic = isPlaySemanticText(b.getAttribute("aria-label") || b.innerText || "");
-      if (semantic && (d.startsWith("M5.984") || d.includes("18.819"))) {
-        return b;
-      }
-    }
-    btn = buttons.find((b) => {
-      const classes = b.getAttribute("class") || "";
-      return classes.includes("semi-button") && classes.includes("semi-button-primary") && classes.includes("!min-w-[150px]");
-    });
-    if (btn) return btn;
-    return null;
-  }
-  function clonePlayBtnAndInject(callback, btnText) {
-    const existing = document.querySelector("[data-custom-play]");
-    if (existing) {
-      const curText = (existing.getAttribute("aria-label") || existing.textContent || "").trim();
-      if (curText === btnText) return;
-      existing.remove();
-      const ref = findReferenceButton();
-      if (ref) ref.removeAttribute("data-mpv-btn");
-    } else {
-      const marked2 = document.querySelector("button[data-mpv-btn]");
-      if (marked2 && marked2.offsetParent !== null) marked2.removeAttribute("data-mpv-btn");
-    }
-    const referenceButton = findReferenceButton();
-    if (!referenceButton || referenceButton.hasAttribute("data-mpv-btn")) return;
-    const isMainButtonShape = referenceButton.classList.contains("semi-button-primary") || (referenceButton.getAttribute("class") || "").includes("!min-w-[150px]");
-    const hasText = (referenceButton.innerText || "").trim().length > 0;
-    if (!isMainButtonShape && !hasText) return;
-    logger_default.info("Detected inject page, injecting play button...");
-    referenceButton.setAttribute("data-mpv-btn", "processed");
-    const newButton = referenceButton.cloneNode(true);
-    newButton.removeAttribute("data-mpv-btn");
-    const textSpans = newButton.querySelector("span > span > span");
-    if (textSpans) textSpans.textContent = btnText;
-    newButton.setAttribute("data-custom-play", "true");
-    newButton.setAttribute("aria-label", btnText);
-    newButton.addEventListener("click", () => callback(referenceButton));
-    const parentNode = referenceButton.parentNode;
-    if (parentNode) {
-      parentNode.insertBefore(newButton, referenceButton.nextSibling);
-    }
-  }
-  function interceptOriginalButton(defaultPlayer) {
-    const referenceButton = findReferenceButton();
-    if (!referenceButton || referenceButton.hasAttribute("data-mpv-intercepted")) return;
-    if (referenceButton.hasAttribute("data-mask-intercepted")) return;
-    logger_default.info("Detected page, intercepting original play button...");
-    referenceButton.setAttribute("data-mpv-intercepted", "true");
-    const clickHandler = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      logger_default.info(`Original play button intercepted, playing with ${defaultPlayer}`);
-      sendPlayEventToMain2(referenceButton, defaultPlayer);
-      return false;
-    };
-    referenceButton.addEventListener("click", clickHandler, true);
-  }
-  async function injectCustomPlayBtn() {
-    const config = await getPlayButtonConfig();
-    if (config.hideOriginalPlayButton) {
-      interceptOriginalButton(config.defaultPlayer);
-    } else {
-      const label = config.defaultPlayer === "potplayer" ? "PotPlayer" : "MPV\u64AD\u653E";
-      clonePlayBtnAndInject(async (button) => {
-        const id = sendPlayEventToMain2(button, config.defaultPlayer);
-        if (id) return;
-        const itemGuid = await tryGetItemGuidFromOriginalLogic(button);
-        if (!itemGuid) {
-          logger_default.error("[lc-614] \u514B\u9686\u6309\u94AE DOM+\u62E6\u622A\u5747\u672A\u53D6\u5F97 guid");
-          return;
-        }
-        const token = getCookie("Trim-MC-token");
-        if (!token) {
-          logger_default.error("[lc-614] \u65E0 token");
-          return;
-        }
-        const playData = { id: itemGuid, token, sourceIndex: 0, player: config.defaultPlayer };
-        ipcRenderer.send("play-movie", playData);
-      }, label);
-    }
-  }
-  function handlePlayButtonInjection() {
-    injectCustomPlayBtn().catch((error) => {
-      logger_default.error("Error in injectCustomPlayBtn:", error);
-    });
-  }
-  var pollTimer = null;
-  function startInjectionPoll() {
-    if (pollTimer !== null) return;
-    pollTimer = setInterval(() => {
-      try {
-        if (!findReferenceButton()) return;
-        injectCustomPlayBtn().catch((error) => {
-          logger_default.error("Error in poll injectCustomPlayBtn:", error);
-        });
-      } catch (e) {
-      }
-    }, 1200);
-  }
-  registerHook("onReady" /* OnReady */, handlePlayButtonInjection);
-  registerHook("onDomChange" /* OnDomChange */, handlePlayButtonInjection);
-  registerHook("onReady" /* OnReady */, startInjectionPoll);
 
   // src/preload/plugins/playMemory.ts
   var LS_RATE = "fntv-play-rate";

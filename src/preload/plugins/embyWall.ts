@@ -955,173 +955,6 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     // [lc-1041] 主题模式改挂「外观」分类（secAppearance 创建处插入），不再混在功能开关里
 
 
-    // ===== 分组2: MPV 路径 =====
-    const sec2 = section('播放器');
-    const secBody2 = sec2.body;
-
-    // 双栏布局：左=MPV，右=PotPlayer（窄屏自动折叠为单栏）
-    const playerCols = document.createElement('div');
-    playerCols.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:16px;margin-top:4px;';
-    const colMpv = document.createElement('div');
-    colMpv.style.cssText = 'min-width:0;display:flex;flex-direction:column;gap:8px;';
-    const colPot = document.createElement('div');
-    colPot.style.cssText = 'min-width:0;display:flex;flex-direction:column;gap:8px;padding-left:16px;border-left:1px solid var(--fnos-ui-border2);';
-    const subHead = (text: string): HTMLElement => {
-        const d = document.createElement('div');
-        d.textContent = text;
-        d.style.cssText = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--fnos-ui-sec);margin-bottom:2px;';
-        return d;
-    };
-    colMpv.appendChild(subHead('MPV'));
-    colPot.appendChild(subHead('PotPlayer'));
-    playerCols.appendChild(colMpv);
-    playerCols.appendChild(colPot);
-    secBody2.appendChild(playerCols);
-
-    const mpvLabel = document.createElement('div');
-    mpvLabel.textContent = t('MPV 路径（留空则使用应用内置）');
-    mpvLabel.style.cssText = 'color:var(--fnos-ui-muted);font-size:11.5px;margin:0 0 5px;';
-    colMpv.appendChild(mpvLabel);
-
-    const mpvPath = document.createElement('div');
-    mpvPath.id = 'fnos-mpv-path';
-    mpvPath.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-muted2);word-break:break-all;margin-bottom:7px;min-height:28px;'
-      + 'max-height:72px;overflow-y:auto;padding:6px 9px;background:var(--fnos-ui-input-bg);border-radius:7px;'
-      + 'border:1px solid var(--fnos-ui-border);line-height:1.5;';
-    mpvPath.textContent = t('应用内置（已随安装包分发，无需本机安装）'); // 初始占位, 不依赖 _refresh 回填
-    colMpv.appendChild(mpvPath);
-
-    const mpvBtns = document.createElement('div');
-    mpvBtns.style.cssText = 'display:flex;gap:6px;';
-    const pickBtn = mkBtn('选择文件', true);
-    const clearBtn = mkBtn('清空', true);
-    const iccToggleBtn = mkBtn('ICC 校色：开', true);
-    iccToggleBtn.style.fontWeight = '600';
-    iccToggleBtn.style.color = 'var(--fnos-ui-accent)';
-    mpvBtns.appendChild(pickBtn); mpvBtns.appendChild(clearBtn); mpvBtns.appendChild(iccToggleBtn);
-    colMpv.appendChild(mpvBtns);
-    pickBtn.addEventListener('click', async (e: Event) => {
-      e.stopPropagation();
-      const p = await ipcRenderer.invoke('settings:pick-mpv-path');
-      if (p) mpvPath.textContent = p as string;
-    });
-    clearBtn.addEventListener('click', async (e: Event) => {
-      e.stopPropagation();
-      await ipcRenderer.invoke('settings:clear-mpv-path');
-      mpvPath.textContent = t('应用内置（已随安装包分发，无需本机安装）');
-    });
-
-    // ===== 默认 MPV 着色器（由应用面板管理 MPV 启动默认，MPV 内 Ctrl+1~9 仍可临时切换）=====
-    const shaderLabel = document.createElement('div');
-    shaderLabel.textContent = t('默认 MPV 着色器');
-    shaderLabel.style.cssText = 'color:var(--fnos-ui-muted);font-size:11.5px;margin:12px 0 5px;';
-    colMpv.appendChild(shaderLabel);
-
-    const shaderSel = document.createElement('select');
-    shaderSel.id = 'fnos-mpv-shader';
-    shaderSel.style.cssText = 'width:100%;font-size:12px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);'
-      + 'border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;cursor:pointer;';
-    const shaderOptions: [string, string][] = [
-      ['off', '默认不生效任何着色器'],
-      ['a', '模式A（大多数1080p动画）'],
-      ['b', '模式B（大多数720p动画）'],
-      ['aa', '模式A+A（高质量1080p）'],
-      ['bb', '模式B+B（高质量720p）'],
-      ['lite', '轻量模式（低配置设备）'],
-      ['denoise', '仅降噪'],
-      ['real', '真实系（真人/纪录片）'],
-      ['cinema', '电影感'],
-      ['ultra', '全增强（极致画质）']
-    ];
-    shaderOptions.forEach(([k, label]) => {
-      const o = document.createElement('option');
-      o.value = k; o.textContent = label;
-      shaderSel.appendChild(o);
-    });
-    colMpv.appendChild(shaderSel);
-
-    const applyShaderConfig = (): void => {
-      const iccOn = iccToggleBtn.textContent?.includes('开') ?? false;
-      ipcRenderer.invoke('settings:set-mpv-shader-config', { shader: shaderSel.value, icc: iccOn })
-        .catch((err) => log('set-mpv-shader-config failed', err));
-    };
-    const renderIccBtn = (on: boolean): void => {
-      iccToggleBtn.textContent = on ? 'ICC 校色：开' : 'ICC 校色：关';
-      iccToggleBtn.style.color = on ? 'var(--fnos-ui-accent)' : 'var(--fnos-ui-muted2)';
-    };
-    shaderSel.addEventListener('change', applyShaderConfig);
-    iccToggleBtn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      const nowOn = !(iccToggleBtn.textContent?.includes('开') ?? false);
-      renderIccBtn(nowOn);
-      applyShaderConfig();
-    });
-
-    // ===== PotPlayer 路径 =====
-    const potLabel = document.createElement('div');
-    potLabel.textContent = t('PotPlayer 路径（留空则使用应用内置）');
-    potLabel.style.cssText = 'color:var(--fnos-ui-muted);font-size:11.5px;margin:0 0 5px;';
-    colPot.appendChild(potLabel);
-
-    const potPathEl = document.createElement('div');
-    potPathEl.id = 'fnos-pot-path';
-    potPathEl.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-muted2);word-break:break-all;margin-bottom:7px;min-height:28px;'
-      + 'max-height:72px;overflow-y:auto;padding:6px 9px;background:var(--fnos-ui-input-bg);border-radius:7px;'
-      + 'border:1px solid var(--fnos-ui-border);line-height:1.5;';
-    potPathEl.textContent = t('应用内置（已随安装包分发，无需本机安装）'); // 初始占位, 不依赖 _refresh 回填
-    colPot.appendChild(potPathEl);
-
-    const potBtns = document.createElement('div');
-    potBtns.style.cssText = 'display:flex;gap:6px;';
-    const pickPotBtn = mkBtn('选择文件', true);
-    const clearPotBtn = mkBtn('清空', true);
-    potBtns.appendChild(pickPotBtn); potBtns.appendChild(clearPotBtn);
-    colPot.appendChild(potBtns);
-    pickPotBtn.addEventListener('click', async (e: Event) => {
-      e.stopPropagation();
-      const p = await ipcRenderer.invoke('settings:pick-pot-path');
-      if (p) potPathEl.textContent = p as string;
-    });
-    clearPotBtn.addEventListener('click', async (e: Event) => {
-      e.stopPropagation();
-      await ipcRenderer.invoke('settings:clear-pot-path');
-      potPathEl.textContent = t('应用内置（已随安装包分发，无需本机安装）');
-    });
-
-    // ===== 默认播放器（直接播放时使用）=====
-    const defLabel = document.createElement('div');
-    defLabel.textContent = t('默认播放器（直接播放时使用）');
-    defLabel.style.cssText = 'color:var(--fnos-ui-muted);font-size:11.5px;margin:10px 0 5px;';
-    colPot.appendChild(defLabel);
-
-    const defGrid = document.createElement('div');
-    defGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:5px;';
-    const defModes: [string, string][] = [['mpv', '内置 MPV'], ['potplayer', 'PotPlayer']];
-    const defEls: HTMLButtonElement[] = [];
-    defModes.forEach(([mode, text]) => {
-      const b = mkBtn(text);
-      b.dataset.dmode = mode;
-      b.addEventListener('click', (e: Event) => {
-        e.stopPropagation();
-        (overlay as any)._defaultPlayer = mode;
-        refreshDefaultPlayer();
-        ipcRenderer.invoke('settings:set-default-player', mode).catch((err) => log('set-default-player failed', err));
-      });
-      defGrid.appendChild(b); defEls.push(b);
-    });
-    colPot.appendChild(defGrid);
-
-    const refreshDefaultPlayer = (): void => {
-      const cur = (overlay as any)._defaultPlayer || 'mpv';
-      defEls.forEach((b) => {
-        const on = b.dataset.dmode === cur;
-        b.style.background = on ? 'var(--fnos-ui-btn-hover2)!important' : 'var(--fnos-ui-btn-bg2)!important';
-        b.style.borderColor = on ? 'var(--fnos-ui-accent)!important' : 'var(--fnos-ui-border3)';
-      });
-    };
-
-    /* 布局统一在末尾 layout 区追加 */
-
 
     // ===== 分组: B站弹幕（内置降级源）=====
     const secBili = section('B站弹幕');
@@ -2328,13 +2161,6 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         lines.push(`账号: ${r.account}  登录方式: ${r.loginType}  Token: ${r.hasToken ? '已保存' : '无'}`);
         lines.push(`豆瓣同步: ${r.doubanEnabled ? '开' : '关'}${r.doubanLoggedIn ? '(已登录)' : ''}   Bangumi: ${r.bangumiEnabled ? '开' : '关'}${r.bangumiHasToken ? '(有Token)' : ''}`);
         lines.push('');
-        lines.push('== 播放器 ==');
-        lines.push(`默认播放器: ${r.defaultPlayer}`);
-        lines.push(`MPV 路径: ${r.mpvPath}   PotPlayer 路径: ${r.potPath}`);
-        lines.push(`MPV 配置目录: ${r.mpvConfigDir}`);
-        lines.push('');
-        lines.push('== MPV 渲染 ==');
-        lines.push(`默认着色器: ${r.mpvShader || 'off'}   ICC 校色: ${r.mpvIcc ? '开' : '关'}`);
         lines.push('');
         lines.push('--- mpv-user.conf ---');
         lines.push(r.mpvUserConf || '(空)');
@@ -2419,9 +2245,6 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     const debugComps: [string, string][] = [
       ['douban', '豆瓣同步'],
       ['danmaku', 'B站弹幕'],
-      ['mpv', 'MPV 播放器'],
-      ['potplayer', 'PotPlayer'],
-      ['media', '播放器/媒体'],
       ['embywall', 'EmbyWall 墙']
     ];
     const swDebugComps: Record<string, HTMLInputElement> = {};

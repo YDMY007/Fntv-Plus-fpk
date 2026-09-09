@@ -418,8 +418,73 @@ const ipcRenderer = {
     if (channel === 'play-movie' || channel === 'external-play' || channel === 'pause' || channel === 'media:control') {
       return Promise.resolve(undefined);
     }
-    if (channel === 'media:season-guid' || channel === 'skip:fetch-and-fill' || channel === 'skip:next-episode') {
-      return Promise.resolve(undefined); // 片头片尾/选集回填数据源待接
+    if (channel === 'skip:fetch-and-fill') {
+      // [v0.70.0] 跳过片头/片尾数据链（网页端）：直连 play/info 拿元数据 → 直连 fnOS skipinfo
+      // （已有数据直接用）→ 后端外网三级链（AniSkip+MAL 映射 / theintrodb）→ 直连写回 fnOS。
+      // fnOS skipinfo 路径双前缀尝试（/v/api/v1 与 /api/v1，桌面经代理语义不清）。
+      const guid = String((args[0] && args[0].guid) || '');
+      const empty = { filled: false, skipStart: 0, skipEnd: 0, source: 'none', recapStart: 0, recapEnd: 0, message: '' };
+      if (!guid) return Promise.resolve(Object.assign({}, empty, { message: '缺少 guid' }));
+      const signedFetch = async (method, path, payload) => {
+        const headers = { 'Content-Type': 'application/json' };
+        headers.Authx = await genAuthx(path, payload || undefined);
+        const resp = await fetch(location.origin + path, {
+          method, credentials: 'include', headers,
+          body: payload ? JSON.stringify(payload) : undefined,
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.json();
+      };
+      return (async () => {
+        // ① play/info 元数据
+        const info = await signedFetch('POST', '/v/api/v1/play/info', { item_guid: guid }).catch(() => null);
+        const item = info && info.data && info.data.item;
+        if (!item) return Object.assign({}, empty, { message: '获取播放信息失败' });
+        const trimId = String(item.trim_id || '');
+        const season = Number(item.season_number) || 0;
+        const episode = Number(item.episode_number) || 0;
+        const duration = Number(item.duration) || 0;
+        let title = String(item.parent_title || item.title || '').trim();
+        title = title.replace(/^第\s*\d+\s*[集话話期]\s*/, '').trim();
+        // ② fnOS 已有跳过数据（服务端真值优先；双前缀尝试）
+        const trySkipInfoGet = async () => {
+          for (const p of ['/v/api/v1/skipinfo/' + guid, '/api/v1/skipinfo/' + guid]) {
+            try {
+              const j = await signedFetch('GET', p);
+              if (j && j.code === 0 && j.data) return j.data;
+            } catch (e) { /* 试下一个前缀 */ }
+          }
+          return null;
+        };
+        const existing = await trySkipInfoGet();
+        if (existing && (Number(existing.skipStart) > 0 || Number(existing.skipEnd) > 0)) {
+          return {
+            filled: true, skipStart: Number(existing.skipStart) || 0, skipEnd: Number(existing.skipEnd) || 0,
+            source: 'fnos', recapStart: 0, recapEnd: 0,
+          };
+        }
+        // ③ 后端外网三级链（AniSkip / theintrodb）
+        const ext = await apiPost('/app/fntvplus/api/bridge/skip/external', {
+          trimId, season, episode, duration, title,
+        }).catch(() => null);
+        if (!ext || !ext.ok || !(Number(ext.skipStart) > 0 || Number(ext.skipEnd) > 0)) {
+          return Object.assign({}, empty, { message: (ext && ext.message) || '无可用跳过数据' });
+        }
+        // ④ 写回 fnOS（双前缀尝试）
+        for (const p of ['/v/api/v1/skipinfo', '/api/v1/skipinfo']) {
+          try {
+            const j = await signedFetch('POST', p, { guid, skipStart: Number(ext.skipStart), skipEnd: Number(ext.skipEnd) });
+            if (j && j.code === 0) break;
+          } catch (e) { /* 试下一个前缀 */ }
+        }
+        return {
+          filled: true, skipStart: Number(ext.skipStart) || 0, skipEnd: Number(ext.skipEnd) || 0,
+          source: ext.source, recapStart: Number(ext.recapStart) || 0, recapEnd: Number(ext.recapEnd) || 0,
+        };
+      })();
+    }
+    if (channel === 'media:season-guid' || channel === 'skip:next-episode') {
+      return Promise.resolve(undefined); // 自动连播数据源待接
     }
     if (channel === 'mpv:get-render-preset') return apiGet('/app/fntvplus/api/settings').then((s) => s.mpvRenderPreset);
     if (channel === 'mpv:set-render-preset') return apiPost('/app/fntvplus/api/settings', { mpvRenderPreset: args[0] });

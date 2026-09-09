@@ -22,10 +22,9 @@ import './preload/plugins/hotUpdates';
 import './preload/plugins/listLayout';
 import './preload/plugins/pageAnim';
 import './preload/plugins/personWorks';
-import './preload/plugins/playButton';
-import './preload/plugins/playChoice';
-import './preload/plugins/playMaskButton';
 import './preload/plugins/playMemory';
+// playButton / playChoice / playMaskButton 不挂载（[v0.70.0]）：外部播放器（MPV/PotPlayer）
+// 播放链在网页端不可用——点击拦截后发 play-movie 是 no-op，曾导致所有播放按钮点死（lc-077）。
 import './preload/plugins/previewThumb';
 import './preload/plugins/skipInject';
 import './preload/plugins/watchHistory';
