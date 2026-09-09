@@ -368,8 +368,12 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 
 	// [v0.75.0] danmu_api 自建源优选：启用时最先尝试（命中直接返回；未命中降级下面的 B站链路）。
 	// 自建源启用期间旧 B站缓存不命中（桌面 lc-1101 同语义：缓存来源要与当前设置匹配）。
+	// [v0.81.0] 自建源尝试结论带进最终错误信息（供弹窗「备注」展示，排障可见）。
+	danmuReason := ""
 	if b.danmuIsActive() {
-		if items := b.danmuAutoFetch(title, req.Ep, req.Season); len(items) > 0 {
+		items, reason := b.danmuAutoFetch(title, req.Ep, req.Season)
+		danmuReason = reason
+		if len(items) > 0 {
 			kept := b.biliFilterDanmaku(items)
 			meta := map[string]any{
 				"searchTitle": title, "matchedTitle": title, "source": danmuSourceLabel,
@@ -502,7 +506,11 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if best == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": "未找到匹配的B站弹幕"})
+		errMsg := "未找到匹配的B站弹幕"
+		if danmuReason != "" {
+			errMsg = "自建源(" + danmuReason + ")；" + errMsg
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": errMsg})
 		return
 	}
 

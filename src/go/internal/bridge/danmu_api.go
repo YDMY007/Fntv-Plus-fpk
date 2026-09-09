@@ -253,13 +253,18 @@ func (b *Bridge) danmuFetchItems(episodeID float64) []map[string]any {
 	return parseDanmakuXML(data)
 }
 
-// danmuAutoFetch 自建源自动路径：番名+集数 → 搜索 → 定位集 → 拉弹幕。未启用/未命中返回 nil。
-func (b *Bridge) danmuAutoFetch(title string, ep int64, season int64) []map[string]any {
+// danmuAutoFetch 自建源自动路径：番名+集数 → 搜索 → 定位集 → 拉弹幕。
+// [v0.81.0] 返回带原因（供面板排障）：未启用 / 搜索无精确匹配条目 / 候选均无弹幕 / 命中。
+func (b *Bridge) danmuAutoFetch(title string, ep int64, season int64) ([]map[string]any, string) {
 	if !b.danmuIsActive() {
-		return nil
+		return nil, "自建源未启用"
+	}
+	hits := b.danmuSearchAnimes(title, season)
+	if len(hits) == 0 {
+		return nil, "自建源搜索无精确匹配条目"
 	}
 	tries := 3
-	for _, hit := range b.danmuSearchAnimes(title, season) {
+	for _, hit := range hits {
 		if tries <= 0 {
 			break
 		}
@@ -273,10 +278,10 @@ func (b *Bridge) danmuAutoFetch(title string, ep int64, season int64) []map[stri
 			continue
 		}
 		if items := b.danmuFetchItems(id); len(items) > 0 {
-			return items
+			return items, "命中"
 		}
 	}
-	return nil
+	return nil, "自建源候选均无弹幕"
 }
 
 // danmuCandidates 自建源候选（bvid 位为 dmapi:<episodeId> 伪 id）。未启用/未命中返回 nil → 降级 B站。
