@@ -503,7 +503,35 @@ const ipcRenderer = {
         };
       })();
     }
-    if (channel === 'media:season-guid' || channel === 'skip:next-episode') {
+    if (channel === 'media:season-guid') {
+      // [v0.90.0] 直连 fnOS item/list 查「季」guid（桌面 libraryIndex 同参数）：
+      // 轮播「开始播放/详情」用它把一级详情页升级为季详情页——此前此通道是 no-op，永远回退一级。
+      const parentGuid = String(args[0] || '');
+      if (!parentGuid) return Promise.resolve({ ok: false, error: 'empty parentGuid' });
+      return (async () => {
+        try {
+          const path = '/v/api/v1/item/list';
+          const payload = { parent_guid: parentGuid, exclude_folder: 1, sort_column: 'sort_title', sort_type: 'ASC', page: 1, page_size: 200 };
+          const headers = { 'Content-Type': 'application/json', Authx: await genAuthx(path, payload) };
+          const resp = await fetch(location.origin + path, {
+            method: 'POST', credentials: 'include', headers, body: JSON.stringify(payload),
+          });
+          if (!resp.ok) return { ok: false, error: 'HTTP ' + resp.status };
+          const j = await resp.json();
+          const list = (j && j.data && Array.isArray(j.data.list)) ? j.data.list : [];
+          // 优先 type==='season'；否则取「非 episode/movie」的带 guid 子级（桌面同兼容逻辑）
+          const season = list.find((c) => String((c && c.type) || '').toLowerCase() === 'season' && !!c.guid)
+            || list.find((c) => {
+              const t = String((c && c.type) || '').toLowerCase();
+              return !!t && t !== 'episode' && t !== 'movie' && !!c.guid;
+            });
+          return { ok: true, guid: (season && season.guid) || '' };
+        } catch (e) {
+          return { ok: false, error: String((e && e.message) || e) };
+        }
+      })();
+    }
+    if (channel === 'skip:next-episode') {
       return Promise.resolve(undefined); // 自动连播数据源待接
     }
     if (channel === 'mpv:get-render-preset') return apiGet('/app/fntvplus/api/settings').then((s) => s.mpvRenderPreset);

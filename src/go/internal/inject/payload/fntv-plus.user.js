@@ -796,7 +796,34 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
               };
             })();
           }
-          if (channel === "media:season-guid" || channel === "skip:next-episode") {
+          if (channel === "media:season-guid") {
+            const parentGuid = String(args[0] || "");
+            if (!parentGuid) return Promise.resolve({ ok: false, error: "empty parentGuid" });
+            return (async () => {
+              try {
+                const path = "/v/api/v1/item/list";
+                const payload = { parent_guid: parentGuid, exclude_folder: 1, sort_column: "sort_title", sort_type: "ASC", page: 1, page_size: 200 };
+                const headers = { "Content-Type": "application/json", Authx: await genAuthx(path, payload) };
+                const resp = await fetch(location.origin + path, {
+                  method: "POST",
+                  credentials: "include",
+                  headers,
+                  body: JSON.stringify(payload)
+                });
+                if (!resp.ok) return { ok: false, error: "HTTP " + resp.status };
+                const j = await resp.json();
+                const list = j && j.data && Array.isArray(j.data.list) ? j.data.list : [];
+                const season = list.find((c) => String(c && c.type || "").toLowerCase() === "season" && !!c.guid) || list.find((c) => {
+                  const t2 = String(c && c.type || "").toLowerCase();
+                  return !!t2 && t2 !== "episode" && t2 !== "movie" && !!c.guid;
+                });
+                return { ok: true, guid: season && season.guid || "" };
+              } catch (e) {
+                return { ok: false, error: String(e && e.message || e) };
+              }
+            })();
+          }
+          if (channel === "skip:next-episode") {
             return Promise.resolve(void 0);
           }
           if (channel === "mpv:get-render-preset") return apiGet("/app/fntvplus/api/settings").then((s) => s.mpvRenderPreset);
