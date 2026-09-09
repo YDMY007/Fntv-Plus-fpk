@@ -38,6 +38,11 @@ declare const document: any;
 function boot(): void {
   try {
     runHooks(HookType.OnReady);
+    // [v0.71.0] 补派 OnDomChange（桌面版 preload/index.ts 同款）：danmakuWeb（进播放页挂弹幕）、
+    // skipInject（跳过片头填充）等插件靠它在 SPA 切换到播放页时触发——网页端入口此前从不
+    // 派发该钩子，导致弹幕/跳过片头在网页端进播放页后永不生效。插件各自带防抖。
+    const observer = new MutationObserver(() => runHooks(HookType.OnDomChange));
+    observer.observe(document.body, { childList: true, subtree: true });
     console.log('[fntv-web] embyWall hooks fired (OnReady)');
   } catch (e) {
     console.error('[fntv-web] boot failed', e);

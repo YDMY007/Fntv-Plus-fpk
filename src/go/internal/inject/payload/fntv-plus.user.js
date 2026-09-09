@@ -20739,6 +20739,8 @@ html.fntv-boot-hide #root{visibility:hidden}
   function boot() {
     try {
       runHooks("onReady" /* OnReady */);
+      const observer = new MutationObserver(() => runHooks("onDomChange" /* OnDomChange */));
+      observer.observe(document.body, { childList: true, subtree: true });
       console.log("[fntv-web] embyWall hooks fired (OnReady)");
     } catch (e) {
       console.error("[fntv-web] boot failed", e);
