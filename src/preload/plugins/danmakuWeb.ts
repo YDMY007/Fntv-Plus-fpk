@@ -1529,6 +1529,18 @@ function refreshDismissBinding(): void {
 
 // ─── [lc-1118] 手动搜索段 ───
 
+/** [v1.2.8] invoke 超时包装：超时抛错（调用方复位 busy 并提示），不再让一次挂起的请求永久锁死搜索。
+ *  注意超时只是前端放弃等待，后端请求仍在跑、结果仍可能落缓存——稍后重试通常直接命中。 */
+function invokeWithTimeout(channel: string, args: any, ms: number): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const timer: ReturnType<typeof setTimeout> = setTimeout(() => reject(new Error('请求超时(' + Math.round(ms / 1000) + 's)')), ms);
+        ipcRenderer.invoke(channel, args).then(
+            (r: any) => { clearTimeout(timer); resolve(r); },
+            (e: any) => { clearTimeout(timer); reject(e); },
+        );
+    });
+}
+
 function renderSearchBody(): void {
     const body = dmSearchBody;
     if (!body) return;
@@ -1597,9 +1609,12 @@ async function runSearch(kw: string): Promise<void> {
     dmSearchErr = '';
     renderSearchBody();
     try {
-        const res = await ipcRenderer.invoke('danmaku:candidates', {
+        // [v1.2.8] 超时保护：invoke 链路（fetch→Go→B站/自建源多跳）在网络劣化时可能挂很久，
+        // 无超时则 dmSearchBusy 永久为 true → 之后所有搜索点击被 if(dmSearchBusy) 静默吞掉，
+        // 表现为「搜索无反应」，刷新页面才恢复（用户实机踩过）。60s 覆盖后端最坏链路的大多数情形。
+        const res = await invokeWithTimeout('danmaku:candidates', {
             title: kw, ep: meta ? meta.ep : 0, season: meta ? meta.season : 0,
-        }) as any;
+        }, 60_000) as any;
         if (res && res.ok && Array.isArray(res.candidates)) {
             dmSearchResults = res.candidates;
         } else {
@@ -1608,7 +1623,8 @@ async function runSearch(kw: string): Promise<void> {
         }
     } catch (e: any) {
         dmSearchResults = [];
-        dmSearchErr = t('搜索异常') + ': ' + (e?.message || e);
+        const msg = String(e?.message || e);
+        dmSearchErr = msg.indexOf('超时') >= 0 ? t('搜索请求超时，请稍后重试或刷新页面') : t('搜索异常') + ': ' + msg;
     } finally {
         dmSearchBusy = false;
         renderSearchBody();
@@ -1622,10 +1638,11 @@ async function pickCandidate(c: any): Promise<void> {
     dmSearchErr = '';
     renderSearchBody();
     try {
-        const res = await ipcRenderer.invoke('danmaku:pick', {
+        // [v1.2.8] 同 runSearch 的超时保护；拉整份弹幕（自建源单集可 >10 万条）给 120s
+        const res = await invokeWithTimeout('danmaku:pick', {
             title: dmSearchKw || (meta ? meta.searchTitle : ''), ep: meta ? meta.ep : 0,
             season: meta ? meta.season : 0, isMovie: meta ? meta.isMovie : false, bvid: c.bvid,
-        }) as any;
+        }, 120_000) as any;
         if (res && res.ok && Array.isArray(res.items) && res.items.length && currentGuid) {
             items = ensureAscending(res.items as DanmakuItem[]);
             meta = (res.meta as DanmakuMeta) || meta;

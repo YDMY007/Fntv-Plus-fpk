@@ -71,6 +71,7 @@ const EN: Record<string, string> = {
     '弹弹play': 'dandanplay',
     '自建弹幕接口（danmu_api）': 'Self-hosted danmaku API (danmu_api)',
     '自建源弹幕少于该条数时自动改用 B 站（0=不启用）': 'Auto-switch to Bilibili when self-hosted danmaku is below this count (0=off)',
+    '搜索请求超时，请稍后重试或刷新页面': 'Search request timed out — try again shortly or reload the page',
     '弹幕屏蔽与样式': 'Danmaku blocking & style',
     '插帧（AI 补帧）': 'Frame interpolation (AI)',
     '渲染画质': 'Render quality',

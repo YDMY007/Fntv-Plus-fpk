@@ -1324,6 +1324,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     "\u5F39\u5F39play": "dandanplay",
     "\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3\uFF08danmu_api\uFF09": "Self-hosted danmaku API (danmu_api)",
     "\u81EA\u5EFA\u6E90\u5F39\u5E55\u5C11\u4E8E\u8BE5\u6761\u6570\u65F6\u81EA\u52A8\u6539\u7528 B \u7AD9\uFF080=\u4E0D\u542F\u7528\uFF09": "Auto-switch to Bilibili when self-hosted danmaku is below this count (0=off)",
+    "\u641C\u7D22\u8BF7\u6C42\u8D85\u65F6\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u6216\u5237\u65B0\u9875\u9762": "Search request timed out \u2014 try again shortly or reload the page",
     "\u5F39\u5E55\u5C4F\u853D\u4E0E\u6837\u5F0F": "Danmaku blocking & style",
     "\u63D2\u5E27\uFF08AI \u8865\u5E27\uFF09": "Frame interpolation (AI)",
     "\u6E32\u67D3\u753B\u8D28": "Render quality",
@@ -4077,6 +4078,21 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       document.removeEventListener("keydown", onDismissKeydown, true);
     }
   }
+  function invokeWithTimeout(channel, args, ms) {
+    return new Promise((resolve2, reject) => {
+      const timer2 = setTimeout(() => reject(new Error("\u8BF7\u6C42\u8D85\u65F6(" + Math.round(ms / 1e3) + "s)")), ms);
+      ipcRenderer.invoke(channel, args).then(
+        (r) => {
+          clearTimeout(timer2);
+          resolve2(r);
+        },
+        (e) => {
+          clearTimeout(timer2);
+          reject(e);
+        }
+      );
+    });
+  }
   function renderSearchBody() {
     const body = dmSearchBody;
     if (!body) return;
@@ -4165,11 +4181,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     dmSearchErr = "";
     renderSearchBody();
     try {
-      const res = await ipcRenderer.invoke("danmaku:candidates", {
+      const res = await invokeWithTimeout("danmaku:candidates", {
         title: kw,
         ep: meta ? meta.ep : 0,
         season: meta ? meta.season : 0
-      });
+      }, 6e4);
       if (res && res.ok && Array.isArray(res.candidates)) {
         dmSearchResults = res.candidates;
       } else {
@@ -4178,7 +4194,8 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
       }
     } catch (e) {
       dmSearchResults = [];
-      dmSearchErr = t("\u641C\u7D22\u5F02\u5E38") + ": " + ((e == null ? void 0 : e.message) || e);
+      const msg = String((e == null ? void 0 : e.message) || e);
+      dmSearchErr = msg.indexOf("\u8D85\u65F6") >= 0 ? t("\u641C\u7D22\u8BF7\u6C42\u8D85\u65F6\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u6216\u5237\u65B0\u9875\u9762") : t("\u641C\u7D22\u5F02\u5E38") + ": " + msg;
     } finally {
       dmSearchBusy = false;
       renderSearchBody();
@@ -4190,13 +4207,13 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     dmSearchErr = "";
     renderSearchBody();
     try {
-      const res = await ipcRenderer.invoke("danmaku:pick", {
+      const res = await invokeWithTimeout("danmaku:pick", {
         title: dmSearchKw || (meta ? meta.searchTitle : ""),
         ep: meta ? meta.ep : 0,
         season: meta ? meta.season : 0,
         isMovie: meta ? meta.isMovie : false,
         bvid: c.bvid
-      });
+      }, 12e4);
       if (res && res.ok && Array.isArray(res.items) && res.items.length && currentGuid) {
         items = ensureAscending(res.items);
         meta = res.meta || meta;
