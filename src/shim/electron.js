@@ -269,12 +269,52 @@ const ipcRenderer = {
     if (channel === 'trakt:save-credentials') {
       return apiPost('/app/fntvplus/api/bridge/trakt/credentials', { client_id: args[0], client_secret: args[1] });
     }
-    if (channel === 'trakt:device-start') return apiPost('/app/fntvplus/api/bridge/trakt/device/start', {});
+    if (channel === 'trakt:device-start') {
+      // [v1.2.0] 设备授权收尾：桌面版由主进程后台轮询并发 trakt:connected 事件；
+      // 网页端无主进程 → shim 在此启动轮询循环（device/token → token 保存 → fire 事件）。
+      return apiPost('/app/fntvplus/api/bridge/trakt/device/start', {}).then((r) => {
+        if (r && r.device_code && !globalThis.__fntvTraktPoll) {
+          const dc = r.device_code;
+          const iv = Number(r.interval) > 0 ? Number(r.interval) * 1000 : 5000;
+          const fire = (ch, msg) => {
+            const map = globalThis.__fntvTraktEvents || {};
+            (map[ch] || []).forEach((cb) => { try { cb({}, msg); } catch { /* ignore */ } });
+          };
+          globalThis.__fntvTraktPoll = setInterval(() => {
+            apiPost('/app/fntvplus/api/bridge/trakt/device/token', { device_code: dc }).then((p) => {
+              if (p && p.access_token) {
+                clearInterval(globalThis.__fntvTraktPoll);
+                globalThis.__fntvTraktPoll = null;
+                apiPost('/app/fntvplus/api/bridge/trakt/token', {
+                  access_token: p.access_token, refresh_token: p.refresh_token, expires_in: p.expires_in,
+                }).then(() => fire('trakt:connected', null)).catch(() => fire('trakt:connected', null));
+              } else if (p && p.error === 'expired_token') {
+                clearInterval(globalThis.__fntvTraktPoll);
+                globalThis.__fntvTraktPoll = null;
+                fire('trakt:device-error', '设备码已过期，请重新连接');
+              } else if (p && p.error === 'access_denied') {
+                clearInterval(globalThis.__fntvTraktPoll);
+                globalThis.__fntvTraktPoll = null;
+                fire('trakt:device-error', '授权被拒绝');
+              }
+              // p.error === 'authorization_pending' / 'slow_down' → 继续轮询
+            }).catch(() => { /* 网络抖动继续 */ });
+          }, iv);
+        }
+        return r;
+      });
+    }
+    if (channel === 'trakt:clear-credentials') return apiPost('/app/fntvplus/api/bridge/trakt/credentials/clear', {});
     if (channel === 'trakt:device-cancel') return apiPost('/app/fntvplus/api/bridge/trakt/device/cancel', {});
     if (channel === 'trakt:disconnect') return apiPost('/app/fntvplus/api/bridge/trakt/disconnect', {});
     if (channel === 'trakt:scrobble') {
+      // [v1.2.0] ①前端传对象 {action, guid, progress}（此前按位置参数取值=全 undefined）；②开关拦截
+      const sc = (args[0] && typeof args[0] === 'object') ? args[0] : { action: args[0], guid: args[1], progress: args[2] };
+      if (loadSettings().traktScrobbleEnabled === false) {
+        return Promise.resolve({ ok: false, message: 'scrobble 已关闭' });
+      }
       return apiPost('/app/fntvplus/api/bridge/trakt/scrobble', {
-        action: args[0], guid: args[1], progress: args[2], cookie: document.cookie,
+        action: sc.action, guid: sc.guid, progress: sc.progress, cookie: document.cookie,
       });
     }
     if (channel === 'trakt:sync-watched') {
@@ -639,6 +679,16 @@ const ipcRenderer = {
       setTimeout(() => {
         try { cb({}, { enabled: true, components: {} }); } catch { /* ignore */ }
       }, 0);
+    }
+    // [v1.2.0] Trakt 设备授权结果事件：device-start 的轮询循环（见 invoke 特例）fire 到这里
+    if (channel === 'trakt:connected' || channel === 'trakt:device-error') {
+      if (!globalThis.__fntvTraktEvents) globalThis.__fntvTraktEvents = {};
+      const list = globalThis.__fntvTraktEvents[channel] = globalThis.__fntvTraktEvents[channel] || [];
+      if (typeof cb === 'function') list.push(cb);
+      return () => {
+        const i = list.indexOf(cb);
+        if (i > -1) list.splice(i, 1);
+      };
     }
     return () => {};
   },

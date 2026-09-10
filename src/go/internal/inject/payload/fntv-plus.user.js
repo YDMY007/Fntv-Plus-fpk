@@ -577,14 +577,58 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
           if (channel === "trakt:save-credentials") {
             return apiPost("/app/fntvplus/api/bridge/trakt/credentials", { client_id: args[0], client_secret: args[1] });
           }
-          if (channel === "trakt:device-start") return apiPost("/app/fntvplus/api/bridge/trakt/device/start", {});
+          if (channel === "trakt:device-start") {
+            return apiPost("/app/fntvplus/api/bridge/trakt/device/start", {}).then((r) => {
+              if (r && r.device_code && !globalThis.__fntvTraktPoll) {
+                const dc = r.device_code;
+                const iv = Number(r.interval) > 0 ? Number(r.interval) * 1e3 : 5e3;
+                const fire = (ch, msg) => {
+                  const map = globalThis.__fntvTraktEvents || {};
+                  (map[ch] || []).forEach((cb) => {
+                    try {
+                      cb({}, msg);
+                    } catch {
+                    }
+                  });
+                };
+                globalThis.__fntvTraktPoll = setInterval(() => {
+                  apiPost("/app/fntvplus/api/bridge/trakt/device/token", { device_code: dc }).then((p) => {
+                    if (p && p.access_token) {
+                      clearInterval(globalThis.__fntvTraktPoll);
+                      globalThis.__fntvTraktPoll = null;
+                      apiPost("/app/fntvplus/api/bridge/trakt/token", {
+                        access_token: p.access_token,
+                        refresh_token: p.refresh_token,
+                        expires_in: p.expires_in
+                      }).then(() => fire("trakt:connected", null)).catch(() => fire("trakt:connected", null));
+                    } else if (p && p.error === "expired_token") {
+                      clearInterval(globalThis.__fntvTraktPoll);
+                      globalThis.__fntvTraktPoll = null;
+                      fire("trakt:device-error", "\u8BBE\u5907\u7801\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u8FDE\u63A5");
+                    } else if (p && p.error === "access_denied") {
+                      clearInterval(globalThis.__fntvTraktPoll);
+                      globalThis.__fntvTraktPoll = null;
+                      fire("trakt:device-error", "\u6388\u6743\u88AB\u62D2\u7EDD");
+                    }
+                  }).catch(() => {
+                  });
+                }, iv);
+              }
+              return r;
+            });
+          }
+          if (channel === "trakt:clear-credentials") return apiPost("/app/fntvplus/api/bridge/trakt/credentials/clear", {});
           if (channel === "trakt:device-cancel") return apiPost("/app/fntvplus/api/bridge/trakt/device/cancel", {});
           if (channel === "trakt:disconnect") return apiPost("/app/fntvplus/api/bridge/trakt/disconnect", {});
           if (channel === "trakt:scrobble") {
+            const sc = args[0] && typeof args[0] === "object" ? args[0] : { action: args[0], guid: args[1], progress: args[2] };
+            if (loadSettings().traktScrobbleEnabled === false) {
+              return Promise.resolve({ ok: false, message: "scrobble \u5DF2\u5173\u95ED" });
+            }
             return apiPost("/app/fntvplus/api/bridge/trakt/scrobble", {
-              action: args[0],
-              guid: args[1],
-              progress: args[2],
+              action: sc.action,
+              guid: sc.guid,
+              progress: sc.progress,
               cookie: document.cookie
             });
           }
@@ -924,6 +968,15 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
               } catch {
               }
             }, 0);
+          }
+          if (channel === "trakt:connected" || channel === "trakt:device-error") {
+            if (!globalThis.__fntvTraktEvents) globalThis.__fntvTraktEvents = {};
+            const list = globalThis.__fntvTraktEvents[channel] = globalThis.__fntvTraktEvents[channel] || [];
+            if (typeof cb === "function") list.push(cb);
+            return () => {
+              const i = list.indexOf(cb);
+              if (i > -1) list.splice(i, 1);
+            };
           }
           return () => {
           };

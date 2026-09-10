@@ -79,6 +79,9 @@ func (b *Bridge) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/disconnect", b.traktDisconnect)
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/scrobble", b.traktScrobble)
 	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/sync-watched", b.traktSyncWatched)
+	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/credentials/clear", b.traktClearCreds)
+	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/device/token", b.traktDeviceTokenPoll)
+	mux.HandleFunc("/app/fntvplus/api/bridge/trakt/token", b.traktTokenSave)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bangumi/calendar", b.bangumiCalendar)
 	mux.HandleFunc("/app/fntvplus/api/bridge/bangumi/sync-progress", b.bangumiSyncProgress)
 	mux.HandleFunc("/app/fntvplus/api/bridge/douban/watched", b.doubanWatched)
@@ -449,17 +452,13 @@ func (b *Bridge) traktCredsHandler() http.HandlerFunc {
 		switch r.Method {
 		case http.MethodGet:
 			id, tk := b.traktClientID(), b.traktToken()
-			masked := ""
-			if len(id) > 8 {
-				masked = id[:6] + "…" + id[len(id)-4:]
-			} else if id != "" {
-				masked = "…"
-			}
+			// [v1.2.0] 返回明文（管理页同源可信，对齐桌面 get-credentials 回填语义）
 			writeJSON(w, http.StatusOK, map[string]any{
-				"configured": id != "" && b.traktSecret() != "",
-				"connected":  tk != "",
-				"client_id":  masked,
-				"expiresAt":  toInt64(b.traktExpiresAt()),
+				"configured":   id != "" && b.traktSecret() != "",
+				"connected":    tk != "",
+				"clientId":     id,
+				"clientSecret": b.traktSecret(),
+				"expiresAt":    toInt64(b.traktExpiresAt()),
 			})
 		case http.MethodPost:
 			var req struct {
@@ -540,6 +539,65 @@ func (b *Bridge) traktDisconnect(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, k := range []string{"trakt_access_token", "trakt_refresh_token", "trakt_expires_at"} {
 		_ = b.cfg.SetSetting(k, "")
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// traktClearCreds [v1.2.0] 清空 Trakt 凭据（网页版 trakt:clear-credentials）。
+func (b *Bridge) traktClearCreds(w http.ResponseWriter, r *http.Request) {
+	_ = b.cfg.SetSetting("trakt_client_id", "")
+	_ = b.cfg.SetSetting("trakt_client_secret", "")
+	_ = b.cfg.SetSetting("trakt_access_token", "")
+	_ = b.cfg.SetSetting("trakt_refresh_token", "")
+	_ = b.cfg.SetSetting("trakt_expires_at", "")
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// traktDeviceTokenPoll [v1.2.0] 透传一次 device/token 轮询（前端按 interval 调用；
+// 400=待授权 200=成功 429=放慢 410=过期 418=拒绝）。
+func (b *Bridge) traktDeviceTokenPoll(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		DeviceCode string `json:"device_code"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 16*1024)).Decode(&req)
+	id, sec := b.traktClientID(), b.traktSecret()
+	if id == "" || sec == "" || req.DeviceCode == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"error": "缺少凭据或设备码"})
+		return
+	}
+	body, _ := json.Marshal(map[string]any{"code": req.DeviceCode, "client_id": id, "client_secret": sec})
+	resp, err := b.client.Post(traktAuth+"/oauth/device/token", "application/json", strings.NewReader(string(body)))
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	if out == nil {
+		out = map[string]any{}
+	}
+	writeJSON(w, resp.StatusCode, out)
+}
+
+// traktTokenSave [v1.2.0] 保存设备授权成功的 token（前端轮询到 200 后调用）。
+func (b *Bridge) traktTokenSave(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    any    `json:"expires_in"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 32*1024)).Decode(&req)
+	if strings.TrimSpace(req.AccessToken) == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"error": "缺少 access_token"})
+		return
+	}
+	_ = b.cfg.SetSetting("trakt_access_token", req.AccessToken)
+	if req.RefreshToken != "" {
+		_ = b.cfg.SetSetting("trakt_refresh_token", req.RefreshToken)
+	}
+	if ei := toInt64(req.ExpiresIn); ei > 0 {
+		_ = b.cfg.SetSetting("trakt_expires_at", fmt.Sprintf("%d", time.Now().Add(time.Duration(ei)*time.Second).UnixMilli()))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
