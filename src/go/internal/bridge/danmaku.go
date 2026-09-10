@@ -34,43 +34,56 @@ const biliWebAPI = "https://api.bilibili.com"
 // biliEncTable WBI mixin 重排表（B站官方算法，与桌面版 bili_danmaku.js ENC 一致）
 var biliEncTable = [64]int{46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52}
 
-var biliNavKey struct {
-	once   sync.Once
-	ik, sk string
+var biliNavCache struct {
+	mu      sync.Mutex
+	ik, sk  string
+	exp     time.Time
 }
 
 // biliUA B站请求统一 UA（匿名/登录态均建议浏览器 UA）
 const biliUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-// biliNav 拉取 wbi_img 两个 key（会话缓存一次）。
+// biliNav 拉取 wbi_img 两个 key（带过期缓存）。
+// [v1.3.0] 旧 sync.Once 版把失败（空 key）也永久缓存——一次网络抖动/风控后所有 WBI 签名全废
+// 且进程内不可恢复。改为：成功缓存 1h，失败只放弃 30s，之后自动重试。
 func biliNavKeys() (string, string) {
-	biliNavKey.once.Do(func() {
-		client := &http.Client{Timeout: 10 * time.Second}
-		req, _ := http.NewRequest(http.MethodGet, biliWebAPI+"/x/web-interface/nav", nil)
-		req.Header.Set("User-Agent", biliUA)
-		if resp, err := client.Do(req); err == nil {
-			var out struct {
-				Data struct {
-					WbiImg struct {
-						ImgURL string `json:"img_url"`
-						SubURL string `json:"sub_url"`
-					} `json:"wbi_img"`
-				} `json:"data"`
-			}
-			_ = json.NewDecoder(io.LimitReader(resp.Body, 1024*1024)).Decode(&out)
-			resp.Body.Close()
-			ik := path.Base(out.Data.WbiImg.ImgURL)
-			if ext := filepath.Ext(ik); ext != "" {
-				ik = strings.TrimSuffix(ik, ext)
-			}
-			sk := path.Base(out.Data.WbiImg.SubURL)
-			if ext := filepath.Ext(sk); ext != "" {
-				sk = strings.TrimSuffix(sk, ext)
-			}
-			biliNavKey.ik, biliNavKey.sk = ik, sk
+	biliNavCache.mu.Lock()
+	defer biliNavCache.mu.Unlock()
+	if time.Now().Before(biliNavCache.exp) {
+		return biliNavCache.ik, biliNavCache.sk
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, _ := http.NewRequest(http.MethodGet, biliWebAPI+"/x/web-interface/nav", nil)
+	req.Header.Set("User-Agent", biliUA)
+	ik, sk := "", ""
+	if resp, err := client.Do(req); err == nil {
+		var out struct {
+			Data struct {
+				WbiImg struct {
+					ImgURL string `json:"img_url"`
+					SubURL string `json:"sub_url"`
+				} `json:"wbi_img"`
+			} `json:"data"`
 		}
-	})
-	return biliNavKey.ik, biliNavKey.sk
+		_ = json.NewDecoder(io.LimitReader(resp.Body, 1024*1024)).Decode(&out)
+		resp.Body.Close()
+		ik = path.Base(out.Data.WbiImg.ImgURL)
+		if ext := filepath.Ext(ik); ext != "" {
+			ik = strings.TrimSuffix(ik, ext)
+		}
+		sk = path.Base(out.Data.WbiImg.SubURL)
+		if ext := filepath.Ext(sk); ext != "" {
+			sk = strings.TrimSuffix(sk, ext)
+		}
+	}
+	if ik != "" && sk != "" {
+		biliNavCache.ik, biliNavCache.sk = ik, sk
+		biliNavCache.exp = time.Now().Add(1 * time.Hour)
+	} else {
+		logf("[danmaku] WBI nav 密钥拉取失败（30s 后重试）")
+		biliNavCache.exp = time.Now().Add(30 * time.Second)
+	}
+	return biliNavCache.ik, biliNavCache.sk
 }
 
 // biliWbiSign WBI 签名：params + wts 排序拼接 → md5(qs + mixinKey) → 返回含 w_rid 的 query 串。
@@ -131,32 +144,57 @@ func (b *Bridge) danmakuGetJSON(rawURL string) (int, map[string]any, error) {
 
 var reEpInTitle = regexp.MustCompile(`(?i)(?:^|[^A-Za-z\d])(?:e\.?p\.?\s*|episode\s*|#\s*)\s*0*([0-9]+)`)
 
-// biliSearchVideos 视频区（UP主搬运）WBI 搜索 → [{bvid,title}]（前 n 条）。
-// 桌面 MPV 实测命中来源就是「视频区(UP主搬运)」——番剧区/影视区没有条目时它是弹幕主力。
+// reBiliHTMLTag 剥 B站搜索结果标题里的高亮标签（<em class="keyword"> 等，桌面端 /<[^>]+>/g 同款）。
+var reBiliHTMLTag = regexp.MustCompile(`<[^>]+>`)
+
+// biliSearchVideos 视频区（UP主搬运）搜索 → [{bvid,title}]（前 n 条）。
+// [v1.3.0] 换桌面端同款 search/all/v2 综合搜索（bili_danmaku.js search_video 同接口同解析）：
+// 无需 WBI 签名，匿名+UA+Referer 即可用。旧 wbi/search/type 对匿名请求风控极严（空 result/-412），
+// 叠加旧版 nav 密钥失败永久缓存 → 手动搜索「从来没有可用的搜索结果」的根因。
 func (b *Bridge) biliSearchVideos(title string, limit int) []map[string]any {
-	signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "video", "page": "1"})
-	_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
-	if err != nil || out == nil {
+	u := biliWebAPI + "/x/web-interface/search/all/v2?keyword=" + url.QueryEscape(title) + "&search_type=video"
+	code, out, err := b.danmakuGetJSON(u)
+	if err != nil {
+		logf("[danmaku] 视频区搜索请求失败: %v", err)
 		return nil
 	}
-	result, _ := out["result"].([]any)
+	if out == nil {
+		logf("[danmaku] 视频区搜索 HTTP %d 无响应体", code)
+		return nil
+	}
+	if c := int64(jsNum(out["code"])); c != 0 {
+		logf("[danmaku] 视频区搜索 code=%d msg=%s", c, jsStr(out["message"]))
+		return nil
+	}
+	var result []any
+	if dm := jMap(out["data"]); dm != nil {
+		result = jArr(dm["result"])
+	}
 	out2 := []map[string]any{}
-	for _, v := range result {
-		m, ok := v.(map[string]any)
-		if !ok {
+	for _, it := range result {
+		m := jMap(it)
+		if m == nil || jsStr(m["result_type"]) != "video" {
 			continue
 		}
-		bvid := jsStr(m["bvid"])
-		if bvid == "" {
-			continue
-		}
-		t := jsStr(m["title"])
-		t = strings.ReplaceAll(strings.ReplaceAll(t, "<em class=\"keyword\">", ""), "</em>", "")
-		out2 = append(out2, map[string]any{"bvid": bvid, "title": t})
-		if len(out2) >= limit {
-			break
+		for _, v := range jArr(m["data"]) {
+			vm := jMap(v)
+			if vm == nil {
+				continue
+			}
+			bvid := jsStr(vm["bvid"])
+			if bvid == "" {
+				continue
+			}
+			out2 = append(out2, map[string]any{
+				"bvid":  bvid,
+				"title": reBiliHTMLTag.ReplaceAllString(jsStr(vm["title"]), ""),
+			})
+			if len(out2) >= limit {
+				return out2
+			}
 		}
 	}
+	logf("[danmaku] 视频区搜索 keyword=%q 命中 %d 条", title, len(out2))
 	return out2
 }
 
@@ -567,43 +605,9 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if best == nil {
-		signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
-		_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
-		if err == nil && out != nil {
-			if result, _ := out["result"].([]any); len(result) > 0 {
-				for _, v := range result {
-					m, ok := v.(map[string]any)
-					if !ok {
-						continue
-					}
-					var bvid string
-					if data, _ := m["data"].([]any); len(data) > 0 {
-						if dm, _ := data[0].(map[string]any); dm != nil {
-							bvid = jsStr(dm["bvid"])
-						}
-					}
-					if bvid == "" {
-						bvid = jsStr(m["bvid"])
-					}
-					if bvid == "" {
-						continue
-					}
-					// bvid → cid（view 接口）
-					_, vo, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/view?bvid=" + url.QueryEscape(bvid))
-					if err != nil || vo == nil {
-						continue
-					}
-					cid := int64(jsNum(vo["cid"]))
-					if cid <= 0 {
-						continue
-					}
-					best = &hit{cid: cid, title: jsStr(m["title"]), source: "video", sim: 0.6}
-					break
-				}
-			}
-		}
-	}
+	// [v1.3.0] 旧 media_ft 兜底删除：桌面端实测「media_ft 为影视分区，不予采用」，
+	// 且 wbi/search/type 匿名必被风控（叠加旧版 nav 密钥失败缓存，该分支从未成功过）。
+	// 视频区搜索已换 search/all/v2（biliSearchVideos），弹幕主力就是它。
 	if best == nil {
 		// [v1.2.7] 自建源补源中但 B站没找到匹配：保留自建源（总比没有强）
 		if len(danmuKept) > 0 {
@@ -705,7 +709,9 @@ func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
 	if cands := b.danmuCandidates(title, req.Ep, req.Season); cands != nil {
 		candidates = append(candidates, cands...)
 	}
-	// ② B站候选：视频区（UP主搬运，主力）优先 → 影视区 media_ft 兜底（biliCount 只数 B站条目）
+	// ② B站候选：视频区（UP主搬运，主力）——[v1.3.0] search/all/v2（桌面端同款）
+	// 旧的 media_ft 兜底删除：桌面端实测结论「media_ft 为影视分区、不含国创，不予采用」，
+	// 且 wbi/search/type 匿名必被风控，纯浪费一次请求。
 	biliCount := 0
 	for _, v := range b.biliSearchVideos(title, 5) {
 		candidates = append(candidates, map[string]any{
@@ -720,43 +726,7 @@ func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if biliCount == 0 {
-		signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
-		_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
-		if err == nil && out != nil {
-			if result, _ := out["result"].([]any); len(result) > 0 {
-				for _, v := range result {
-					m, ok := v.(map[string]any)
-					if !ok {
-						continue
-					}
-					var bvid string
-					if data, _ := m["data"].([]any); len(data) > 0 {
-						if dm, _ := data[0].(map[string]any); dm != nil {
-							bvid = jsStr(dm["bvid"])
-						}
-					}
-					if bvid == "" {
-						bvid = jsStr(m["bvid"])
-					}
-					if bvid == "" {
-						continue
-					}
-					candidates = append(candidates, map[string]any{
-						"bvid":           bvid,
-						"title":          jsStr(m["title"]),
-						"source":         "video",
-						"is_compilation": false,
-						"sim":            nil,
-					})
-					biliCount++
-					if biliCount >= 5 {
-						break
-					}
-				}
-			}
-		}
-	}
+	logf("[danmaku] 手动搜索 keyword=%q: 自建源 %d 条 + B站 %d 条", title, len(candidates)-biliCount, biliCount)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "candidates": candidates})
 }
 
