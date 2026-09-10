@@ -64,12 +64,20 @@ const HERO = ':is('
  *  切换，账号级记忆）——数字网格 div.grid-cols-[repeat(auto-fill,52px)]，其条目**没有
  *  [data-id="details"]** → 旧 COL 判据失配 → 序号视图下美化整段退出（用户报「UI 欠缺」）。
  *  COL 改为 :is() 双判据：列表视图（details 卡）或序号视图（52px 数字网格）任一命中即启用；
- *  I 段竖排规则按 [data-id=details] 定位、序号视图自然 no-op，互不干扰。 */
-const COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px]"])):has(> :nth-child(3))`;
-/* [v1.3.2] 序号视图门控：在 COL 基础上要求选集区内存在 52px 数字网格（纯 CSS，切换视图即时生效）。
+ *  I 段竖排规则按 [data-id=details] 定位、序号视图自然 no-op，互不干扰。
+ *
+ *  ⚠⚠ [v1.3.3 字节级教训] 属性子串**绝不能带收尾的 `]`**！真实类名是
+ *  `grid-cols-[repeat(auto-fill,52px)]`（收尾为 `)]` 两字符）；lc-1124~v1.3.2 一直写成
+ *  `[class*="grid-cols-[repeat(auto-fill,52px]"]`——搜索串收尾 `px]`，而真实串里 `px` 后面
+ *  跟的是 `)`，`x]` 序列根本不存在 → **子串永不命中**（纯字符串匹配问题，与浏览器无关），
+ *  序号视图下美化自 lc-1124 起一次都没真正启用过、v1.3.2 的 COL_NUM 也因此整段失效。
+ *  排查法：把类名与搜索串逐字符 charCodeAt 对照（2026-09-11 playwright 实测 idx=-1 定案）。
+ *  正确写法：`[class*="grid-cols-[repeat(auto-fill,52px"]`——在类名自身收尾 `]` 前**截断**。 */
+const COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px"])):has(> :nth-child(3))`;
+/* [v1.3.2→v1.3.3] 序号视图门控：在 COL 基础上要求选集区内存在 52px 数字网格（纯 CSS，切换视图即时生效）。
    ⚠ 声明必须放在 BEAUTIFY_CSS 模板串之外——串内出现反引号会提前终止模板（esbuild 语法错误，
    而 build-fpk 会吞掉 payload 重建失败继续用旧产物，v1.3.2 首版踩过）。 */
-const COL_NUM = `${COL}:has(> :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"])`;
+const COL_NUM = `${COL}:has(> :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"])`;
 
 /** [lc-1010] Series 一级页内容面板。**必须与 tmdbCard.ts 的 SERIES_PANEL_SEL 逐字一致**
  *  （两处各存一份是刻意的，同 HERO/DETAIL_HERO_SEL 的约定：这边参与 CSS 字符串拼接、
@@ -287,18 +295,18 @@ body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover > :first-chi
    演职人员与选集共用 .ms-container[overflow-x-scroll] 横滑（I 段已给 44px 对齐）。 */
 
 /* 数字块（非当前集）：发丝线 + 圆角 + hover 微浮，底色交回原生 tertiary 自适应明暗 */
-body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"] button:not(.semi-button-primary){
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button:not(.semi-button-primary){
   border-radius:10px !important;
   border:1px solid var(--fnos-hairline-soft) !important;
   transition:background .16s ease, border-color .16s ease, transform .16s ease !important;
 }
-body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"] button:not(.semi-button-primary):hover{
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button:not(.semi-button-primary):hover{
   background:var(--fnos-row-hover) !important;
   border-color:rgba(140,150,180,.45) !important;
   transform:translateY(-1px) !important;
 }
 /* 当前集：品牌描边光环（原生 primary 底保留） */
-body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"] button.semi-button-primary{
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button.semi-button-primary{
   border-radius:10px !important;
   box-shadow:0 0 0 1px var(--semi-color-primary, #6d7ff2), 0 2px 12px -2px rgba(109, 127, 242, .4) !important;
 }
@@ -313,34 +321,43 @@ body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scrol
   transform:scale(1.05) !important;
 }
 
-/* ── [v1.3.2] 序号视图：演职人员沉到选集下方，右栏只留剧集信息卡 ──
+/* ── [v1.3.2→v1.3.3] 序号视图：演职人员沉到选集下方，右栏只留剧集信息卡 ──
    用户需求：切纯数字选集时「右边剧集信息不动位置，演员信息改到选集下方」。
-   右栏(nth-child(3))内含三块：TMDB 卡(.fnos-beautify-card，卡宿主 insertBefore firstChild
-   注入在顶部) + 「演职人员」标题(p.semi-typography) + 演员横滑(.ms-container)。
-   做法：序号视图门控(COL_NUM，声明见文件头 68 行区)下给右栏 display:contents —— 它的
-   三个子块提升为 COL grid 的直接 item，重新分配网格位：卡留守右栏(2/2)，标题+横滑沉到
-   第 3/4 行左栏（选集数字下方）。
-   · display:contents 使 nth-child(3) 自身盒样式失效：其背景本就被 A 段清成 transparent，
-     无视觉损失；右栏入场动画(169-173 行作用于 nth-child(3))随之失效，可接受。
+   右栏(nth-child(3))真实 DOM（2026-09-11 从 NAS bundle 逐层挖出，BH/RH 组件）：
+     nth-child(3)  div.relative.flex.w-full.flex-col.my-10（BH 根）
+      ├─ .fnos-beautify-card（我们注入的 TMDB 卡，insertBefore firstChild）
+      └─ div.relative（RH 根 —— ⚠ 标题与横滑都包在这层里！）
+          ├─ p.semi-typography（「演职人员」标题）
+          ├─ .ms-container（演员横滑，pi ScrollArea）
+          └─ .semi-color-bg-arrow-mask×2（横滑箭头，absolute 定位，lc-1049 已 display:none）
+   做法：序号门控(COL_NUM)下把 nth-child(3) 与其内层 div.relative **双双 display:contents**——
+   display:contents 只提升一级，孙级的标题/横滑必须连包装层一起 contents 化才能成为 COL
+   grid 的直接 item（v1.3.2 只 contents 了外层 + 用直接子代选择器，被这层 div.relative 挡死，
+   是"没修好"的第二处根因）。然后重新分配网格位：卡留守右栏(2/2)，标题+横滑沉到第 3/4 行
+   左栏（选集数字下方）。
+   · contents 化后盒样式失效：两层的背景本就被 A 段清成 transparent，无视觉损失；
+     右栏入场动画(169-173 行作用于 nth-child(3))随之失效，可接受。
+   · 横滑箭头虽被提升为 grid item，但是 absolute 定位不占网格轨道，且 lc-1049 已隐藏，无扰。
    · rows 从两行放宽到四行（特异性比 A 段高一个 :has，覆盖生效）。
    · 列表视图(卡片选集)完全不命中此段，维持原两栏布局。 */
 
 body.fnos-beautify ${COL_NUM}{
   grid-template-rows:auto auto auto auto !important;
 }
-body.fnos-beautify ${COL_NUM} > :nth-child(3){ display:contents !important; }
+body.fnos-beautify ${COL_NUM} > :nth-child(3),
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative{ display:contents !important; }
 /* TMDB 卡：原位右栏（row2 col2），视觉与原布局一致 */
 body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
   grid-area:2 / 2 / 3 / 3 !important;
   min-width:0 !important;
 }
-/* 「演职人员」标题 → 选集下方（row3 左栏） */
-body.fnos-beautify ${COL_NUM} > :nth-child(3) > p.semi-typography{
+/* 「演职人员」标题 → 选集下方（row3 左栏）：隔 RH 根一层，直接子代选择器打不中 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
   grid-area:3 / 1 / 4 / 2 !important;
   min-width:0 !important;
 }
 /* 演员横滑 → 标题下方（row4 左栏） */
-body.fnos-beautify ${COL_NUM} > :nth-child(3) > .ms-container{
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
   grid-area:4 / 1 / 5 / 2 !important;
   min-width:0 !important;
 }
