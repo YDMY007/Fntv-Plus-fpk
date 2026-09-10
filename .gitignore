@@ -17,3 +17,16 @@ tools/
 src/go/*.exe
 zzz_var/
 src/zzz_*/
+
+# 本地环境文件（含用户名/内网细节，不入公开仓库）
+scripts/bisect-plugins.mjs
+scripts/heartbeat-probe.mjs
+scripts/mo-dump.mjs
+scripts/pair-test.mjs
+scripts/smoke.mjs
+scripts/stack-probe.mjs
+scripts/test-panel.mjs
+本地commit/
+docs/初稿v1-已由完整实施方案取代.md
+docs/完整实施方案.md
+.workbuddy/
