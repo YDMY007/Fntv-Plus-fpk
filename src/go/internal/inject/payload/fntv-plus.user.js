@@ -13627,22 +13627,27 @@ html.fntv-boot-hide #root{visibility:hidden}
         const foldStyle = document.createElement("style");
         foldStyle.id = "fntv-sb-fold-style";
         foldStyle.textContent = [
-          "#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:center !important;gap:8px !important; padding:8px 10px !important; }",
-          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }",
+          "#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;cursor:pointer;border-radius:12px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;letter-spacing:.5px;transition:background .15s,color .15s,filter .15s; }",
+          "#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }",
+          /* 收起态：四等分图标行 */
+          "#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:stretch !important;gap:8px !important; padding:8px !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > * { flex:1 1 0 !important; min-width:0 !important; width:auto !important; box-sizing:border-box !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > button { padding:9px 0 !important; }",
           "#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }",
-          "#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:0 0 auto !important; width:auto !important; padding:6px 9px !important; }",
-          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { order:9 !important; flex:1 1 auto !important;justify-content:flex-end !important; min-width:0 !important; }",
-          "#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;letter-spacing:.5px;transition:background .15s,color .15s; }",
-          "#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }"
+          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }",
+          /* 最右折叠条：与图标按钮同款方块（同底色/圆角/边框），只留 ▾ */
+          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { font-size:13px !important; font-weight:700 !important;background:var(--fnos-sidebar-btn-bg)!important; border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 4px 16px rgba(0,0,0,.18)!important; color:#fff!important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle:hover { filter:brightness(1.12); background:var(--fnos-sidebar-btn-bg)!important; }"
         ].join(String.fromCharCode(10));
         (document.head || document.documentElement).appendChild(foldStyle);
       }
       const sbFoldRow = document.createElement("div");
       sbFoldRow.id = "fnos-sb-toggle";
       const paintSbFold = () => {
-        const collapsed = localStorage.getItem("fnos-sidebar-collapsed") === "1";
+        const collapsed = localStorage.getItem("fnos-sidebar-collapsed") !== "0";
         ctrl.classList.toggle("fnos-sb-collapsed", collapsed);
-        sbFoldRow.textContent = collapsed ? "\u5C55\u5F00 \u25BE" : "\u6536\u8D77 \u25B4";
+        sbFoldRow.textContent = collapsed ? "\u25BE" : "\u6536\u8D77 \u25B4";
+        sbFoldRow.title = collapsed ? "\u5C55\u5F00" : "\u6536\u8D77";
       };
       sbFoldRow.addEventListener("click", (e) => {
         e.stopPropagation();

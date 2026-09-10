@@ -648,34 +648,40 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     }
 
     // [v1.2.1] 折叠开关（容器最顶部）：我们的按钮组有时会遮挡侧边栏分类列表。
-    //   顶部一条「收起 ▴」可把整组按钮收成细条，默认展开，状态持久化。
     //   prepend 放在所有按钮/版本号就位之后 → 保证折叠条始终位于容器最顶部。
-    //   [v1.2.4] 收起态不再全藏（用户：不要只留个标志指示）——按钮缩成一行图标
-    //   （⚙/💬 仍可点），文字由 CSS 藏（.fnos-sb-btn-text），版本号隐藏，折叠条靠右。
+    //   [v1.2.4] 收起态不再全藏——按钮缩成图标行（文字由 CSS 藏），版本号隐藏。
+    //   [v1.2.5] 收起态一行四等分（⚙/🕐/💬/▾），折叠条变同款方块（只留 ▾，title 提示）；
+    //   默认收起（未存过偏好时收起，显式点过「收起 ▴/展开 ▾」才记忆另一态）。
     if (!document.getElementById('fntv-sb-fold-style')) {
       const foldStyle = document.createElement('style');
       foldStyle.id = 'fntv-sb-fold-style';
       foldStyle.textContent = [
-        '#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:center !important;'
-          + 'gap:8px !important; padding:8px 10px !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:0 0 auto !important; width:auto !important; padding:6px 9px !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { order:9 !important; flex:1 1 auto !important;'
-          + 'justify-content:flex-end !important; min-width:0 !important; }',
-        '#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;'
-          + 'cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
-          + 'letter-spacing:.5px;transition:background .15s,color .15s; }',
+        '#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;'
+          + 'cursor:pointer;border-radius:12px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
+          + 'letter-spacing:.5px;transition:background .15s,color .15s,filter .15s; }',
         '#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }',
+        /* 收起态：四等分图标行 */
+        '#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:stretch !important;'
+          + 'gap:8px !important; padding:8px !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > * { flex:1 1 0 !important; min-width:0 !important; width:auto !important; box-sizing:border-box !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > button { padding:9px 0 !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }',
+        /* 最右折叠条：与图标按钮同款方块（同底色/圆角/边框），只留 ▾ */
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { font-size:13px !important; font-weight:700 !important;'
+          + 'background:var(--fnos-sidebar-btn-bg)!important; border:1px solid rgba(255,255,255,.28)!important;'
+          + 'box-shadow:0 4px 16px rgba(0,0,0,.18)!important; color:#fff!important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle:hover { filter:brightness(1.12); background:var(--fnos-sidebar-btn-bg)!important; }',
       ].join(String.fromCharCode(10));
       (document.head || document.documentElement).appendChild(foldStyle);
     }
     const sbFoldRow = document.createElement('div');
     sbFoldRow.id = 'fnos-sb-toggle';
     const paintSbFold = (): void => {
-      const collapsed = localStorage.getItem('fnos-sidebar-collapsed') === '1';
+      const collapsed = localStorage.getItem('fnos-sidebar-collapsed') !== '0'; // [v1.2.5] 默认收起
       ctrl.classList.toggle('fnos-sb-collapsed', collapsed);
-      sbFoldRow.textContent = collapsed ? '展开 ▾' : '收起 ▴';
+      sbFoldRow.textContent = collapsed ? '▾' : '收起 ▴';
+      sbFoldRow.title = collapsed ? '展开' : '收起';
     };
     sbFoldRow.addEventListener('click', (e: Event) => {
       e.stopPropagation();
