@@ -198,6 +198,106 @@ func (b *Bridge) biliSearchVideos(title string, limit int) []map[string]any {
 	return out2
 }
 
+var (
+	reEpZh      = regexp.MustCompile(`第\s*0*([0-9]+)\s*[话集回話]`)
+	reEpRange   = regexp.MustCompile(`\d\s*[~\-–至]\s*\d`)
+	reEpPrefix  = regexp.MustCompile(`[^A-Za-z\d](?:e\.?p\.?\s*|episode\s*|#\s*)\s*0*([0-9]+)`)
+	reDigitRuns = regexp.MustCompile(`[0-9]+`)
+)
+
+// epInTitle 桌面端 _ep_in_title 同语义：标题是否指向第 ep 集。
+// 规则按序：第N话 → 含范围表达(1-12话)则排除裸数字 → EP/episode/# 前缀 → 裸数字(前后非数字)。
+func epInTitle(t string, ep int64) bool {
+	if ep <= 0 {
+		return false
+	}
+	for _, m := range reEpZh.FindAllStringSubmatch(t, -1) {
+		if n, err := strconv.ParseInt(m[1], 10, 64); err == nil && n == ep {
+			return true
+		}
+	}
+	if reEpRange.MatchString(t) {
+		return false
+	}
+	for _, m := range reEpPrefix.FindAllStringSubmatch(t, -1) {
+		if n, err := strconv.ParseInt(m[1], 10, 64); err == nil && n == ep {
+			return true
+		}
+	}
+	for _, loc := range reDigitRuns.FindAllStringIndex(t, -1) {
+		s := strings.TrimLeft(t[loc[0]:loc[1]], "0")
+		if s == "" {
+			continue
+		}
+		if n, err := strconv.ParseInt(s, 10, 64); err == nil && n == ep {
+			return true
+		}
+	}
+	return false
+}
+
+// biliCidFromBvid bvid → cid（view 接口，桌面端 cid_from_bvid 同语义）。
+// [v1.3.1] 修复致命层级 bug：旧代码取响应顶层 vo["cid"]——view 的 cid 在 data 里，
+// 顶层永远没有 → 自动加载视频区路径与手动选定永远报「未找到视频 cid」。
+// 多 P 视频按 part 标题匹配集数（先行/预览命中只作兜底）；未指定集数取首 P。
+func (b *Bridge) biliCidFromBvid(bvid string, epNum int64) int64 {
+	_, vo, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/view?bvid=" + url.QueryEscape(bvid))
+	if err != nil || vo == nil {
+		logf("[danmaku] view 请求失败 bvid=%s: %v", bvid, err)
+		return 0
+	}
+	if c := int64(jsNum(vo["code"])); c != 0 {
+		logf("[danmaku] view code=%d msg=%s bvid=%s", c, jsStr(vo["message"]), bvid)
+		return 0
+	}
+	data := jMap(vo["data"])
+	if data == nil {
+		return 0
+	}
+	pages := jArr(data["pages"])
+	rootCid := int64(jsNum(data["cid"]))
+	// 多 P + 指定集数：按 part 标题匹配（先行/预览命中暂存兜底，不直接用）
+	if len(pages) > 1 && epNum > 0 {
+		fallback := int64(0)
+		for _, v := range pages {
+			pm := jMap(v)
+			if pm == nil {
+				continue
+			}
+			part := jsStr(pm["part"])
+			if !epInTitle(part, epNum) {
+				continue
+			}
+			cid := int64(jsNum(pm["cid"]))
+			if cid <= 0 {
+				continue
+			}
+			if strings.Contains(part, "先行") || strings.Contains(part, "预览") {
+				if fallback == 0 {
+					fallback = cid
+				}
+				continue
+			}
+			logf("[danmaku] cid_from_bvid bvid=%s 多P命中 part=%q cid=%d", bvid, part, cid)
+			return cid
+		}
+		if fallback > 0 {
+			logf("[danmaku] cid_from_bvid bvid=%s 多P仅先行/预览命中, 兜底 cid=%d", bvid, fallback)
+			return fallback
+		}
+		logf("[danmaku] cid_from_bvid bvid=%s 多P未匹配第%d话, 兜底根 cid=%d", bvid, epNum, rootCid)
+		return rootCid
+	}
+	// 单 P / 未指定集数：根 cid（=首 P），根缺失回退 pages[0]
+	if rootCid <= 0 && len(pages) > 0 {
+		if pm := jMap(pages[0]); pm != nil {
+			rootCid = int64(jsNum(pm["cid"]))
+		}
+	}
+	logf("[danmaku] cid_from_bvid bvid=%s pages=%d cid=%d", bvid, len(pages), rootCid)
+	return rootCid
+}
+
 // cookieStatusOf 登录态摘要（渲染端「来源详情→登录状态」显示用；有 cookie 即 valid）。
 func cookieStatusOf(cfg *config.Config) string {
 	if strings.TrimSpace(getSetting(cfg, "bili_cookie")) != "" {
@@ -589,15 +689,10 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	// ② B站 兜底：视频区（UP主搬运，弹幕主力）优先 → 影视区 media_ft
+	// ② B站 兜底：视频区（UP主搬运，弹幕主力）
 	if best == nil {
 		for _, v := range b.biliSearchVideos(title, 5) {
-			bvid := jsStr(v["bvid"])
-			_, vo, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/view?bvid=" + url.QueryEscape(bvid))
-			if err != nil || vo == nil {
-				continue
-			}
-			cid := int64(jsNum(vo["cid"]))
+			cid := b.biliCidFromBvid(jsStr(v["bvid"]), req.Ep)
 			if cid <= 0 {
 				continue
 			}
@@ -759,15 +854,10 @@ func (b *Bridge) danmakuPick(w http.ResponseWriter, r *http.Request) {
 		items = b.danmuFetchItems(id)
 		source = danmuSourceLabel
 	} else {
-		// B站：bvid → view 接口拿 cid → list.so
-		_, vo, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/view?bvid=" + url.QueryEscape(bvid))
-		if err != nil || vo == nil {
-			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "B站视频信息获取失败"})
-			return
-		}
-		cid := int64(jsNum(vo["cid"]))
+		// B站：bvid → cid（view 接口，桌面 cid_from_bvid 同语义）→ list.so
+		cid := b.biliCidFromBvid(bvid, req.Ep)
 		if cid <= 0 {
-			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "未找到视频 cid"})
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "未找到视频 cid（视频可能已删除/充电视频，详情见服务日志）"})
 			return
 		}
 		items = b.biliFetchDanmakuXML(cid)
