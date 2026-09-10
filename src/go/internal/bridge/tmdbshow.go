@@ -746,6 +746,53 @@ func tmdbCacheWrite(path string, payload map[string]any) {
 	}
 }
 
+// tmdbFetchMulti [v1.2.6] 多路兜底 GET TMDB（tmdbGet 同款语义，服务聚合大请求）：
+// 自定义代理 → 免梯子直连 IP → 系统直连，网络层错误（EOF/超时/重置——国内直连 TMDB 的常态）
+// 自动换下一路；服务器有响应（401/404/429 等）不换路，原样返回状态与解析体。
+// 由来：tmdbShow/tmdbSeasonEpisodes 的详情/季请求此前是**单路单次**（tmdbClient().Do 一次即弃），
+// tmdbGet 早已多路兜底（v0.74.0）但聚合请求没享受到 → 用户季页频繁看到裸 `Get "https://...": EOF`。
+// 超时 30s：聚合响应（aggregate_credits 等）比普通端点大得多。
+func (b *Bridge) tmdbFetchMulti(urlStr, bearer string) (int, map[string]any, error) {
+	type tmAttempt struct {
+		c   *http.Client
+		via string
+	}
+	attempts := []tmAttempt{}
+	if proxy := b.customProxyURL(); proxy != "" {
+		if pu, perr := url.Parse(proxy); perr == nil && pu.Scheme != "" {
+			attempts = append(attempts, tmAttempt{&http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(pu)}}, "自定义代理"})
+		}
+	}
+	if dc := b.tmdbDirectClient(); dc != nil {
+		attempts = append(attempts, tmAttempt{dc, "免梯子直连"})
+	}
+	attempts = append(attempts, tmAttempt{b.client, "系统直连"})
+
+	var lastNetErr error
+	for _, a := range attempts {
+		req, _ := http.NewRequest(http.MethodGet, urlStr, nil)
+		req.Header.Set("Accept", "application/json")
+		if bearer != "" {
+			req.Header.Set("Authorization", bearer)
+		}
+		resp, err := a.c.Do(req)
+		if err != nil {
+			lastNetErr = fmt.Errorf("%s：%v", a.via, err)
+			logf("[tmdb] multi %s 失败: %v", a.via, err)
+			continue
+		}
+		var out map[string]any
+		decodeErr := json.NewDecoder(io.LimitReader(resp.Body, 32*1024*1024)).Decode(&out)
+		resp.Body.Close()
+		if decodeErr != nil {
+			lastNetErr = fmt.Errorf("%s：响应解析失败 %v", a.via, decodeErr)
+			continue
+		}
+		return resp.StatusCode, out, nil
+	}
+	return 0, nil, lastNetErr
+}
+
 // tmdbShow 完整详情（append_to_response 聚合 + include_image_language + 季摘要）。
 func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 	if b.tmdbAPIKey() == "" {
@@ -793,7 +840,6 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	client := b.tmdbClient()
 	bearer, queryKey := authForKey(b.tmdbAPIKey())
 	id, err := b.resolveShowID(mt, req.TmdbID.Int64(), req.Title, req.Year)
 	if err != nil {
@@ -813,21 +859,15 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 		q.Set("api_key", queryKey)
 	}
 	u.RawQuery = q.Encode()
-	req2, _ := http.NewRequest(http.MethodGet, u.String(), nil)
-	req2.Header.Set("Accept", "application/json")
-	if bearer != "" {
-		req2.Header.Set("Authorization", bearer)
-	}
-	resp, err := client.Do(req2)
-	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+	// [v1.2.6] 单路单次 → 多路兜底（tmdbFetchMulti）：此前这里一次 EOF 就把裸错误甩给前端
+	status, d, ferr := b.tmdbFetchMulti(u.String(), bearer)
+	if ferr != nil {
+		logf("[tmdb] show 详情拉取失败: %v", ferr)
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "TMDB 连接失败（已自动尝试 代理/直连IP/系统直连 三路）：" + ferr.Error() + "。可在设置→TMDB 直连点「更新 IP」后重试，或检查 NAS 网络/代理。"})
 		return
 	}
-	defer resp.Body.Close()
-	var d map[string]any
-	_ = json.NewDecoder(io.LimitReader(resp.Body, 32*1024*1024)).Decode(&d)
-	if resp.StatusCode != http.StatusOK || d == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": fmt.Sprintf("详情 %d", resp.StatusCode)})
+	if status != http.StatusOK || d == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": fmt.Sprintf("详情 %d", status)})
 		return
 	}
 	var season any
@@ -845,16 +885,10 @@ func (b *Bridge) tmdbShow(w http.ResponseWriter, r *http.Request) {
 				sqq.Set("api_key", queryKey)
 			}
 			sq.RawQuery = sqq.Encode()
-			sreq, _ := http.NewRequest(http.MethodGet, sq.String(), nil)
-			sreq.Header.Set("Accept", "application/json")
-			if bearer != "" {
-				sreq.Header.Set("Authorization", bearer)
-			}
-			if sresp, serr := client.Do(sreq); serr == nil {
-				var sd map[string]any
-				_ = json.NewDecoder(io.LimitReader(sresp.Body, 16*1024*1024)).Decode(&sd)
-				sresp.Body.Close()
+			if sstatus, sd, serr := b.tmdbFetchMulti(sq.String(), bearer); serr == nil && sstatus == http.StatusOK && sd != nil {
 				season = normalizeSeason(sd, sn)
+			} else if serr != nil {
+				logf("[tmdb] show 季摘要拉取失败: %v", serr)
 			}
 		}
 	}
@@ -917,18 +951,11 @@ func (b *Bridge) tmdbSeasonEpisodes(w http.ResponseWriter, r *http.Request) {
 		if queryKey != "" {
 			u += "&api_key=" + url.QueryEscape(queryKey)
 		}
-		req, _ := http.NewRequest(http.MethodGet, u, nil)
-		req.Header.Set("Accept", "application/json")
-		if bearer != "" {
-			req.Header.Set("Authorization", bearer)
-		}
-		resp, err := b.tmdbClient().Do(req)
-		if err != nil {
+		// [v1.2.6] 单路单次 → 多路兜底（tmdbFetchMulti）；失败保持原语义：静默 nil，不影响主流程
+		_, out, ferr := b.tmdbFetchMulti(u, bearer)
+		if ferr != nil || out == nil {
 			return nil
 		}
-		defer resp.Body.Close()
-		var out map[string]any
-		_ = json.NewDecoder(io.LimitReader(resp.Body, 16*1024*1024)).Decode(&out)
 		raw := jArr(out["episodes"])
 		eps := []map[string]any{}
 		for _, e := range raw {
