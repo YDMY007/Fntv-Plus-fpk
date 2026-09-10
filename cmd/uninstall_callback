@@ -1,4 +1,12 @@
 #!/bin/bash
-# 卸载后回调：本应用零侵入影视系统，无需还原任何影视文件。
-# 仅做幂等清理说明——不主动删除 var 数据（fnOS 会在卸载时整体回收 @appdata 目录）。
+# 卸载后回调：按卸载向导的用户选择处理数据。
+#   向导（wizard/uninstall）字段 wizard_delete_data：
+#     "no"  = 保留数据（默认）：不删任何数据，重装同名应用后设置/缓存原样恢复
+#     "yes" = 删除数据：清空本应用数据目录（$TRIM_PKGVAR = /vol[x]/@appdata/fntvplus）
+# 防误删：仅当 TRIM_PKGVAR 以 @appdata/fntvplus 结尾时才执行删除。
+if [ "$wizard_delete_data" = "yes" ]; then
+    if [ -n "$TRIM_PKGVAR" ] && case "$TRIM_PKGVAR" in *@appdata/fntvplus) true;; *) false;; esac; then
+        rm -rf "$TRIM_PKGVAR"
+    fi
+fi
 exit 0

@@ -1,0 +1,29 @@
+[
+    {
+        "stepTitle": "卸载 Fntv-Plus",
+        "items": [
+            {
+                "type": "radio",
+                "field": "wizard_delete_data",
+                "label": "是否删除应用数据（设置 / 弹幕缓存 / TMDB 缓存）？",
+                "initValue": "no",
+                "options": [
+                    {
+                        "label": "保留数据",
+                        "value": "no"
+                    },
+                    {
+                        "label": "删除数据",
+                        "value": "yes"
+                    }
+                ],
+                "rules": [
+                    {
+                        "required": true,
+                        "message": "请选择是否删除应用数据"
+                    }
+                ]
+            }
+        ]
+    }
+]
