@@ -13515,35 +13515,6 @@ html.fntv-boot-hide #root{visibility:hidden}
         panel.appendChild(ctrl);
       }
       if (ctrl.querySelector("#fnos-settings-btn")) return;
-      if (!document.getElementById("fntv-sb-fold-style")) {
-        const foldStyle = document.createElement("style");
-        foldStyle.id = "fntv-sb-fold-style";
-        foldStyle.textContent = [
-          "#fnos-sidebar-actions.fnos-sb-collapsed { padding: 4px 6px !important; gap: 0; }",
-          "#fnos-sidebar-actions.fnos-sb-collapsed > *:not(#fnos-sb-toggle) { display: none !important; }",
-          "#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;letter-spacing:.5px;transition:background .15s,color .15s; }",
-          "#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }"
-        ].join(String.fromCharCode(10));
-        (document.head || document.documentElement).appendChild(foldStyle);
-      }
-      const sbFoldRow = document.createElement("div");
-      sbFoldRow.id = "fnos-sb-toggle";
-      const paintSbFold = () => {
-        const collapsed = localStorage.getItem("fnos-sidebar-collapsed") === "1";
-        ctrl.classList.toggle("fnos-sb-collapsed", collapsed);
-        sbFoldRow.textContent = collapsed ? "\u98DE\u725B\u589E\u5F3A \u25B8" : "\u98DE\u725B\u589E\u5F3A \u25BE";
-      };
-      sbFoldRow.addEventListener("click", (e) => {
-        e.stopPropagation();
-        try {
-          localStorage.setItem("fnos-sidebar-collapsed", localStorage.getItem("fnos-sidebar-collapsed") === "1" ? "0" : "1");
-        } catch (_) {
-        }
-        paintSbFold();
-      });
-      ctrl.prepend(sbFoldRow);
-      paintSbFold();
-      if (ctrl.querySelector("#fnos-settings-btn")) return;
       const btn = document.createElement("button");
       btn.id = "fnos-settings-btn";
       btn.type = "button";
@@ -13586,6 +13557,34 @@ html.fntv-boot-hide #root{visibility:hidden}
         } catch (_) {
         }
       }
+      if (!document.getElementById("fntv-sb-fold-style")) {
+        const foldStyle = document.createElement("style");
+        foldStyle.id = "fntv-sb-fold-style";
+        foldStyle.textContent = [
+          "#fnos-sidebar-actions.fnos-sb-collapsed { padding: 4px 6px !important; gap: 0; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > *:not(#fnos-sb-toggle) { display: none !important; }",
+          "#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;letter-spacing:.5px;transition:background .15s,color .15s; }",
+          "#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }"
+        ].join(String.fromCharCode(10));
+        (document.head || document.documentElement).appendChild(foldStyle);
+      }
+      const sbFoldRow = document.createElement("div");
+      sbFoldRow.id = "fnos-sb-toggle";
+      const paintSbFold = () => {
+        const collapsed = localStorage.getItem("fnos-sidebar-collapsed") === "1";
+        ctrl.classList.toggle("fnos-sb-collapsed", collapsed);
+        sbFoldRow.textContent = collapsed ? "\u5C55\u5F00 \u25BE" : "\u6536\u8D77 \u25B4";
+      };
+      sbFoldRow.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          localStorage.setItem("fnos-sidebar-collapsed", localStorage.getItem("fnos-sidebar-collapsed") === "1" ? "0" : "1");
+        } catch (_) {
+        }
+        paintSbFold();
+      });
+      ctrl.prepend(sbFoldRow);
+      paintSbFold();
       try {
         buildSettingsPanel();
       } catch (e) {
