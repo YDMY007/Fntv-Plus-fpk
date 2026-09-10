@@ -9510,7 +9510,7 @@ html.fnos-perf.dark{
   // src/preload/plugins/embyWall/detail/beautifyStyle.ts
   var STYLE_ID3 = "fnos-beautify-css";
   var HERO = ':is(.semi-always-dark[class*="h-[470px]"],.semi-always-dark[class*="min-h-[390px]"],.trim-mc__details--key-version)';
-  var COL = `:has(> ${HERO}):has([data-id="details"]):has(> :nth-child(3))`;
+  var COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px]"])):has(> :nth-child(3))`;
   var SERIES_PANEL = 'div[class="relative box-border flex w-full flex-col px-[44px]"]';
   var SERIES_BTNROW = 'div[class="relative w-full"] > div[class^="mt-4 "]';
   var MOVIE_PANEL = 'div[class="relative flex w-full flex-col box-border px-[46px]"]';
@@ -9699,6 +9699,40 @@ body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] + [data-id="detail
 }
 body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover{ background:var(--fnos-row-hover) !important; }
 body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover > :first-child picture img{ transform:scale(1.035) !important; }
+
+/* \u2500\u2500 [lc-1124] \u5E8F\u53F7\u89C6\u56FE\uFF08\u7EAF\u6570\u5B57\u9009\u96C6\uFF09\u4E0E\u6F14\u804C\u4EBA\u5458 \u7CBE\u4FEE \u2500\u2500
+   \u539F\u751F\u300C\u5207\u6362\u4E3A\u5E8F\u53F7\u89C6\u56FE\u300D(\u5DE5\u5177\u884C title="\u5207\u6362\u4E3A\u5E8F\u53F7\u89C6\u56FE") \u5728\u7F8E\u5316\u4F5C\u7528\u57DF\u4E0B\u529F\u80FD\u5B8C\u597D
+   \uFF08\u7AD6\u6392\u89C4\u5219 [data-id=details] \u4E0D\u547D\u4E2D\u6B64\u89C6\u56FE\u7684\u6570\u5B57\u5757\uFF0C\u5B9E\u6D4B beautifyGridHit=false\uFF09\uFF0C
+   \u672C\u6BB5\u53EA\u505A\u89C6\u89C9\u8BED\u8A00\u7EDF\u4E00\uFF1A
+   \xB7 \u6570\u5B57\u5757\uFF08.grid[grid-cols-[repeat(auto-fill,52px)]] \u5185\u7684 semi-button\uFF09\u52A0\u53D1\u4E1D\u7EBF +
+     \u7EDF\u4E00 10px \u5706\u89D2 + hover \u5FAE\u6D6E\uFF1B\u5F53\u524D\u96C6(.semi-button-primary)\u4FDD\u7559\u539F\u751F\u54C1\u724C\u5E95\uFF0C\u53EA\u8865\u63CF\u8FB9\u5149\u73AF\uFF1B
+   \xB7 \u6F14\u804C\u4EBA\u5458\u5361 hover \u5934\u50CF\u5FAE\u653E\u5927\uFF08\u4E0E\u9009\u96C6\u7F29\u7565\u56FE hover \u540C\u8BED\u8A00\uFF09\u3002
+   \u6F14\u804C\u4EBA\u5458\u4E0E\u9009\u96C6\u5171\u7528 .ms-container[overflow-x-scroll] \u6A2A\u6ED1\uFF08I \u6BB5\u5DF2\u7ED9 44px \u5BF9\u9F50\uFF09\u3002 */
+
+/* \u6570\u5B57\u5757\uFF08\u975E\u5F53\u524D\u96C6\uFF09\uFF1A\u53D1\u4E1D\u7EBF + \u5706\u89D2 + hover \u5FAE\u6D6E\uFF0C\u5E95\u8272\u4EA4\u56DE\u539F\u751F tertiary \u81EA\u9002\u5E94\u660E\u6697 */
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"] button:not(.semi-button-primary){
+  border-radius:10px !important;
+  border:1px solid var(--fnos-hairline-soft) !important;
+  transition:background .16s ease, border-color .16s ease, transform .16s ease !important;
+}
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"] button:not(.semi-button-primary):hover{
+  background:var(--fnos-row-hover) !important;
+  border-color:rgba(140,150,180,.45) !important;
+  transform:translateY(-1px) !important;
+}
+/* \u5F53\u524D\u96C6\uFF1A\u54C1\u724C\u63CF\u8FB9\u5149\u73AF\uFF08\u539F\u751F primary \u5E95\u4FDD\u7559\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"] button.semi-button-primary{
+  border-radius:10px !important;
+  box-shadow:0 0 0 1px var(--semi-color-primary, #6d7ff2), 0 2px 12px -2px rgba(109, 127, 242, .4) !important;
+}
+
+/* \u6F14\u5458\u5361 hover\uFF1A\u5934\u50CF\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u4E0E\u9009\u96C6\u7F29\u7565\u56FE scale \u540C\u6863\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
+  transition:transform .3s cubic-bezier(.25, .1, .25, 1) !important;
+}
+body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
+  transform:scale(1.05) !important;
+}
 
 /* [lc-1049] \u9690\u85CF\u539F\u751F\u6A2A\u6ED1\u7FFB\u9875\u7BAD\u5934\uFF08Semi ScrollList \u7684 [class*="semi-color-bg-arrow-mask"] \u63A9\u819C\u5C42\uFF09\u3002
    \u7528\u6237\u62A5\u969C\uFF1A\u9009\u96C6\u5217\u8868(\u96C6\u6570\u636E)\u4E0E\u5267\u96C6\u4FE1\u606F\u5361\u4E4B\u95F4\u6709\u4E2A\u300C\u9875\u9762\u5207\u6362\u6807\u7B7E\u300Dhover \u65F6\u77ED\u6682\u95EA\u73B0 \u2014\u2014 \u90A3\u662F\u539F\u751F
