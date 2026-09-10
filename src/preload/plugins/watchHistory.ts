@@ -184,7 +184,14 @@ function injectEntry(): boolean {
     const btn = document.createElement('button');
     btn.id = ENTRY_ID;
     btn.type = 'button';
-    btn.textContent = '🕐 观影记录';
+    btn.textContent = '🕐';
+    // [v1.2.4] 文字包 span：侧栏收起态只留图标（与设置/反馈按钮同款）
+    {
+        const _whTxt = document.createElement('span');
+        _whTxt.className = 'fnos-sb-btn-text';
+        _whTxt.textContent = ' 观影记录';
+        btn.appendChild(_whTxt);
+    }
     btn.style.cssText = SIDEBAR_BTN_CSS;
     btn.addEventListener('click', (e: MouseEvent) => {
         e.preventDefault();

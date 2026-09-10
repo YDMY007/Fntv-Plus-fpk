@@ -13572,7 +13572,13 @@ html.fntv-boot-hide #root{visibility:hidden}
       const btn = document.createElement("button");
       btn.id = "fnos-settings-btn";
       btn.type = "button";
-      btn.textContent = "\u2699 \u8BBE\u7F6E";
+      btn.textContent = "\u2699";
+      {
+        const _sbTxt = document.createElement("span");
+        _sbTxt.className = "fnos-sb-btn-text";
+        _sbTxt.textContent = " \u8BBE\u7F6E";
+        btn.appendChild(_sbTxt);
+      }
       btn.style.cssText = "box-sizing:border-box;width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;background:var(--fnos-sidebar-btn-bg)!important;color:#fff;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 4px 16px rgba(0,0,0,.18);";
       btn.addEventListener("click", (e) => {
         var _a;
@@ -13587,7 +13593,13 @@ html.fntv-boot-hide #root{visibility:hidden}
         const fbChoiceBtn = document.createElement("button");
         fbChoiceBtn.id = "fnos-feedback-choice-btn";
         fbChoiceBtn.type = "button";
-        fbChoiceBtn.textContent = "\u8F6F\u4EF6\u53CD\u9988\u5EFA\u8BAE";
+        fbChoiceBtn.textContent = "\u{1F4AC}";
+        {
+          const _fbTxt = document.createElement("span");
+          _fbTxt.className = "fnos-sb-btn-text";
+          _fbTxt.textContent = "\u8F6F\u4EF6\u53CD\u9988\u5EFA\u8BAE";
+          fbChoiceBtn.appendChild(_fbTxt);
+        }
         fbChoiceBtn.style.cssText = "box-sizing:border-box;width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;background:var(--fnos-sidebar-btn-bg)!important;color:#fff;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 4px 16px rgba(0,0,0,.18);text-align:center;";
         fbChoiceBtn.addEventListener("click", (e) => {
           var _a;
@@ -13615,8 +13627,11 @@ html.fntv-boot-hide #root{visibility:hidden}
         const foldStyle = document.createElement("style");
         foldStyle.id = "fntv-sb-fold-style";
         foldStyle.textContent = [
-          "#fnos-sidebar-actions.fnos-sb-collapsed { padding: 4px 6px !important; gap: 0; }",
-          "#fnos-sidebar-actions.fnos-sb-collapsed > *:not(#fnos-sb-toggle) { display: none !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:center !important;gap:8px !important; padding:8px 10px !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:0 0 auto !important; width:auto !important; padding:6px 9px !important; }",
+          "#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { order:9 !important; flex:1 1 auto !important;justify-content:flex-end !important; min-width:0 !important; }",
           "#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;letter-spacing:.5px;transition:background .15s,color .15s; }",
           "#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }"
         ].join(String.fromCharCode(10));
@@ -19247,7 +19262,13 @@ html.fntv-boot-hide #root{visibility:hidden}
     const btn = document.createElement("button");
     btn.id = ENTRY_ID;
     btn.type = "button";
-    btn.textContent = "\u{1F550} \u89C2\u5F71\u8BB0\u5F55";
+    btn.textContent = "\u{1F550}";
+    {
+      const _whTxt = document.createElement("span");
+      _whTxt.className = "fnos-sb-btn-text";
+      _whTxt.textContent = " \u89C2\u5F71\u8BB0\u5F55";
+      btn.appendChild(_whTxt);
+    }
     btn.style.cssText = SIDEBAR_BTN_CSS;
     btn.addEventListener("click", (e) => {
       e.preventDefault();

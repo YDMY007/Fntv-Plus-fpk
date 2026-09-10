@@ -582,7 +582,14 @@ function handle(): void {
     const btn = document.createElement('button');
     btn.id = 'fnos-settings-btn';
     btn.type = 'button';
-    btn.textContent = '⚙ 设置';
+    btn.textContent = '⚙';
+    // [v1.2.4] 文字包 span：收起态由 CSS 只藏文字留图标（图标仍可点，不再只剩一条孤标志）
+    {
+      const _sbTxt = document.createElement('span');
+      _sbTxt.className = 'fnos-sb-btn-text';
+      _sbTxt.textContent = ' 设置';
+      btn.appendChild(_sbTxt);
+    }
 btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;'
         + 'background:var(--fnos-sidebar-btn-bg)!important;color:#fff;font-size:13px;font-weight:600;'
         + 'border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'
@@ -602,7 +609,14 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       const fbChoiceBtn = document.createElement('button');
       fbChoiceBtn.id = 'fnos-feedback-choice-btn';
       fbChoiceBtn.type = 'button';
-      fbChoiceBtn.textContent = '软件反馈建议';
+      fbChoiceBtn.textContent = '💬';
+      // [v1.2.4] 文字包 span：收起态只留图标（与设置按钮同款）
+      {
+        const _fbTxt = document.createElement('span');
+        _fbTxt.className = 'fnos-sb-btn-text';
+        _fbTxt.textContent = '软件反馈建议';
+        fbChoiceBtn.appendChild(_fbTxt);
+      }
       fbChoiceBtn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-radius:12px;cursor:pointer;'
         + 'background:var(--fnos-sidebar-btn-bg)!important;color:#fff;font-size:13px;font-weight:600;'
         + 'border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'
@@ -634,15 +648,21 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     }
 
     // [v1.2.1] 折叠开关（容器最顶部）：我们的按钮组有时会遮挡侧边栏分类列表。
-    //   顶部一条「收起 ▴」可把整组按钮收成细条（变「展开 ▾」），默认展开，状态持久化。
+    //   顶部一条「收起 ▴」可把整组按钮收成细条，默认展开，状态持久化。
     //   prepend 放在所有按钮/版本号就位之后 → 保证折叠条始终位于容器最顶部。
-    //   折叠用容器类 + CSS 规则实现（后来重挂的按钮也自动被藏，不会被撑开）。
+    //   [v1.2.4] 收起态不再全藏（用户：不要只留个标志指示）——按钮缩成一行图标
+    //   （⚙/💬 仍可点），文字由 CSS 藏（.fnos-sb-btn-text），版本号隐藏，折叠条靠右。
     if (!document.getElementById('fntv-sb-fold-style')) {
       const foldStyle = document.createElement('style');
       foldStyle.id = 'fntv-sb-fold-style';
       foldStyle.textContent = [
-        '#fnos-sidebar-actions.fnos-sb-collapsed { padding: 4px 6px !important; gap: 0; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > *:not(#fnos-sb-toggle) { display: none !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:center !important;'
+          + 'gap:8px !important; padding:8px 10px !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:0 0 auto !important; width:auto !important; padding:6px 9px !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { order:9 !important; flex:1 1 auto !important;'
+          + 'justify-content:flex-end !important; min-width:0 !important; }',
         '#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;'
           + 'cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
           + 'letter-spacing:.5px;transition:background .15s,color .15s; }',
