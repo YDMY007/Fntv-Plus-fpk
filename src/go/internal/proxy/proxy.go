@@ -65,6 +65,8 @@ func NewServer(d Deps) *Server {
 		Injector:  d.Injector,
 		StartTime: time.Now(), // 日志 API 只显示本次启动之后的行
 	}
+	s.mux.HandleFunc("/admin", admin.Page(d.Config))   // [v1.0.1] 直连入口：http://<NAS>:22350/admin（不再装桌面应用）
+	s.mux.HandleFunc("/admin/", admin.Page(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/admin", admin.Page(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/admin/", admin.Page(d.Config))
 	s.mux.HandleFunc("/app/fntvplus/api/settings", admin.SettingsAPI(d.Config))
