@@ -650,8 +650,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     // [v1.2.1] 折叠开关（容器最顶部）：我们的按钮组有时会遮挡侧边栏分类列表。
     //   prepend 放在所有按钮/版本号就位之后 → 保证折叠条始终位于容器最顶部。
     //   [v1.2.4] 收起态不再全藏——按钮缩成图标行（文字由 CSS 藏），版本号隐藏。
-    //   [v1.2.5] 收起态一行四等分（⚙/🕐/💬/▾），折叠条变同款方块（只留 ▾，title 提示）；
-    //   默认收起（未存过偏好时收起，显式点过「收起 ▴/展开 ▾」才记忆另一态）。
+    //   [v1.2.5] 收起态一行四等分（⚙/🕐/💬/▾），默认收起（未存过偏好时收起，显式点过才记忆）。
+    //   [v1.2.9] 收起态改三等分（⚙/🕐/💬），折叠钮不占格——独立小箭头钮浮在容器内顶部居中
+    //   （展开态 ▴ / 收起态 ▾，指向折叠方向）；展开/收起状态持久化（fnos-sidebar-collapsed）。
     if (!document.getElementById('fntv-sb-fold-style')) {
       const foldStyle = document.createElement('style');
       foldStyle.id = 'fntv-sb-fold-style';
@@ -660,17 +661,21 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
           + 'cursor:pointer;border-radius:12px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
           + 'letter-spacing:.5px;transition:background .15s,color .15s,filter .15s; }',
         '#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }',
-        /* 收起态：四等分图标行 */
+        /* 收起态：三功能按钮(⚙/🕐/💬)一行三等分；折叠钮不占格，独立浮在按钮上方居中 [v1.2.9] */
         '#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:stretch !important;'
-          + 'gap:8px !important; padding:8px !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > * { flex:1 1 0 !important; min-width:0 !important; width:auto !important; box-sizing:border-box !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > button { padding:9px 0 !important; }',
+          + 'gap:8px !important; padding:30px 10px 10px !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:1 1 0 !important; min-width:0 !important;'
+          + 'width:auto !important; box-sizing:border-box !important; padding:9px 0 !important; }',
         '#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }',
         '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }',
-        /* 最右折叠条：与图标按钮同款方块（同底色/圆角/边框），只留 ▾ */
-        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { font-size:13px !important; font-weight:700 !important;'
+        /* 折叠钮：容器内顶部居中的小箭头钮（top:7px + 高 20px < padding-top 30px，与三按钮不重叠；
+         * absolute 相对 sticky 容器定位，不出容器 → 不会被面板 overflow 裁掉） */
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { position:absolute !important; top:7px !important;'
+          + 'left:50% !important; transform:translateX(-50%) !important; width:auto !important; min-width:44px !important;'
+          + 'height:20px !important; padding:0 12px !important; display:flex !important; align-items:center !important;'
+          + 'justify-content:center !important; font-size:12px !important; font-weight:700 !important; line-height:1 !important;'
           + 'background:var(--fnos-sidebar-btn-bg)!important; border:1px solid rgba(255,255,255,.28)!important;'
-          + 'box-shadow:0 4px 16px rgba(0,0,0,.18)!important; color:#fff!important; }',
+          + 'box-shadow:0 4px 16px rgba(0,0,0,.18)!important; color:#fff!important; border-radius:10px !important; }',
         '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle:hover { filter:brightness(1.12); background:var(--fnos-sidebar-btn-bg)!important; }',
       ].join(String.fromCharCode(10));
       (document.head || document.documentElement).appendChild(foldStyle);
@@ -685,7 +690,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     };
     sbFoldRow.addEventListener('click', (e: Event) => {
       e.stopPropagation();
-      try { localStorage.setItem('fnos-sidebar-collapsed', localStorage.getItem('fnos-sidebar-collapsed') === '1' ? '0' : '1'); } catch (_) {}
+      // [v1.2.9] 按当前态取反并持久化（与 paintSbFold 判据同源）：用户显式点过即记住，刷新/重开保持
+      const cur = localStorage.getItem('fnos-sidebar-collapsed') !== '0';
+      try { localStorage.setItem('fnos-sidebar-collapsed', cur ? '0' : '1'); } catch (_) {}
       paintSbFold();
     });
     ctrl.prepend(sbFoldRow);
