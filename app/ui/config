@@ -9,15 +9,6 @@
       "url": "/v/",
       "allUsers": true,
       "control": { "accessPerm": "editable" }
-    },
-    "fntvplus.Settings": {
-      "title": "Fntv-Plus 设置",
-      "icon": "images/setting_v2_{0}.png",
-      "type": "url",
-      "protocol": "http",
-      "port": "22350",
-      "url": "/app/fntvplus/admin/",
-      "allUsers": false
     }
   }
 }
