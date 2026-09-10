@@ -66,6 +66,10 @@ const HERO = ':is('
  *  COL 改为 :is() 双判据：列表视图（details 卡）或序号视图（52px 数字网格）任一命中即启用；
  *  I 段竖排规则按 [data-id=details] 定位、序号视图自然 no-op，互不干扰。 */
 const COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px]"])):has(> :nth-child(3))`;
+/* [v1.3.2] 序号视图门控：在 COL 基础上要求选集区内存在 52px 数字网格（纯 CSS，切换视图即时生效）。
+   ⚠ 声明必须放在 BEAUTIFY_CSS 模板串之外——串内出现反引号会提前终止模板（esbuild 语法错误，
+   而 build-fpk 会吞掉 payload 重建失败继续用旧产物，v1.3.2 首版踩过）。 */
+const COL_NUM = `${COL}:has(> :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"])`;
 
 /** [lc-1010] Series 一级页内容面板。**必须与 tmdbCard.ts 的 SERIES_PANEL_SEL 逐字一致**
  *  （两处各存一份是刻意的，同 HERO/DETAIL_HERO_SEL 的约定：这边参与 CSS 字符串拼接、
@@ -299,12 +303,46 @@ body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,5
   box-shadow:0 0 0 1px var(--semi-color-primary, #6d7ff2), 0 2px 12px -2px rgba(109, 127, 242, .4) !important;
 }
 
-/* 演员卡 hover：头像微放大（克制，与选集缩略图 scale 同档） */
-body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
+/* 演员卡 hover：头像微放大（克制，与选集缩略图 scale 同档）。
+   ⚠ [v1.3.2] 作用域修正：演职人员横滑在 COL>nth-child(3)（右栏，tmdbCard._cardHost 的
+   children[2]），旧版写成 nth-child(2) 是条永不命中的死规则。 */
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
   transition:transform .3s cubic-bezier(.25, .1, .25, 1) !important;
 }
-body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
   transform:scale(1.05) !important;
+}
+
+/* ── [v1.3.2] 序号视图：演职人员沉到选集下方，右栏只留剧集信息卡 ──
+   用户需求：切纯数字选集时「右边剧集信息不动位置，演员信息改到选集下方」。
+   右栏(nth-child(3))内含三块：TMDB 卡(.fnos-beautify-card，卡宿主 insertBefore firstChild
+   注入在顶部) + 「演职人员」标题(p.semi-typography) + 演员横滑(.ms-container)。
+   做法：序号视图门控(COL_NUM，声明见文件头 68 行区)下给右栏 display:contents —— 它的
+   三个子块提升为 COL grid 的直接 item，重新分配网格位：卡留守右栏(2/2)，标题+横滑沉到
+   第 3/4 行左栏（选集数字下方）。
+   · display:contents 使 nth-child(3) 自身盒样式失效：其背景本就被 A 段清成 transparent，
+     无视觉损失；右栏入场动画(169-173 行作用于 nth-child(3))随之失效，可接受。
+   · rows 从两行放宽到四行（特异性比 A 段高一个 :has，覆盖生效）。
+   · 列表视图(卡片选集)完全不命中此段，维持原两栏布局。 */
+
+body.fnos-beautify ${COL_NUM}{
+  grid-template-rows:auto auto auto auto !important;
+}
+body.fnos-beautify ${COL_NUM} > :nth-child(3){ display:contents !important; }
+/* TMDB 卡：原位右栏（row2 col2），视觉与原布局一致 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  grid-area:2 / 2 / 3 / 3 !important;
+  min-width:0 !important;
+}
+/* 「演职人员」标题 → 选集下方（row3 左栏） */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > p.semi-typography{
+  grid-area:3 / 1 / 4 / 2 !important;
+  min-width:0 !important;
+}
+/* 演员横滑 → 标题下方（row4 左栏） */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > .ms-container{
+  grid-area:4 / 1 / 5 / 2 !important;
+  min-width:0 !important;
 }
 
 /* [lc-1049] 隐藏原生横滑翻页箭头（Semi ScrollList 的 [class*="semi-color-bg-arrow-mask"] 掩膜层）。

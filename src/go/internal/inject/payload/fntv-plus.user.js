@@ -9529,6 +9529,7 @@ html.fnos-perf.dark{
   var STYLE_ID3 = "fnos-beautify-css";
   var HERO = ':is(.semi-always-dark[class*="h-[470px]"],.semi-always-dark[class*="min-h-[390px]"],.trim-mc__details--key-version)';
   var COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px]"])):has(> :nth-child(3))`;
+  var COL_NUM = `${COL}:has(> :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px]"])`;
   var SERIES_PANEL = 'div[class="relative box-border flex w-full flex-col px-[44px]"]';
   var SERIES_BTNROW = 'div[class="relative w-full"] > div[class^="mt-4 "]';
   var MOVIE_PANEL = 'div[class="relative flex w-full flex-col box-border px-[46px]"]';
@@ -9744,12 +9745,46 @@ body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,5
   box-shadow:0 0 0 1px var(--semi-color-primary, #6d7ff2), 0 2px 12px -2px rgba(109, 127, 242, .4) !important;
 }
 
-/* \u6F14\u5458\u5361 hover\uFF1A\u5934\u50CF\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u4E0E\u9009\u96C6\u7F29\u7565\u56FE scale \u540C\u6863\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
+/* \u6F14\u5458\u5361 hover\uFF1A\u5934\u50CF\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u4E0E\u9009\u96C6\u7F29\u7565\u56FE scale \u540C\u6863\uFF09\u3002
+   \u26A0 [v1.3.2] \u4F5C\u7528\u57DF\u4FEE\u6B63\uFF1A\u6F14\u804C\u4EBA\u5458\u6A2A\u6ED1\u5728 COL>nth-child(3)\uFF08\u53F3\u680F\uFF0CtmdbCard._cardHost \u7684
+   children[2]\uFF09\uFF0C\u65E7\u7248\u5199\u6210 nth-child(2) \u662F\u6761\u6C38\u4E0D\u547D\u4E2D\u7684\u6B7B\u89C4\u5219\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
   transition:transform .3s cubic-bezier(.25, .1, .25, 1) !important;
 }
-body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
   transform:scale(1.05) !important;
+}
+
+/* \u2500\u2500 [v1.3.2] \u5E8F\u53F7\u89C6\u56FE\uFF1A\u6F14\u804C\u4EBA\u5458\u6C89\u5230\u9009\u96C6\u4E0B\u65B9\uFF0C\u53F3\u680F\u53EA\u7559\u5267\u96C6\u4FE1\u606F\u5361 \u2500\u2500
+   \u7528\u6237\u9700\u6C42\uFF1A\u5207\u7EAF\u6570\u5B57\u9009\u96C6\u65F6\u300C\u53F3\u8FB9\u5267\u96C6\u4FE1\u606F\u4E0D\u52A8\u4F4D\u7F6E\uFF0C\u6F14\u5458\u4FE1\u606F\u6539\u5230\u9009\u96C6\u4E0B\u65B9\u300D\u3002
+   \u53F3\u680F(nth-child(3))\u5185\u542B\u4E09\u5757\uFF1ATMDB \u5361(.fnos-beautify-card\uFF0C\u5361\u5BBF\u4E3B insertBefore firstChild
+   \u6CE8\u5165\u5728\u9876\u90E8) + \u300C\u6F14\u804C\u4EBA\u5458\u300D\u6807\u9898(p.semi-typography) + \u6F14\u5458\u6A2A\u6ED1(.ms-container)\u3002
+   \u505A\u6CD5\uFF1A\u5E8F\u53F7\u89C6\u56FE\u95E8\u63A7(COL_NUM\uFF0C\u58F0\u660E\u89C1\u6587\u4EF6\u5934 68 \u884C\u533A)\u4E0B\u7ED9\u53F3\u680F display:contents \u2014\u2014 \u5B83\u7684
+   \u4E09\u4E2A\u5B50\u5757\u63D0\u5347\u4E3A COL grid \u7684\u76F4\u63A5 item\uFF0C\u91CD\u65B0\u5206\u914D\u7F51\u683C\u4F4D\uFF1A\u5361\u7559\u5B88\u53F3\u680F(2/2)\uFF0C\u6807\u9898+\u6A2A\u6ED1\u6C89\u5230
+   \u7B2C 3/4 \u884C\u5DE6\u680F\uFF08\u9009\u96C6\u6570\u5B57\u4E0B\u65B9\uFF09\u3002
+   \xB7 display:contents \u4F7F nth-child(3) \u81EA\u8EAB\u76D2\u6837\u5F0F\u5931\u6548\uFF1A\u5176\u80CC\u666F\u672C\u5C31\u88AB A \u6BB5\u6E05\u6210 transparent\uFF0C
+     \u65E0\u89C6\u89C9\u635F\u5931\uFF1B\u53F3\u680F\u5165\u573A\u52A8\u753B(169-173 \u884C\u4F5C\u7528\u4E8E nth-child(3))\u968F\u4E4B\u5931\u6548\uFF0C\u53EF\u63A5\u53D7\u3002
+   \xB7 rows \u4ECE\u4E24\u884C\u653E\u5BBD\u5230\u56DB\u884C\uFF08\u7279\u5F02\u6027\u6BD4 A \u6BB5\u9AD8\u4E00\u4E2A :has\uFF0C\u8986\u76D6\u751F\u6548\uFF09\u3002
+   \xB7 \u5217\u8868\u89C6\u56FE(\u5361\u7247\u9009\u96C6)\u5B8C\u5168\u4E0D\u547D\u4E2D\u6B64\u6BB5\uFF0C\u7EF4\u6301\u539F\u4E24\u680F\u5E03\u5C40\u3002 */
+
+body.fnos-beautify ${COL_NUM}{
+  grid-template-rows:auto auto auto auto !important;
+}
+body.fnos-beautify ${COL_NUM} > :nth-child(3){ display:contents !important; }
+/* TMDB \u5361\uFF1A\u539F\u4F4D\u53F3\u680F\uFF08row2 col2\uFF09\uFF0C\u89C6\u89C9\u4E0E\u539F\u5E03\u5C40\u4E00\u81F4 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  grid-area:2 / 2 / 3 / 3 !important;
+  min-width:0 !important;
+}
+/* \u300C\u6F14\u804C\u4EBA\u5458\u300D\u6807\u9898 \u2192 \u9009\u96C6\u4E0B\u65B9\uFF08row3 \u5DE6\u680F\uFF09 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > p.semi-typography{
+  grid-area:3 / 1 / 4 / 2 !important;
+  min-width:0 !important;
+}
+/* \u6F14\u5458\u6A2A\u6ED1 \u2192 \u6807\u9898\u4E0B\u65B9\uFF08row4 \u5DE6\u680F\uFF09 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > .ms-container{
+  grid-area:4 / 1 / 5 / 2 !important;
+  min-width:0 !important;
 }
 
 /* [lc-1049] \u9690\u85CF\u539F\u751F\u6A2A\u6ED1\u7FFB\u9875\u7BAD\u5934\uFF08Semi ScrollList \u7684 [class*="semi-color-bg-arrow-mask"] \u63A9\u819C\u5C42\uFF09\u3002
