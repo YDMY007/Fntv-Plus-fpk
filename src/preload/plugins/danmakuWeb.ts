@@ -1719,7 +1719,7 @@ function renderDetailRows(): void {
     // 底部说明必须跟着实际来源走：自建源命中时写「数据来源：B站」是错信息（用户正是看着这句报的匹配 bug）。
     // preload 插件独立加载、import 不到主进程 danmuApi.isSelfHostedSource，只能按来源标签前缀判断。
     tip.textContent = /^自建源/.test(String(meta.source || ''))
-        ? '数据来源：自建弹幕接口 danmu_api（只认精确匹配，未命中自动降级 B站）'
+        ? '数据来源：自建弹幕接口 danmu_api（只认精确匹配；弹幕低于下限时自动请求 B站补源，B站更多才换；手动搜索同时给出自建源与 B站候选）'
         : '数据来源：B站（与 MPV 弹幕同源）';
     Object.assign(tip.style, {
         paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,.06)',

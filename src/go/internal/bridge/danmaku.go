@@ -392,6 +392,51 @@ func (b *Bridge) biliFilterDanmaku(items []map[string]any) []map[string]any {
 	return out
 }
 
+// danmuMinCount [v1.2.7] 自建源弹幕下限：命中条数（过滤后）低于该值时自动请求 B站补源，
+// B 站拿到更多才换、否则保留自建源。0=不启用；未设置/非法值默认 20（设置页可改）。
+func (b *Bridge) danmuMinCount() int64 {
+	if n, err := strconv.ParseInt(strings.TrimSpace(getSetting(b.cfg, "danmuMinCount")), 10, 64); err == nil && n >= 0 {
+		return n
+	}
+	return 20
+}
+
+// danmuServeResult [v1.2.7] 自建源结果落磁盘缓存并返回（danmakuPrepare 命中/补源回退共用）。
+// note 非空时写进 meta.error —— 前端「来源详情→备注」行原样展示（换源/保留原因排障可见）。
+func (b *Bridge) danmuServeResult(w http.ResponseWriter, title string, ep, season int64, isMovie bool,
+	items, kept []map[string]any, note string) {
+	meta := map[string]any{
+		"searchTitle": title, "matchedTitle": title, "source": danmuSourceLabel,
+		"ep": ep, "isMovie": isMovie, "season": season, "count": len(kept),
+		"cookieStatus": cookieStatusOf(b.cfg),
+	}
+	if note != "" {
+		meta["error"] = note
+	}
+	if base := b.cfg.Dir(); base != "" {
+		dir := filepath.Join(base, "danmaku-cache")
+		_ = os.MkdirAll(dir, 0o755)
+		sum := md5.Sum([]byte(title + "|" + strconv.FormatInt(season, 10) + "|" + strconv.FormatInt(ep, 10)))
+		dmPath := filepath.Join(dir, "dm_"+hex.EncodeToString(sum[:10])+".json")
+		if data, err := json.Marshal(map[string]any{"items": items, "meta": meta}); err == nil {
+			tmp := dmPath + ".tmp"
+			if os.WriteFile(tmp, data, 0o644) == nil {
+				_ = os.Rename(tmp, dmPath)
+			}
+		}
+	}
+	maxScreen := int64(0)
+	if ms, err := strconv.ParseInt(strings.TrimSpace(getSetting(b.cfg, "biliDanmakuMaxScreen")), 10, 64); err == nil && ms >= 0 {
+		maxScreen = ms
+	}
+	logf("[danmaku] ✅ 自建源弹幕就绪: title=%q count=%d", title, len(kept))
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true, "title": title, "ep": ep, "isMovie": isMovie,
+		"count": len(kept), "items": kept, "source": danmuSourceLabel,
+		"meta": meta, "maxScreen": maxScreen,
+	})
+}
+
 // danmakuPrepare POST {title, ep, season, isMovie, biliSearch} → B站弹幕搜索+拉取。
 // 元数据（标题/集数/季）由前端直连 play/info 解析后传入；返回桌面版 danmaku:prepare 同形状。
 func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
@@ -413,40 +458,22 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 	// [v0.75.0] danmu_api 自建源优选：启用时最先尝试（命中直接返回；未命中降级下面的 B站链路）。
 	// 自建源启用期间旧 B站缓存不命中（桌面 lc-1101 同语义：缓存来源要与当前设置匹配）。
 	// [v0.81.0] 自建源尝试结论带进最终错误信息（供弹窗「备注」展示，排障可见）。
+	// [v1.2.7] 自建源弹幕下限（danmuMinCount，默认 20）：命中但过滤后条数低于下限时不再直接返回，
+	// 而是继续走下面的 B站链路补源——B 站拿到更多才换、否则保留自建源（备注写进 meta.error）。
 	danmuReason := ""
+	var danmuItems, danmuKept []map[string]any
 	if b.danmuIsActive() {
 		items, reason := b.danmuAutoFetch(title, req.Ep, req.Season)
 		danmuReason = reason
 		if len(items) > 0 {
 			kept := b.biliFilterDanmaku(items)
-			meta := map[string]any{
-				"searchTitle": title, "matchedTitle": title, "source": danmuSourceLabel,
-				"ep": req.Ep, "isMovie": req.IsMovie, "season": req.Season, "count": len(kept),
-				"cookieStatus": cookieStatusOf(b.cfg),
+			if minCnt := b.danmuMinCount(); minCnt > 0 && len(kept) < int(minCnt) {
+				danmuItems, danmuKept = items, kept
+				logf("[danmaku] 自建源仅 %d 条 < 下限 %d → 尝试 B站补源: title=%q", len(kept), minCnt, title)
+			} else {
+				b.danmuServeResult(w, title, req.Ep, req.Season, req.IsMovie, items, kept, "")
+				return
 			}
-			if base := b.cfg.Dir(); base != "" {
-				dir := filepath.Join(base, "danmaku-cache")
-				_ = os.MkdirAll(dir, 0o755)
-				sum := md5.Sum([]byte(title + "|" + strconv.FormatInt(req.Season, 10) + "|" + strconv.FormatInt(req.Ep, 10)))
-				dmPath := filepath.Join(dir, "dm_"+hex.EncodeToString(sum[:10])+".json")
-				if data, err := json.Marshal(map[string]any{"items": items, "meta": meta}); err == nil {
-					tmp := dmPath + ".tmp"
-					if os.WriteFile(tmp, data, 0o644) == nil {
-						_ = os.Rename(tmp, dmPath)
-					}
-				}
-			}
-			maxScreen := int64(0)
-			if ms, err := strconv.ParseInt(strings.TrimSpace(getSetting(b.cfg, "biliDanmakuMaxScreen")), 10, 64); err == nil && ms >= 0 {
-				maxScreen = ms
-			}
-			logf("[danmaku] ✅ 自建源弹幕就绪: title=%q count=%d", title, len(kept))
-			writeJSON(w, http.StatusOK, map[string]any{
-				"ok": true, "title": title, "ep": req.Ep, "isMovie": req.IsMovie,
-				"count": len(kept), "items": kept, "source": danmuSourceLabel,
-				"meta": meta, "maxScreen": maxScreen,
-			})
-			return
 		}
 	}
 
@@ -466,6 +493,12 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		if json.Unmarshal(data, &cached) == nil && len(cached.Items) > 0 {
 			kept := b.biliFilterDanmaku(cached.Items)
 			sort.SliceStable(kept, func(i, j int) bool { return jsNum(kept[i]["time"]) < jsNum(kept[j]["time"]) })
+			// [v1.2.7] 自建源补源中：B站缓存更多才用，否则保留自建源
+			if len(danmuKept) > 0 && len(kept) <= len(danmuKept) {
+				b.danmuServeResult(w, title, req.Ep, req.Season, req.IsMovie, danmuItems, danmuKept,
+					fmt.Sprintf("自建源仅 %d 条（低于下限），B站缓存仅 %d 条未更多，保留自建源", len(danmuKept), len(kept)))
+				return
+			}
 			logf("[danmaku] 缓存命中: %d 条 → 过滤后 %d 条", len(cached.Items), len(kept))
 			writeJSON(w, http.StatusOK, map[string]any{
 				"ok": true, "title": title, "ep": req.Ep, "isMovie": req.IsMovie,
@@ -477,6 +510,12 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !biliSearch {
+		// [v1.2.7] 自建源补源中但 B站弹幕搜索被关：不越权请求，保留自建源
+		if len(danmuKept) > 0 {
+			b.danmuServeResult(w, title, req.Ep, req.Season, req.IsMovie, danmuItems, danmuKept,
+				fmt.Sprintf("自建源仅 %d 条（低于下限），B站弹幕搜索未启用，保留自建源", len(danmuKept)))
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": "B站弹幕搜索未启用"})
 		return
 	}
@@ -566,6 +605,12 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if best == nil {
+		// [v1.2.7] 自建源补源中但 B站没找到匹配：保留自建源（总比没有强）
+		if len(danmuKept) > 0 {
+			b.danmuServeResult(w, title, req.Ep, req.Season, req.IsMovie, danmuItems, danmuKept,
+				fmt.Sprintf("自建源仅 %d 条（低于下限），B站未找到匹配，保留自建源", len(danmuKept)))
+			return
+		}
 		errMsg := "未找到匹配的B站弹幕"
 		if danmuReason != "" {
 			errMsg = "自建源(" + danmuReason + ")；" + errMsg
@@ -587,16 +632,34 @@ func (b *Bridge) danmakuPrepare(w http.ResponseWriter, r *http.Request) {
 	// ③ 拉弹幕 → 过滤
 	items := b.biliFetchDanmakuXML(best.cid)
 	if len(items) == 0 {
+		// [v1.2.7] 自建源补源中但 B站该集没弹幕：保留自建源
+		if len(danmuKept) > 0 {
+			b.danmuServeResult(w, title, req.Ep, req.Season, req.IsMovie, danmuItems, danmuKept,
+				fmt.Sprintf("自建源仅 %d 条（低于下限），B站该集没有弹幕数据，保留自建源", len(danmuKept)))
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "title": title, "ep": req.Ep, "isMovie": req.IsMovie, "count": 0, "error": "该集没有弹幕数据"})
 		return
 	}
 	kept := b.biliFilterDanmaku(items)
+	// [v1.2.7] 补源裁决：B 站拿到比自建源更多才换，否则保留自建源（换/留原因都写进备注）
+	if len(danmuKept) > 0 {
+		if len(kept) <= len(danmuKept) {
+			b.danmuServeResult(w, title, req.Ep, req.Season, req.IsMovie, danmuItems, danmuKept,
+				fmt.Sprintf("自建源仅 %d 条（低于下限），B站「%s」仅 %d 条未更多，保留自建源", len(danmuKept), best.title, len(kept)))
+			return
+		}
+		logf("[danmaku] B站补源生效: 自建源 %d 条 → B站 %d 条 (%s)", len(danmuKept), len(kept), best.title)
+	}
 
 	meta := map[string]any{
 		"searchTitle": title, "matchedTitle": best.title, "source": best.source,
 		"cid": best.cid, "sim": best.sim, "ep": req.Ep, "isMovie": req.IsMovie,
 		"season": req.Season, "count": len(kept),
 		"cookieStatus": cookieStatusOf(b.cfg),
+	}
+	if len(danmuKept) > 0 {
+		meta["error"] = fmt.Sprintf("自建源仅 %d 条（低于下限），已改用 B站「%s」（%d 条）", len(danmuKept), best.title, len(kept))
 	}
 	// 成功结果落盘（存未过滤原始条目，屏蔽设置改动即时生效）
 	if cachePath != "" {
@@ -635,12 +698,15 @@ func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// ① 自建源候选（dmapi:<episodeId> 伪 id，sim=1）
-	if cands := b.danmuCandidates(title, req.Ep, req.Season); cands != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "candidates": cands})
-		return
-	}
-	// ② B站候选：视频区（UP主搬运，主力）优先 → 影视区 media_ft 兜底
+	// [v1.2.7] 不再命中即短路：自建源候选排前、B站候选照常搜出附后。
+	// 旧逻辑自建源命中直接 return → 手动搜索永远只回自建源候选，自建源弹幕太少时
+	// 用户想搜 B站搬运，怎么搜都「没有 B站结果」，看起来就像搜索无反应。
 	candidates := []map[string]any{}
+	if cands := b.danmuCandidates(title, req.Ep, req.Season); cands != nil {
+		candidates = append(candidates, cands...)
+	}
+	// ② B站候选：视频区（UP主搬运，主力）优先 → 影视区 media_ft 兜底（biliCount 只数 B站条目）
+	biliCount := 0
 	for _, v := range b.biliSearchVideos(title, 5) {
 		candidates = append(candidates, map[string]any{
 			"bvid":           jsStr(v["bvid"]),
@@ -649,11 +715,12 @@ func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
 			"is_compilation": false,
 			"sim":            nil,
 		})
-		if len(candidates) >= 5 {
+		biliCount++
+		if biliCount >= 5 {
 			break
 		}
 	}
-	if len(candidates) == 0 {
+	if biliCount == 0 {
 		signed := biliWbiSign(map[string]string{"keyword": title, "search_type": "media_ft", "page": "1"})
 		_, out, err := b.danmakuGetJSON(biliWebAPI + "/x/web-interface/wbi/search/type?" + signed)
 		if err == nil && out != nil {
@@ -682,7 +749,8 @@ func (b *Bridge) danmakuCandidates(w http.ResponseWriter, r *http.Request) {
 						"is_compilation": false,
 						"sim":            nil,
 					})
-					if len(candidates) >= 5 {
+					biliCount++
+					if biliCount >= 5 {
 						break
 					}
 				}

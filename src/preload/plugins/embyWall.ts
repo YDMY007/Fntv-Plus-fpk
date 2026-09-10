@@ -2111,6 +2111,28 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     dmApiStatus.style.cssText = 'font-size:10.5px;color:var(--fnos-ui-sub);padding:0 6px 4px;line-height:1.5;min-height:14px;';
     dmApiBody.appendChild(dmApiStatus);
 
+    // [v1.2.7] 自建源弹幕下限：命中条数（过滤后）低于该值时自动请求 B站补源（B 站更多才换，否则保留自建源）
+    const dmMinRow = document.createElement('div');
+    dmMinRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 6px;gap:10px;';
+    const dmMinLabel = document.createElement('span');
+    dmMinLabel.textContent = t('自建源弹幕少于该条数时自动改用 B 站（0=不启用）');
+    dmMinLabel.style.cssText = 'color:var(--fnos-ui-text);font-weight:500;font-size:12.5px;flex:1;line-height:1.4;';
+    const dmMinInput = document.createElement('input');
+    dmMinInput.type = 'number';
+    dmMinInput.min = '0';
+    dmMinInput.max = '9999';
+    dmMinInput.step = '1';
+    dmMinInput.placeholder = '20';
+    dmMinInput.style.cssText = 'width:90px;padding:5px 8px;border-radius:7px;border:1px solid var(--fnos-ui-border);'
+      + 'background:var(--fnos-input-bg);color:var(--fnos-ui-text);font-size:13px;text-align:center;flex:none;';
+    dmMinRow.appendChild(dmMinLabel); dmMinRow.appendChild(dmMinInput);
+    dmApiBody.appendChild(dmMinRow);
+    dmMinInput.addEventListener('change', () => {
+      const v = parseInt(dmMinInput.value, 10);
+      const n = isNaN(v) ? 0 : Math.max(0, Math.min(9999, v));
+      ipcRenderer.invoke('settings:set-danmu-min-count', n).catch((err) => log('set-danmu-min-count failed', err));
+    });
+
     const dmApiFold = mkFold('服务地址与连通测试');
     dmApiBody.appendChild(dmApiFold.fold);
     const dmApiFoldBody = dmApiFold.body;
@@ -3415,6 +3437,8 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         // [lc-1101] 自建弹幕接口回填（地址非敏感，明文显示；程序化赋值不触发 change，不会误保存）
         swDanmuApi.checked = s.danmuApiEnabled === true;
         dmApiInput.value = s.danmuApiBase || '';
+        // [v1.2.7] 自建源弹幕下限回填（后端默认 20；0=不启用）
+        dmMinInput.value = String(s.danmuMinCount == null ? 20 : Math.max(0, Math.min(9999, Math.round(Number(s.danmuMinCount) || 0))));
         if (swDanmuApi.checked) {
           dmApiStatus.textContent = dmApiInput.value
             ? t('已启用自建弹幕接口作为优选源，未命中时自动降级到 B站。')

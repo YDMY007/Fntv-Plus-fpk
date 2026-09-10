@@ -1323,6 +1323,7 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
     "Trakt \u540C\u6B65": "Trakt sync",
     "\u5F39\u5F39play": "dandanplay",
     "\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3\uFF08danmu_api\uFF09": "Self-hosted danmaku API (danmu_api)",
+    "\u81EA\u5EFA\u6E90\u5F39\u5E55\u5C11\u4E8E\u8BE5\u6761\u6570\u65F6\u81EA\u52A8\u6539\u7528 B \u7AD9\uFF080=\u4E0D\u542F\u7528\uFF09": "Auto-switch to Bilibili when self-hosted danmaku is below this count (0=off)",
     "\u5F39\u5E55\u5C4F\u853D\u4E0E\u6837\u5F0F": "Danmaku blocking & style",
     "\u63D2\u5E27\uFF08AI \u8865\u5E27\uFF09": "Frame interpolation (AI)",
     "\u6E32\u67D3\u753B\u8D28": "Render quality",
@@ -4283,7 +4284,7 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     }
     body.appendChild(dl);
     const tip = document.createElement("div");
-    tip.textContent = /^自建源/.test(String(meta.source || "")) ? "\u6570\u636E\u6765\u6E90\uFF1A\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3 danmu_api\uFF08\u53EA\u8BA4\u7CBE\u786E\u5339\u914D\uFF0C\u672A\u547D\u4E2D\u81EA\u52A8\u964D\u7EA7 B\u7AD9\uFF09" : "\u6570\u636E\u6765\u6E90\uFF1AB\u7AD9\uFF08\u4E0E MPV \u5F39\u5E55\u540C\u6E90\uFF09";
+    tip.textContent = /^自建源/.test(String(meta.source || "")) ? "\u6570\u636E\u6765\u6E90\uFF1A\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3 danmu_api\uFF08\u53EA\u8BA4\u7CBE\u786E\u5339\u914D\uFF1B\u5F39\u5E55\u4F4E\u4E8E\u4E0B\u9650\u65F6\u81EA\u52A8\u8BF7\u6C42 B\u7AD9\u8865\u6E90\uFF0CB\u7AD9\u66F4\u591A\u624D\u6362\uFF1B\u624B\u52A8\u641C\u7D22\u540C\u65F6\u7ED9\u51FA\u81EA\u5EFA\u6E90\u4E0E B\u7AD9\u5019\u9009\uFF09" : "\u6570\u636E\u6765\u6E90\uFF1AB\u7AD9\uFF08\u4E0E MPV \u5F39\u5E55\u540C\u6E90\uFF09";
     Object.assign(tip.style, {
       paddingTop: "10px",
       borderTop: "1px solid rgba(255,255,255,.06)",
@@ -14914,6 +14915,26 @@ html.fntv-boot-hide #root{visibility:hidden}
       const dmApiStatus = document.createElement("div");
       dmApiStatus.style.cssText = "font-size:10.5px;color:var(--fnos-ui-sub);padding:0 6px 4px;line-height:1.5;min-height:14px;";
       dmApiBody.appendChild(dmApiStatus);
+      const dmMinRow = document.createElement("div");
+      dmMinRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;gap:10px;";
+      const dmMinLabel = document.createElement("span");
+      dmMinLabel.textContent = t("\u81EA\u5EFA\u6E90\u5F39\u5E55\u5C11\u4E8E\u8BE5\u6761\u6570\u65F6\u81EA\u52A8\u6539\u7528 B \u7AD9\uFF080=\u4E0D\u542F\u7528\uFF09");
+      dmMinLabel.style.cssText = "color:var(--fnos-ui-text);font-weight:500;font-size:12.5px;flex:1;line-height:1.4;";
+      const dmMinInput = document.createElement("input");
+      dmMinInput.type = "number";
+      dmMinInput.min = "0";
+      dmMinInput.max = "9999";
+      dmMinInput.step = "1";
+      dmMinInput.placeholder = "20";
+      dmMinInput.style.cssText = "width:90px;padding:5px 8px;border-radius:7px;border:1px solid var(--fnos-ui-border);background:var(--fnos-input-bg);color:var(--fnos-ui-text);font-size:13px;text-align:center;flex:none;";
+      dmMinRow.appendChild(dmMinLabel);
+      dmMinRow.appendChild(dmMinInput);
+      dmApiBody.appendChild(dmMinRow);
+      dmMinInput.addEventListener("change", () => {
+        const v = parseInt(dmMinInput.value, 10);
+        const n = isNaN(v) ? 0 : Math.max(0, Math.min(9999, v));
+        ipcRenderer.invoke("settings:set-danmu-min-count", n).catch((err) => log7("set-danmu-min-count failed", err));
+      });
       const dmApiFold = mkFold2("\u670D\u52A1\u5730\u5740\u4E0E\u8FDE\u901A\u6D4B\u8BD5");
       dmApiBody.appendChild(dmApiFold.fold);
       const dmApiFoldBody = dmApiFold.body;
@@ -16183,6 +16204,7 @@ html.fntv-boot-hide #root{visibility:hidden}
           ddSetState(!!ddRealId);
           swDanmuApi.checked = s.danmuApiEnabled === true;
           dmApiInput.value = s.danmuApiBase || "";
+          dmMinInput.value = String(s.danmuMinCount == null ? 20 : Math.max(0, Math.min(9999, Math.round(Number(s.danmuMinCount) || 0))));
           if (swDanmuApi.checked) {
             dmApiStatus.textContent = dmApiInput.value ? t("\u5DF2\u542F\u7528\u81EA\u5EFA\u5F39\u5E55\u63A5\u53E3\u4F5C\u4E3A\u4F18\u9009\u6E90\uFF0C\u672A\u547D\u4E2D\u65F6\u81EA\u52A8\u964D\u7EA7\u5230 B\u7AD9\u3002") : t("\u5DF2\u5F00\u542F\u4F46\u672A\u586B\u670D\u52A1\u5730\u5740 \u2014\u2014 \u5C55\u5F00\u300C\u670D\u52A1\u5730\u5740\u4E0E\u8FDE\u901A\u6D4B\u8BD5\u300D\u586B\u5199\u540E\u70B9\u4FDD\u5B58\u3002");
             dmApiStatus.style.color = dmApiInput.value ? "var(--fnos-ui-sub)" : "var(--fnos-ui-warn)";
