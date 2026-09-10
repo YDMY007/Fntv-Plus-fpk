@@ -579,38 +579,6 @@ function handle(): void {
 
     if (ctrl.querySelector('#fnos-settings-btn')) return; // 幂等
 
-    // [v1.1.0] 折叠开关（容器顶部）：我们的按钮组有时会遮挡侧边栏分类列表，
-    //   顶部加一条「飞牛增强 ▾/▸」可收起/展开，默认展开，状态持久化 localStorage。
-    //   折叠用容器类 + CSS 规则实现（后来重挂的按钮也自动被藏，不会被撑开）。
-    if (!document.getElementById('fntv-sb-fold-style')) {
-      const foldStyle = document.createElement('style');
-      foldStyle.id = 'fntv-sb-fold-style';
-      foldStyle.textContent = [
-        '#fnos-sidebar-actions.fnos-sb-collapsed { padding: 4px 6px !important; gap: 0; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > *:not(#fnos-sb-toggle) { display: none !important; }',
-        '#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;'
-          + 'cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
-          + 'letter-spacing:.5px;transition:background .15s,color .15s; }',
-        '#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }',
-      ].join(String.fromCharCode(10));
-      (document.head || document.documentElement).appendChild(foldStyle);
-    }
-    const sbFoldRow = document.createElement('div');
-    sbFoldRow.id = 'fnos-sb-toggle';
-    const paintSbFold = (): void => {
-      const collapsed = localStorage.getItem('fnos-sidebar-collapsed') === '1';
-      ctrl.classList.toggle('fnos-sb-collapsed', collapsed);
-      sbFoldRow.textContent = collapsed ? '飞牛增强 ▸' : '飞牛增强 ▾';
-    };
-    sbFoldRow.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      try { localStorage.setItem('fnos-sidebar-collapsed', localStorage.getItem('fnos-sidebar-collapsed') === '1' ? '0' : '1'); } catch (_) {}
-      paintSbFold();
-    });
-    ctrl.prepend(sbFoldRow);
-    paintSbFold();
-    if (ctrl.querySelector('#fnos-settings-btn')) return; // 幂等
-
     const btn = document.createElement('button');
     btn.id = 'fnos-settings-btn';
     btn.type = 'button';
@@ -664,6 +632,38 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         });
       } catch (_) {}
     }
+
+    // [v1.2.1] 折叠开关（容器最顶部）：我们的按钮组有时会遮挡侧边栏分类列表。
+    //   顶部一条「收起 ▴」可把整组按钮收成细条（变「展开 ▾」），默认展开，状态持久化。
+    //   prepend 放在所有按钮/版本号就位之后 → 保证折叠条始终位于容器最顶部。
+    //   折叠用容器类 + CSS 规则实现（后来重挂的按钮也自动被藏，不会被撑开）。
+    if (!document.getElementById('fntv-sb-fold-style')) {
+      const foldStyle = document.createElement('style');
+      foldStyle.id = 'fntv-sb-fold-style';
+      foldStyle.textContent = [
+        '#fnos-sidebar-actions.fnos-sb-collapsed { padding: 4px 6px !important; gap: 0; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > *:not(#fnos-sb-toggle) { display: none !important; }',
+        '#fnos-sb-toggle { display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;'
+          + 'cursor:pointer;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
+          + 'letter-spacing:.5px;transition:background .15s,color .15s; }',
+        '#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }',
+      ].join(String.fromCharCode(10));
+      (document.head || document.documentElement).appendChild(foldStyle);
+    }
+    const sbFoldRow = document.createElement('div');
+    sbFoldRow.id = 'fnos-sb-toggle';
+    const paintSbFold = (): void => {
+      const collapsed = localStorage.getItem('fnos-sidebar-collapsed') === '1';
+      ctrl.classList.toggle('fnos-sb-collapsed', collapsed);
+      sbFoldRow.textContent = collapsed ? '展开 ▾' : '收起 ▴';
+    };
+    sbFoldRow.addEventListener('click', (e: Event) => {
+      e.stopPropagation();
+      try { localStorage.setItem('fnos-sidebar-collapsed', localStorage.getItem('fnos-sidebar-collapsed') === '1' ? '0' : '1'); } catch (_) {}
+      paintSbFold();
+    });
+    ctrl.prepend(sbFoldRow);
+    paintSbFold();
 
     // [网页端] 面板构建失败不能静默：否则侧栏「设置」按钮可见但点击无任何反应，
     //   排查成本极高。这里显式捕获并 console.error（diag 会回传 client.log，实时日志可见）。
