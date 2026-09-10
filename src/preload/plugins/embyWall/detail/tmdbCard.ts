@@ -334,7 +334,23 @@ async function loadShowMeta(): Promise<{ guid: string; title: string; year: stri
       // [v0.63] 季条目常缺 tmdb_id、标题还是「第 1 季」这类系统命名（被过滤）→
       // 向上查父级（剧）条目补全：剧标题（真名）+ 剧的 TMDB 编号，与已有 seasonNumber 组合即可精确请求。
       if ((!title || !tmdbId) && data) {
-        const pg = String((data as any).parent_guid || (data as any).parentGuid || '');
+        const dAny = data as any;
+        // [v1.2.2] 父级 guid 字段名宽匹配（fnOS 各版本字段不定）
+        let pg = String(dAny.parent_guid || dAny.parentGuid || dAny.series_guid || dAny.seriesGuid
+          || dAny.parent_item_guid || dAny.grandparent_guid || dAny.grandparentGuid || '');
+        if (!pg || pg === page.guid) {
+          // DOM 面包屑兜底：季页返回键/面包屑链接指向剧集详情页 /v/tv/<剧集guid>
+          try {
+            for (const a of Array.from(document.querySelectorAll('a[href*="/v/tv/"]'))) {
+              const m = (a.getAttribute('href') || '').match(/\/v\/tv\/([a-f0-9]{32})/i);
+              if (m && m[1].toLowerCase() !== String(page.guid).toLowerCase()) { pg = m[1]; break; }
+            }
+          } catch (_) { /* ignore */ }
+        }
+        if (!title && !tmdbId && !(window as any).__fntvKeysHint) {
+          (window as any).__fntvKeysHint = true;
+          try { dlog('[tmdb] 季条目字段: ' + Object.keys(dAny).join(',')); } catch (_) {}
+        }
         if (pg && pg !== page.guid) {
           try {
             const pd = await fnosGetEditDetail(location.origin, pg);
