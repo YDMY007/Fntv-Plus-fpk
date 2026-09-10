@@ -11249,7 +11249,27 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_P
           if (typeof sn === "number" && !isNaN(sn)) _seasonNumberCache = sn;
         }
         if ((!title || !tmdbId) && data) {
-          const pg = String(data.parent_guid || data.parentGuid || "");
+          const dAny = data;
+          let pg = String(dAny.parent_guid || dAny.parentGuid || dAny.series_guid || dAny.seriesGuid || dAny.parent_item_guid || dAny.grandparent_guid || dAny.grandparentGuid || "");
+          if (!pg || pg === page.guid) {
+            try {
+              for (const a of Array.from(document.querySelectorAll('a[href*="/v/tv/"]'))) {
+                const m = (a.getAttribute("href") || "").match(/\/v\/tv\/([a-f0-9]{32})/i);
+                if (m && m[1].toLowerCase() !== String(page.guid).toLowerCase()) {
+                  pg = m[1];
+                  break;
+                }
+              }
+            } catch (_) {
+            }
+          }
+          if (!title && !tmdbId && !window.__fntvKeysHint) {
+            window.__fntvKeysHint = true;
+            try {
+              dlog("[tmdb] \u5B63\u6761\u76EE\u5B57\u6BB5: " + Object.keys(dAny).join(","));
+            } catch (_) {
+            }
+          }
           if (pg && pg !== page.guid) {
             try {
               const pd = await fnosGetEditDetail(location.origin, pg);
