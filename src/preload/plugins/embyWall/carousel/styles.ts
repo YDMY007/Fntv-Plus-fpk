@@ -485,7 +485,8 @@ export function buildCarouselStyle3(
 
   // 布局：堆叠卡片容器（高度与样式1/2 一致，避免加载完高度跳变）
   // [lc-807 同款] 与样式1/2 同样 max-height:calc(100vh-380px);aspect-ratio:16/9；overflow:visible 让 prev/next 在左右后方露出堆叠感
-  wrapper.style.cssText = 'display:block;padding:0 44px;margin-top:0;margin-bottom:0';
+  wrapper.dataset.fntvCarouselWrapper = '1'; // [v1.4.8] 手机窄屏边距收窄定位锚
+    wrapper.style.cssText = 'display:block;padding:0 44px;margin-top:0;margin-bottom:0';
   container.style.width = '100%';
   container.style.height = '';
   container.style.minHeight = '0';
@@ -769,6 +770,45 @@ export function ensureStyle4Css(): void {
   [data-fntv-carousel-style="4"] .fntv-s4-play,[data-fntv-carousel-style="4"] .fntv-s4-detail{transition:background-color .15s ease}
   [data-fntv-carousel-style="4"] .fntv-s4-play:hover,[data-fntv-carousel-style="4"] .fntv-s4-detail:hover{transform:none}
 }
+
+/* ═══ [v1.4.8] 手机网页（触屏窄屏）轮播适配 ═══
+   门控 html.fnos-touch-narrow（beautifyStyle 安装的触屏+窄视口标记，设备硬事实判定）。
+   用户截图（390px 竖屏）病灶：①轮播卡片溢出屏幕右缘——桌面给媒体库 section 预留的宽
+   padding/边距在窄屏吃掉近四分之一宽，卡片 86% 宽再叠加 section 内边距即出屏；
+   ②标题 2rem/简介 .95rem 在竖屏上占比过大，简介长文把按钮挤出卡外；
+   ③prev/next 卡 ±72% 位移在窄屏露出过多邻卡（视觉杂乱）。 */
+@media (max-width: 640px){
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"]{
+    border-radius:16px;
+    max-width:100%;
+  }
+  /* 卡内边距收窄：active 卡 86% 宽在 390px 视口下仍留不出呼吸空间 → 提到 94% 宽 3% 边距 */
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"] .fntv-s4-card{left:3%;top:3%;width:94%;height:94%;border-radius:16px}
+  /* 邻卡位移收窄：390px 下 ±72% 会把邻卡大半推出屏，改为 ±58% 只露边缘暗示可滑 */
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"] .fntv-s4-card.prev{transform:scale(.86) translateX(-52%) rotateY(22deg)}
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"] .fntv-s4-card.next{transform:scale(.86) translateX(52%) rotateY(-22deg)}
+  /* [v1.4.8b 用户拍板] 手机上轮播直接不展示文字层（标题/简介/按钮整层隐藏），只留纯海报画面——
+     竖屏卡片空间小，文字层永远放不下；点卡片进详情看完整信息。dots 保留（位置指示+可点切换）。 */
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"] .fntv-s4-info{display:none !important}
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"] .fntv-s4-dots{bottom:10px}
+}
+@media (max-width: 640px) and (orientation: portrait){
+  /* 竖屏：16:9 容器在 390px 宽下高仅 219px，文字层会顶满卡片 → 容器加高（近似 3:2），
+     与桌面 maxHeight 公式解耦，直接以视口宽推算：高 = 视口宽 * 0.78 上限 62vh */
+  html.fnos-touch-narrow [data-fntv-carousel-style="4"]{
+    aspect-ratio:auto !important;   /* ⚠ 容器高由 JS 内联 style 设置，必须 !important 压过 */
+    height:min(78vw, 62vh) !important;
+    max-height:none !important;
+  }
+}
+
+/* ── [v1.4.8] 样式1/2/3 共用：wrapper 44px 桌面边距在 390px 视口吃掉近 1/4 宽 → 收窄 16px。
+   wrapper 原生无类名，以 data-fntv-carousel-wrapper 定位（三处创建点统一打标）。 */
+@media (max-width: 640px){
+  html.fnos-touch-narrow [data-fntv-carousel-wrapper]{padding-left:16px !important;padding-right:16px !important}
+  /* 容器统一不出屏：媒体库 section 父级若有横向溢出（原生横滑带），强制我们这层不参与 */
+  html.fnos-touch-narrow [data-fntv-carousel-wrapper] > div{max-width:100% !important}
+}
 `;
   (document.head || document.documentElement).appendChild(st);
 }
@@ -792,7 +832,8 @@ export function buildCarouselStyle4(
   ensureStyle4Css();
 
   // 布局：3D 旋转木马舞台（高度与样式1/2/3 一致：calc(100vh - 380px)，避免加载完高度跳变；海报内部底部留白(见 .fntv-s4-card)负责与下方模块拉开间距）
-  wrapper.style.cssText = 'display:block;padding:0;margin:0';
+  wrapper.dataset.fntvCarouselWrapper = '1'; // [v1.4.8] 同上
+    wrapper.style.cssText = 'display:block;padding:0;margin:0';
   container.style.width = '100%';
   container.style.height = '';
   container.style.minHeight = '0';

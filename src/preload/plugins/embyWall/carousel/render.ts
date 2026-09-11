@@ -242,6 +242,7 @@ export function injectCarousel(): void {
     target.style.marginTop = '0';
     target.style.background = 'transparent';
     wrapper = document.createElement('div');
+    wrapper.dataset.fntvCarouselWrapper = '1'; // [v1.4.8] 手机窄屏 CSS 统一收窄边距的定位锚
     wrapper.style.cssText = 'padding:0 44px;margin-top:0;margin-bottom:0';
     S.carouselWrapper = wrapper;
   }
