@@ -1,17 +1,3 @@
 #!/bin/bash
 # 升级后置钩子：新二进制就位后由 appcenter 自动重启服务；config.json 向后兼容，无需迁移。
-#
-# [v1.4.9] Bangumi 刮削代理（若用户在安装向导启用过）：
-#   ① 本应用升级会重写 $TRIM_APPDEST/scraper/,把新版 proxy.mjs/部署脚本同步到运行目录;
-#   ② 保险起见跑一次 repair --check-only 等价检查(方案A文档 §11 要求)——
-#      scraper-deploy.sh 幂等:已打过补丁会自动跳过,不会重复改 service-setup。
-DEPLOY="$TRIM_APPDEST/scraper/scraper-deploy.sh"
-if [ -f "$DEPLOY" ] && [ -f "/vol1/@appdata/fnos-scraper/env" ]; then
-    PORT=$(grep -o '^PORT=.*' /vol1/@appdata/fnos-scraper/env | cut -d= -f2)
-    TOKEN=$(grep -o '^BGM_TOKEN=.*' /vol1/@appdata/fnos-scraper/env | cut -d= -f2-)
-    cp -f "$TRIM_APPDEST/scraper/proxy.mjs" /vol1/@appdata/fnos-scraper/proxy.mjs 2>/dev/null
-    bash "$DEPLOY" --enable --token "$TOKEN" --port "${PORT:-7788}" >/dev/null 2>&1 \
-        && echo "[fntvplus] 刮削代理已随升级同步并复检" \
-        || echo "[fntvplus] WARN: 刮削代理升级复检失败,详见 /vol1/@appdata/fnos-scraper/fpk-deploy.log"
-fi
 exit 0

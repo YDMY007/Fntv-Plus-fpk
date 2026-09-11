@@ -42,20 +42,4 @@ if [ -n "$wizard_service_port" ] || [ -n "$wizard_upstream_port" ]; then
   } > "$TRIM_PKGETC/wizard.env"
 fi
 
-# ── Bangumi 刮削代理（可选，向导开关）─────────────────────────────
-# 用户在向导开启后,把随包分发的 scraper 交付物(proxy.mjs + 部署脚本)部署为
-# NAS 原生 systemd 常驻服务,并给 trim.media 的官方 --item 钩子打补丁。
-# 实现细节见 app/scraper/scraper-deploy.sh 头注与 docs 里的方案 A 文档。
-if [ "${wizard_scraper_enabled:-0}" = "1" ] || [ "${wizard_scraper_enabled:-}" = "true" ]; then
-  if [ -f "$TRIM_APPDEST/scraper/scraper-deploy.sh" ]; then
-    bash "$TRIM_APPDEST/scraper/scraper-deploy.sh" \
-      --enable \
-      --token "${wizard_scraper_token:-}" \
-      --port "${wizard_scraper_port:-7788}" || \
-      echo "[install_callback] WARN: 刮削代理部署失败(不影响本应用其他功能),详见 /vol1/@appdata/fnos-scraper/fpk-deploy.log"
-  else
-    echo "[install_callback] WARN: 包内缺少 scraper/scraper-deploy.sh,跳过刮削代理部署"
-  fi
-fi
-
 exit 0
