@@ -2,15 +2,20 @@
 package bridge
 
 import (
+	"context"
+	"crypto/tls"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 // fnItem fnOS 媒体条目（只取用到的字段，JSON 容错解析）。
@@ -374,7 +379,144 @@ func (b *Bridge) fetchDoubanRating(doubanID string) (float64, int64) {
 
 const bangumiAPI = "https://api.bgm.tv"
 
-// bangumiReq 带可选 token 的 bgm.tv 调用。
+// [v1.4.2] bgm.tv 传输多路化（桌面版 withTransport 同语义：代理 > 公共 DNS 直连 > 系统直连）。
+// 实测背景（2026-09-11）：国内家宽系统 DNS 对 api.bgm.tv 返回污染 IP（128.242.240.91，
+// TLS 握手超时），旧 bangumiReq 只走 b.client（系统 DNS）→ 搜索恒失败(0)，同步整链必挂。
+// 桌面版有两路兜底（proxyAgent + bangumiDirectLookup 公共 DNS 覆盖解析），网页版两路全无。
+//
+// 公共 DNS 直连实现：UDP 询问 223.5.5.5 / 119.29.29.29（阿里/腾讯，国内快且稳）解析 A 记录，
+// 命中后 DialTLS 直连该 IP + SNI 保持域名（证书校验不受影响）。结果缓存 10 分钟
+// （BGM_DNS_TTL，桌面同值），解析失败回退系统 DNS（多路尝试里第三路兜底）。
+const (
+	bgmDNSCacheTTL = 10 * time.Minute
+)
+
+var (
+	bgmDnsMu      sync.Mutex
+	bgmDnsCacheIP string
+	bgmDnsCacheAt time.Time
+)
+
+// resolveBangumiPublicIP 公共 DNS 解析 api.bgm.tv 的 A 记录（带缓存）；失败返回 ""。
+func resolveBangumiPublicIP() string {
+	bgmDnsMu.Lock()
+	defer bgmDnsMu.Unlock()
+	if bgmDnsCacheIP != "" && time.Since(bgmDnsCacheAt) < bgmDNSCacheTTL {
+		return bgmDnsCacheIP
+	}
+	ip := dnsQueryA("api.bgm.tv")
+	if ip != "" {
+		bgmDnsCacheIP = ip
+		bgmDnsCacheAt = time.Now()
+	}
+	return ip
+}
+
+// dnsQueryA 向公共 DNS 服务器发 UDP A 查询（3s 超时），返回首个 A 记录；失败 ""。
+func dnsQueryA(name string) string {
+	for _, server := range []string{"223.5.5.5:53", "119.29.29.29:53"} {
+		if ip := dnsQueryAFrom(name, server, 3*time.Second); ip != "" {
+			return ip
+		}
+	}
+	return ""
+}
+
+// server 为 "host:port" 完整 UDP 地址（生产 "223.5.5.5:53"；测试注入本机随机端口）。
+func dnsQueryAFrom(name, server string, timeout time.Duration) string {
+	// 手工组 DNS 报文（标准库无轻量单查 API；net.Resolver 也可但绑定 GOOS 行为多）。
+	id := uint16(time.Now().UnixNano() & 0xffff)
+	msg := make([]byte, 12)
+	binary.BigEndian.PutUint16(msg[0:], id)
+	binary.BigEndian.PutUint16(msg[2:], 0x0100) // RD
+	binary.BigEndian.PutUint16(msg[4:], 1)      // QDCOUNT
+	for _, part := range strings.Split(name, ".") {
+		msg = append(msg, byte(len(part)))
+		msg = append(msg, part...)
+	}
+	msg = append(msg, 0, 0, 1, 0, 1) // QNAME 结尾 + QTYPE=A + QCLASS=IN
+
+	udp, err := net.DialTimeout("udp", server, timeout)
+	if err != nil {
+		return ""
+	}
+	defer udp.Close()
+	_ = udp.SetDeadline(time.Now().Add(timeout))
+	if _, err := udp.Write(msg); err != nil {
+		return ""
+	}
+	buf := make([]byte, 512)
+	n, err := udp.Read(buf)
+	if err != nil || n < 12 {
+		return ""
+	}
+	if binary.BigEndian.Uint16(buf[0:]) != id {
+		return ""
+	}
+	anCount := int(binary.BigEndian.Uint16(buf[6:]))
+	// 跳过 Question 区
+	idx := 12
+	for idx < n && buf[idx] != 0 {
+		idx += int(buf[idx]) + 1
+	}
+	idx += 5
+	// 解析 Answer 区
+	for i := 0; i < anCount && idx+2 <= n; i++ {
+		if buf[idx]&0xC0 == 0xC0 {
+			idx += 2 // 压缩指针
+		} else {
+			for idx < n && buf[idx] != 0 {
+				idx += int(buf[idx]) + 1
+			}
+			idx++
+		}
+		if idx+10 > n {
+			return ""
+		}
+		rdType := binary.BigEndian.Uint16(buf[idx:])
+		rdLen := int(binary.BigEndian.Uint16(buf[idx+8:]))
+		idx += 10
+		if rdType == 1 && rdLen == 4 && idx+4 <= n {
+			return net.IP(buf[idx : idx+4]).String()
+		}
+		idx += rdLen
+	}
+	return ""
+}
+
+// bangumiClient 按优先级返回 bgm.tv 传输客户端：自定义代理 > 公共 DNS 直连 > 系统直连。
+// 恒返回非 nil（系统直连路径返回 b.client）——调用方不再需要判空。
+func (b *Bridge) bangumiClient() (*http.Client, string) {
+	if proxy := b.customProxyURL(); proxy != "" {
+		if pu, err := url.Parse(proxy); err == nil && pu.Scheme != "" && pu.Host != "" {
+			return &http.Client{
+				Timeout:   20 * time.Second,
+				Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
+			}, "自定义代理"
+		}
+	}
+	if ip := resolveBangumiPublicIP(); ip != "" {
+		dialer := &net.Dialer{Timeout: 12 * time.Second}
+		tr := &http.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				host, port, err := net.SplitHostPort(addr)
+				if err != nil {
+					return nil, err
+				}
+				raw, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip, port))
+				if err != nil {
+					return nil, err
+				}
+				return tls.Client(raw, &tls.Config{ServerName: host}), nil // SNI/校验用域名
+			},
+		}
+		return &http.Client{Timeout: 20 * time.Second, Transport: tr}, "公共DNS直连"
+	}
+	return b.client, "系统直连"
+}
+
+// bangumiReq 带可选 token 的 bgm.tv 调用。[v1.4.2] 传输多路化：自定义代理 > 公共 DNS
+// 直连 > 系统直连（旧版只走系统 DNS，污染环境下整链必挂；桌面版 withTransport 同语义）。
 func (b *Bridge) bangumiReq(method, path string, token string, body any) (int, map[string]any, error) {
 	var reader io.Reader
 	if body != nil {
@@ -390,10 +532,26 @@ func (b *Bridge) bangumiReq(method, path string, token string, body any) (int, m
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	resp, err := b.client.Do(req)
+	client, via := b.bangumiClient()
+	resp, err := client.Do(req)
 	if err != nil {
+		// 公共 DNS 直连失败且 IP 可能过期 → 清缓存，系统直连兜底重试一次
+		if via == "公共DNS直连" {
+			bgmDnsMu.Lock()
+			bgmDnsCacheIP = ""
+			bgmDnsMu.Unlock()
+			if c2, _ := b.bangumiClient(); c2 != nil {
+				if resp2, err2 := c2.Do(req.Clone(req.Context())); err2 == nil {
+					return decodeBangumiResp(resp2)
+				}
+			}
+		}
 		return 0, nil, err
 	}
+	return decodeBangumiResp(resp)
+}
+
+func decodeBangumiResp(resp *http.Response) (int, map[string]any, error) {
 	defer resp.Body.Close()
 	var out map[string]any
 	_ = json.NewDecoder(io.LimitReader(resp.Body, 8*1024*1024)).Decode(&out)
