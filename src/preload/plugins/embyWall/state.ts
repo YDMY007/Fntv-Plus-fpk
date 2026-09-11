@@ -40,6 +40,12 @@ export const S: {
    *  写：settings/*；读：carousel/logo.ts */
   carouselLogoEnabled: boolean;
 
+  // ── [v1.5.0] 自定义刮削源（纯前端回填，零系统改动）─────────────────────────
+  /** 是否启用自定义刮削源（侧栏设置 → 账号与网络 → 自定义刮削源） */
+  customScraperEnabled: boolean;
+  /** 自定义刮削服务地址（POST JSON，详见 detail/customScraper.ts 头注的协议约定） */
+  customScraperUrl: string;
+
   // ── 片库数据（轮播数据源）───────────────────────────────────────────────────
   /** 经 IPC 拉取到的条目池。写：carousel/api.ts；读：carousel/index.ts、carousel/styles.ts */
   apiShows: any[];
@@ -114,6 +120,8 @@ export const S: {
   perfModeEnabled: false,
   hotSource: 'douban',
   carouselLogoEnabled: true,
+  customScraperEnabled: false,
+  customScraperUrl: '',
 
   apiShows: [],
   apiLoaded: false,

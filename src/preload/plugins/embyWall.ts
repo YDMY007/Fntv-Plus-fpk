@@ -9,6 +9,7 @@ import { injectVideoPreviewExternalPlay } from './embyWall/nav/inject';
 import { isDetailPage } from './embyWall/detail/glass';
 import { applyDetailBeautify, teardownDetailBeautify } from './embyWall/detail/immersive';
 import { scheduleEpBackfill, ensureEpFixButton } from './embyWall/detail/epBackfill';
+import { scheduleCustomScraperButton } from './embyWall/detail/customScraper';
 import { runPageTransition } from './embyWall/detail/veil';
 import { epResolutionDiag } from './embyWall/detail/epResolution';
 import { wheelToScroll } from './embyWall/nav/scroll';
@@ -2724,6 +2725,73 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
 
 
     // ===== 分组: 自定义代理（让 Bangumi 每日放送、TMDB 等走用户自建代理入口）=====
+    // ═══ [v1.5.0] 自定义刮削源（纯前端回填，零系统改动）═══
+    const secScraper = section('自定义刮削源');
+    const secBodyScraper = secScraper.body;
+    secBodyScraper.style.cssText = 'padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;';
+
+    const csDesc = document.createElement('div');
+    csDesc.style.cssText = 'font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;';
+    csDesc.textContent = t('把视频标题/季号发给你的自定义刮削服务，返回的分集标题与简介经飞牛官方接口回填元数据（不修改任何系统文件）。服务协议：POST JSON {title, season, tmdbId, episodes}，响应 {episodes:[{index,title,overview}]}。开启后在季页「选集」标题旁出现「⟳ 自定义刮削」按钮。');
+    secBodyScraper.appendChild(csDesc);
+
+    const csToggleRow = document.createElement('label');
+    csToggleRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 6px;cursor:pointer;border-radius:6px;margin-bottom:8px;';
+    const csToggleSpan = document.createElement('span');
+    csToggleSpan.textContent = t('启用自定义刮削源');
+    csToggleSpan.style.cssText = 'color:var(--fnos-ui-text);font-weight:500;';
+    const csToggle = document.createElement('input');
+    csToggle.type = 'checkbox';
+    csToggle.style.cssText = 'width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);';
+    csToggleRow.appendChild(csToggleSpan); csToggleRow.appendChild(csToggle);
+    secBodyScraper.appendChild(csToggleRow);
+
+    const csUrlInput = document.createElement('input');
+    csUrlInput.type = 'text';
+    csUrlInput.placeholder = t('http://192.168.1.9:9000/scraper');
+    csUrlInput.style.cssText = 'width:100%;height:32px;font-size:11px;color:var(--fnos-ui-text);'
+      + 'background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;'
+      + 'padding:6px 8px;box-sizing:border-box;margin-bottom:8px;';
+    secBodyScraper.appendChild(csUrlInput);
+
+    const csStatus = document.createElement('div');
+    csStatus.style.cssText = 'font-size:11px;color:var(--fnos-ui-sub);margin-bottom:8px;min-height:14px;';
+    secBodyScraper.appendChild(csStatus);
+
+    const csSave = document.createElement('button');
+    csSave.type = 'button';
+    csSave.textContent = t('保存');
+    csSave.style.cssText = 'align-self:flex-start;padding:6px 18px;border-radius:8px;border:none;cursor:pointer;'
+      + 'font-size:11.5px;font-weight:600;background:var(--fnos-ui-accent);color:#fff;';
+    csSave.addEventListener('click', async (e: Event) => {
+      e.stopPropagation();
+      const urlStr = csUrlInput.value.trim();
+      if (csToggle.checked && urlStr && !/^https?:\/\//i.test(urlStr)) {
+        csStatus.textContent = t('地址需以 http:// 或 https:// 开头');
+        csStatus.style.color = 'var(--fnos-ui-warn,#b06a3a)';
+        return;
+      }
+      try {
+        await ipcRenderer.invoke('settings:set-custom-scraper-enabled', csToggle.checked);
+        await ipcRenderer.invoke('settings:set-custom-scraper-url', urlStr);
+        S.customScraperEnabled = csToggle.checked;
+        S.customScraperUrl = urlStr;
+        csStatus.textContent = t('已保存') + (csToggle.checked ? '，季页按钮即刻生效' : '');
+        csStatus.style.color = 'var(--fnos-ui-ok,#3f9d63)';
+      } catch (err: any) {
+        csStatus.textContent = t('保存失败') + ': ' + String(err && err.message || err).substring(0, 60);
+        csStatus.style.color = 'var(--fnos-ui-warn,#b06a3a)';
+      }
+      window.setTimeout(() => { csStatus.textContent = ''; }, 4000);
+    });
+    secBodyScraper.appendChild(csSave);
+
+    // 回填（面板打开时由 seg('custom-scraper') 调 _refreshCustomScraperCard）
+    (overlay as any)._refreshCustomScraperCard = (): void => {
+      csToggle.checked = S.customScraperEnabled;
+      csUrlInput.value = S.customScraperUrl || '';
+    };
+
     const secCustomProxy = section('自定义代理');
     const secBodyCustomProxy = secCustomProxy.body;
     secBodyCustomProxy.style.cssText = 'padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;';
@@ -2922,7 +2990,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       { id: 'appearance', label: '通用', els: [secAppearance.el, secDaily.el, secUX.el, secSkip.el] },
       // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
       { id: 'danmaku', label: '弹幕', els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
-      { id: 'account', label: '账号与网络', els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secCustomProxy.el, secTmdbDirect.el] },
+      { id: 'account', label: '账号与网络', els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secScraper.el, secCustomProxy.el, secTmdbDirect.el] },
       { id: 'diag', label: '诊断与日志', els: [secDiag.el, secDebug.el] },
       { id: 'about', label: '关于', els: [secAbout.el] },
     ];
@@ -3382,6 +3450,12 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       seg('accounts', () => {
         refreshBili();
         refreshDouban();
+      });
+      // [v1.5.0] 自定义刮削源: 状态同步 + 卡片 UI 回填
+      seg('custom-scraper', () => {
+        S.customScraperEnabled = s.customScraperEnabled === true;
+        S.customScraperUrl = String(s.customScraperUrl || '');
+        try { (overlay as any)._refreshCustomScraperCard?.(); } catch { /* ignore */ }
       });
       seg('debug', () => {
         swDebug.checked = !!s.debugEnabled;
@@ -4299,7 +4373,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       }
       runPageTransition(isDetailPage()); setTimeout(ensureBurgerVisible, 300); setTimeout(closeDrawer, 300); setTimeout(hideStaleViews, 400); setTimeout(ensureHomepageEnhanced, 350); _stopCarouselOffHome(newHref); _scheduleTopLeftAfterNav();
       applyDetailBeautify(); // [lc-980] 详情页美化：进详情铺加载层+一次性 observer 等 hero；非详情/关闭则 teardown
-      scheduleEpBackfill(); // [lc-1045] 季页「选集」TMDB 回填按钮：非季页自撤
+      scheduleEpBackfill(); scheduleCustomScraperButton(); // [v1.5.0] 自定义刮削按钮：非季页自撤
     };
     (history as any).replaceState = function (...a: any[]) {
       const prevPath = location.pathname;
@@ -4313,7 +4387,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       }
       runPageTransition(isDetailPage()); setTimeout(closeDrawer, 300); setTimeout(hideStaleViews, 400); setTimeout(ensureHomepageEnhanced, 350); _stopCarouselOffHome(newHref); _scheduleTopLeftAfterNav();
       applyDetailBeautify(); // [lc-980] 同 pushState
-      scheduleEpBackfill(); // [lc-1045] 同 pushState
+      scheduleEpBackfill(); scheduleCustomScraperButton(); // [v1.5.0] 同 pushState
     };
     window.addEventListener('popstate', () => {
       logNav('popstate');
@@ -4324,7 +4398,7 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
       _scheduleTopLeftAfterNav(); // [lc-925] 背景换了 → 重采样左上角图标亮度
       setTimeout(ensureHomepageEnhanced, 350); // [lc-889] 返回首页强制重注入轮播
       applyDetailBeautify(); // [lc-980] 前进/后退到详情页也套美化；退回首页则 teardown
-      scheduleEpBackfill(); // [lc-1045] 同 popstate
+      scheduleEpBackfill(); scheduleCustomScraperButton(); // [v1.5.0] 同 popstate
     });
     window.addEventListener('hashchange', () => logNav('hashchange'));
     setTimeout(hideStaleViews, 1500); // 初始/深链到详情页时也清理一次
@@ -4336,9 +4410,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
   if (isDetailPage()) {
     backfillDetailLogo();
     applyDetailBeautify();
-    scheduleEpBackfill(); // [lc-1045] 初始/深链直达季页也挂「选集」回填按钮
+    scheduleEpBackfill(); scheduleCustomScraperButton(); // [v1.5.0] 初始/深链同挂自定义刮削按钮
     // 延迟重试: SPA渲染可能分批加载DOM
-    [600, 1500, 3000].forEach(ms => setTimeout(() => { backfillDetailLogo(); scheduleEpBackfill(); }, ms));
+    [600, 1500, 3000].forEach(ms => setTimeout(() => { backfillDetailLogo(); scheduleEpBackfill(); scheduleCustomScraperButton(); }, ms));
   }
   // MutationObserver 覆盖详情页DOM变化 → 回填 Logo + [lc-1045] React 重渲染冲掉按钮时补挂
   let _detailGlassTimer = 0;

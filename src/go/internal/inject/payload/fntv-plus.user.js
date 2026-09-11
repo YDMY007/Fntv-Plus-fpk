@@ -6209,6 +6209,8 @@ html.fnos-touch-narrow .fntv-dm-list:not(.active){ display:none !important; }
     perfModeEnabled: false,
     hotSource: "douban",
     carouselLogoEnabled: true,
+    customScraperEnabled: false,
+    customScraperUrl: "",
     apiShows: [],
     apiLoaded: false,
     apiLoading: false,
@@ -7419,7 +7421,7 @@ html.fnos-perf.dark{
   function hydratePosters(root) {
     const imgs = Array.from(root.querySelectorAll("img.fntv-hot-poster[data-poster]"));
     if (!imgs.length) return;
-    const CONCURRENCY2 = 5;
+    const CONCURRENCY3 = 5;
     let cursor2 = 0;
     const worker = () => {
       while (cursor2 < imgs.length) {
@@ -7448,7 +7450,7 @@ html.fnos-perf.dark{
         return;
       }
     };
-    for (let i = 0; i < Math.min(CONCURRENCY2, imgs.length); i++) worker();
+    for (let i = 0; i < Math.min(CONCURRENCY3, imgs.length); i++) worker();
   }
   function todayBangumiWeekday() {
     return ((/* @__PURE__ */ new Date()).getDay() + 6) % 7 + 1;
@@ -13385,6 +13387,254 @@ html.fnos-perf.dark{
     }
   }
 
+  // src/preload/plugins/embyWall/detail/customScraper.ts
+  init_electron();
+  var CS_BTN_ID = "fnos-cs-scraper-btn";
+  var CONCURRENCY2 = 4;
+  var _running2 = false;
+  function seasonPageGuid() {
+    return seasonGuid();
+  }
+  async function fetchFromCustomScraper(url, payload) {
+    const out = /* @__PURE__ */ new Map();
+    let j = null;
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      j = await resp.json();
+    } catch (e) {
+      throw new Error("\u81EA\u5B9A\u4E49\u522E\u524A\u670D\u52A1\u8BF7\u6C42\u5931\u8D25: " + String(e && e.message || e).substring(0, 100));
+    }
+    const eps = j && (Array.isArray(j.episodes) ? j.episodes : Array.isArray(j.data) ? j.data : null);
+    if (!eps) throw new Error("\u54CD\u5E94\u7F3A\u5C11 episodes \u6570\u7EC4");
+    eps.forEach((e, i) => {
+      var _a, _b, _c, _d, _e, _f, _g;
+      if (!e || typeof e !== "object") return;
+      const num2 = (_c = numOrNull((_b = (_a = e.index) != null ? _a : e.episode) != null ? _b : e.number)) != null ? _c : i + 1;
+      const title = ((_d = e.title) != null ? _d : e.name) != null ? String((_e = e.title) != null ? _e : e.name).trim() : null;
+      const overview = ((_f = e.overview) != null ? _f : e.description) != null ? String((_g = e.overview) != null ? _g : e.description).trim() : null;
+      out.set(num2, { title: title || null, overview: overview || null });
+    });
+    return out;
+  }
+  async function runCustomScraper(btn) {
+    var _a, _b;
+    const guid = seasonPageGuid();
+    if (!guid || _running2) return;
+    const enabled3 = S.customScraperEnabled;
+    const url = String(S.customScraperUrl || "").trim();
+    if (!enabled3 || !url) {
+      setBtn(btn, "\u26A0 \u672A\u914D\u7F6E", "\u8BF7\u5230 \u4FA7\u680F\u8BBE\u7F6E \u2192 \u8D26\u53F7\u4E0E\u7F51\u7EDC \u2192 \u81EA\u5B9A\u4E49\u522E\u524A\u6E90 \u5F00\u542F\u5E76\u586B\u5199\u5730\u5740\u3002");
+      window.setTimeout(() => {
+        if (btn.isConnected) setBtn(btn, "\u27F3 \u81EA\u5B9A\u4E49\u522E\u524A");
+      }, 5e3);
+      return;
+    }
+    _running2 = true;
+    const origin = location.origin;
+    const stats = { filled: 0, upgraded: 0, unchanged: 0, failed: 0, unmatched: 0, total: 0 };
+    const tick2 = () => {
+      const done = stats.filled + stats.upgraded + stats.unchanged + stats.failed + stats.unmatched;
+      if (btn.isConnected) setBtn(btn, "\u23F3 \u56DE\u586B\u4E2D " + done + "/" + stats.total);
+    };
+    try {
+      const data = await fnosGetEditDetail(origin, guid);
+      if (!data) throw new Error("\u8BFB\u53D6\u5B63\u4FE1\u606F\u5931\u8D25\uFF08getEditDetail\uFF09");
+      const tmdbId = (() => {
+        var _a2, _b2;
+        const t2 = (_b2 = (_a2 = data.tmdb_id) != null ? _a2 : data.tmdbId) != null ? _b2 : data.trim_id;
+        const s = String(t2 != null ? t2 : "").trim();
+        return /^\d+$/.test(s) ? s : "";
+      })();
+      const title = String(data.title || data.name || "").trim();
+      const seasonNumber = numOrNull((_b = (_a = data.index_number) != null ? _a : data.index) != null ? _b : data.season_number);
+      if (!title && !tmdbId) throw new Error("\u65E0\u6807\u9898\u4E14\u65E0 TMDB id\uFF0C\u65E0\u6CD5\u522E\u524A");
+      let episodes = await fnosEpisodeList(origin, guid).catch(() => []);
+      if (!episodes.length) episodes = episodeGuidsFromDom();
+      if (!episodes.length) throw new Error("\u672A\u679A\u4E3E\u5230\u672C\u5B63\u4EFB\u4F55\u96C6");
+      stats.total = episodes.length;
+      setBtn(btn, "\u23F3 \u8BF7\u6C42\u522E\u524A\u670D\u52A1\u2026");
+      const scrap = await fetchFromCustomScraper(url, {
+        title,
+        season: seasonNumber != null ? seasonNumber : 0,
+        tmdbId,
+        episodes
+      });
+      if (!scrap.size) {
+        setBtn(btn, "\u26A0 \u670D\u52A1\u65E0\u5206\u96C6\u6570\u636E", "\u81EA\u5B9A\u4E49\u670D\u52A1\u54CD\u5E94\u7684 episodes \u4E3A\u7A7A\u3002");
+        window.setTimeout(() => {
+          if (btn.isConnected) setBtn(btn, "\u27F3 \u81EA\u5B9A\u4E49\u522E\u524A");
+        }, 5e3);
+        _running2 = false;
+        return;
+      }
+      let idx = 0;
+      const worker = async () => {
+        var _a2, _b2, _c, _d, _e, _f;
+        while (idx < episodes.length) {
+          const ep = episodes[idx++];
+          try {
+            const ed = await fnosGetEditDetail(origin, ep.guid);
+            if (!ed) {
+              stats.failed++;
+              tick2();
+              continue;
+            }
+            const num2 = (_b2 = numOrNull((_a2 = ed.index_number) != null ? _a2 : ed.index)) != null ? _b2 : ep.index;
+            const t2 = num2 !== null ? scrap.get(num2) : void 0;
+            if (!t2) {
+              stats.unmatched++;
+              tick2();
+              continue;
+            }
+            const titleKey = "title" in ed ? "title" : "name" in ed ? "name" : "title";
+            const ovKey = "overview" in ed ? "overview" : "description" in ed ? "description" : "overview";
+            const curTitle = String((_c = ed[titleKey]) != null ? _c : "");
+            const curOv = String((_d = ed[ovKey]) != null ? _d : "");
+            const newTitle = decideField(curTitle, t2.title, null, isPlaceholderTitle);
+            const newOv = decideField(curOv, t2.overview, null);
+            if (newTitle === null && newOv === null) {
+              stats.unchanged++;
+              tick2();
+              continue;
+            }
+            const body = { ...ed, nonce: fnNonce3() };
+            if (!body.guid && !body.item_guid) body.guid = ep.guid;
+            let titleChanged = false, ovChanged = false;
+            if (newTitle !== null) {
+              body[titleKey] = newTitle;
+              body.title_locked = true;
+              titleChanged = true;
+            }
+            if (newOv !== null) {
+              body[ovKey] = newOv;
+              body.overview_locked = true;
+              ovChanged = true;
+            }
+            const saved = await fnosSaveEditDetail(origin, body);
+            if (!saved) {
+              stats.failed++;
+              tick2();
+              continue;
+            }
+            const vf = await fnosGetEditDetail(origin, ep.guid);
+            const vTitle = String(vf ? (_e = vf[titleKey]) != null ? _e : "" : "");
+            const vOv = String(vf ? (_f = vf[ovKey]) != null ? _f : "" : "");
+            if (titleChanged && vTitle.trim() !== newTitle.trim() || ovChanged && vOv.trim() !== newOv.trim()) {
+              stats.failed++;
+              tick2();
+              continue;
+            }
+            if (titleChanged) stats.filled++;
+            if (ovChanged) stats.filled++;
+            patchEpisodeCard(ep.guid, titleChanged ? newTitle : null, ovChanged ? newOv : null);
+            tick2();
+          } catch (e) {
+            stats.failed++;
+            dlog("[customScraper] \u5355\u96C6\u5F02\u5E38 " + ep.guid + " " + String(e && e.message || e).substring(0, 100));
+            tick2();
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY2, episodes.length) }, worker));
+      const done = stats.filled;
+      if (stats.failed) {
+        setBtn(btn, "\u26A0 \u56DE\u586B " + done + " \xB7 \u5931\u8D25 " + stats.failed, "\u90E8\u5206\u96C6\u5199\u5165\u5931\u8D25\uFF0C\u8BE6\u89C1\u65E5\u5FD7\uFF1B\u53EF\u518D\u70B9\u4E00\u6B21\u91CD\u8BD5\u3002");
+      } else if (done) {
+        setBtn(btn, "\u2713 \u5DF2\u56DE\u586B " + stats.filled + " \u9879", "\u81EA\u5B9A\u4E49\u522E\u524A\u6570\u636E\u5DF2\u5199\u56DE\u98DE\u725B\u5143\u6570\u636E\u3002");
+      } else if (stats.unmatched) {
+        setBtn(btn, "\u26A0 " + stats.unmatched + " \u96C6\u672A\u5339\u914D", "\u81EA\u5B9A\u4E49\u670D\u52A1\u672A\u8FD4\u56DE\u8FD9\u4E9B\u96C6\u7684\u6570\u636E\u3002");
+      } else {
+        setBtn(btn, "\u2713 \u6570\u636E\u5DF2\u6700\u65B0", "\u4E0E\u81EA\u5B9A\u4E49\u522E\u524A\u670D\u52A1\u4E00\u81F4\uFF0C\u65E0\u9700\u56DE\u586B\u3002");
+      }
+      log7("[customScraper] \u5B8C\u6210 " + (title || tmdbId) + " total=" + stats.total + " filled=" + stats.filled + " unchanged=" + stats.unchanged + " unmatched=" + stats.unmatched + " failed=" + stats.failed);
+    } catch (e) {
+      const msg = String(e && e.message || e).substring(0, 80);
+      log7("[customScraper] \u5931\u8D25: " + msg);
+      if (btn.isConnected) {
+        setBtn(btn, "\u26A0 " + msg, msg);
+        btn.style.color = "var(--fnos-ui-warn,#b06a3a)";
+        window.setTimeout(() => {
+          if (btn.isConnected) {
+            btn.style.color = "";
+            setBtn(btn, "\u27F3 \u81EA\u5B9A\u4E49\u522E\u524A");
+          }
+        }, 6e3);
+      }
+    } finally {
+      _running2 = false;
+    }
+  }
+  function fnNonce3() {
+    return String(Math.floor(Math.random() * 9e5) + 1e5);
+  }
+  function makeCsBtn() {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = CS_BTN_ID;
+    btn.textContent = "\u27F3 \u81EA\u5B9A\u4E49\u522E\u524A";
+    btn.setAttribute("title", "\u7528\u81EA\u5B9A\u4E49\u522E\u524A\u670D\u52A1\u7684\u6570\u636E\u56DE\u586B\u672C\u5B63\u6BCF\u96C6\u7684\u6807\u9898/\u7B80\u4ECB\uFF08\u5728\u4FA7\u680F\u8BBE\u7F6E \u2192 \u8D26\u53F7\u4E0E\u7F51\u7EDC \u4E2D\u914D\u7F6E\uFF09");
+    btn.style.cssText = "display:inline-flex;align-items:center;margin-left:7px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;cursor:pointer;vertical-align:middle;letter-spacing:.3px;background:var(--fnos-ui-btn-bg,rgba(90,160,120,.12));color:#3f9d63;border:none;transition:background .15s,color .15s;flex-shrink:0;";
+    btn.addEventListener("mouseenter", () => {
+      btn.style.background = "var(--fnos-ui-btn-hover,rgba(63,157,99,.28))";
+    });
+    btn.addEventListener("mouseleave", () => {
+      btn.style.background = "var(--fnos-ui-btn-bg,rgba(90,160,120,.12))";
+    });
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void runCustomScraper(btn);
+    });
+    return btn;
+  }
+  function ensureCustomScraperButton() {
+    if (!seasonPageGuid()) {
+      removeCustomScraperButton();
+      return;
+    }
+    const existing = document.getElementById(CS_BTN_ID);
+    if (existing && existing.isConnected) return;
+    let anchor = findSelectHeading();
+    if (!anchor) {
+      const epfix = document.getElementById("fnos-epfix-btn");
+      if (epfix && epfix.parentNode) anchor = epfix.parentNode;
+    }
+    if (!anchor) return;
+    anchor.appendChild(makeCsBtn());
+    dlog("[customScraper] \u6309\u94AE\u5DF2\u6302\u8F7D " + location.pathname);
+  }
+  function removeCustomScraperButton() {
+    const b = document.getElementById(CS_BTN_ID);
+    if (b && b.parentNode) b.parentNode.removeChild(b);
+  }
+  function bootstrapFromSettings() {
+    try {
+      ipcRenderer.invoke("settings:get").then((s) => {
+        if (!s || typeof s !== "object") return;
+        S.customScraperEnabled = s.customScraperEnabled === true;
+        S.customScraperUrl = String(s.customScraperUrl || "");
+        if (S.customScraperEnabled && seasonPageGuid()) scheduleCustomScraperButton();
+      }).catch(() => {
+      });
+    } catch {
+    }
+  }
+  bootstrapFromSettings();
+  function scheduleCustomScraperButton() {
+    if (!S.customScraperEnabled) {
+      removeCustomScraperButton();
+      return;
+    }
+    [0, 400, 1e3, 2e3, 3400].forEach((d) => setTimeout(() => {
+      if (seasonPageGuid()) ensureCustomScraperButton();
+    }, d));
+  }
+
   // src/preload/plugins/embyWall/carousel/bootCover.ts
   var STYLE_ID4 = "fntv-boot-style";
   var BAR_ID = "fntv-boot-bar";
@@ -15754,6 +16004,64 @@ html.fntv-boot-hide #root{visibility:hidden}
       hotHint.style.cssText = "font-size:10px;color:var(--fnos-ui-sub);line-height:1.5;";
       hotHint.textContent = t("\u6570\u636E\u4FDD\u5B58\u5728\u672C\u673A\uFF0C\u8D85\u8FC7\u5237\u65B0\u95F4\u9694\u540E\u5C55\u5F00\u6D6E\u5C42\u624D\u4F1A\u91CD\u65B0\u62C9\u53D6\u3002");
       secBodyDaily.appendChild(hotHint);
+      const secScraper = section("\u81EA\u5B9A\u4E49\u522E\u524A\u6E90");
+      const secBodyScraper = secScraper.body;
+      secBodyScraper.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
+      const csDesc = document.createElement("div");
+      csDesc.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);line-height:1.5;margin-bottom:8px;";
+      csDesc.textContent = t("\u628A\u89C6\u9891\u6807\u9898/\u5B63\u53F7\u53D1\u7ED9\u4F60\u7684\u81EA\u5B9A\u4E49\u522E\u524A\u670D\u52A1\uFF0C\u8FD4\u56DE\u7684\u5206\u96C6\u6807\u9898\u4E0E\u7B80\u4ECB\u7ECF\u98DE\u725B\u5B98\u65B9\u63A5\u53E3\u56DE\u586B\u5143\u6570\u636E\uFF08\u4E0D\u4FEE\u6539\u4EFB\u4F55\u7CFB\u7EDF\u6587\u4EF6\uFF09\u3002\u670D\u52A1\u534F\u8BAE\uFF1APOST JSON {title, season, tmdbId, episodes}\uFF0C\u54CD\u5E94 {episodes:[{index,title,overview}]}\u3002\u5F00\u542F\u540E\u5728\u5B63\u9875\u300C\u9009\u96C6\u300D\u6807\u9898\u65C1\u51FA\u73B0\u300C\u27F3 \u81EA\u5B9A\u4E49\u522E\u524A\u300D\u6309\u94AE\u3002");
+      secBodyScraper.appendChild(csDesc);
+      const csToggleRow = document.createElement("label");
+      csToggleRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 6px;cursor:pointer;border-radius:6px;margin-bottom:8px;";
+      const csToggleSpan = document.createElement("span");
+      csToggleSpan.textContent = t("\u542F\u7528\u81EA\u5B9A\u4E49\u522E\u524A\u6E90");
+      csToggleSpan.style.cssText = "color:var(--fnos-ui-text);font-weight:500;";
+      const csToggle = document.createElement("input");
+      csToggle.type = "checkbox";
+      csToggle.style.cssText = "width:38px;height:21px;cursor:pointer;accent-color:var(--fnos-ui-accent);";
+      csToggleRow.appendChild(csToggleSpan);
+      csToggleRow.appendChild(csToggle);
+      secBodyScraper.appendChild(csToggleRow);
+      const csUrlInput = document.createElement("input");
+      csUrlInput.type = "text";
+      csUrlInput.placeholder = t("http://192.168.1.9:9000/scraper");
+      csUrlInput.style.cssText = "width:100%;height:32px;font-size:11px;color:var(--fnos-ui-text);background:var(--fnos-ui-input-bg);border:1px solid var(--fnos-ui-border);border-radius:7px;padding:6px 8px;box-sizing:border-box;margin-bottom:8px;";
+      secBodyScraper.appendChild(csUrlInput);
+      const csStatus = document.createElement("div");
+      csStatus.style.cssText = "font-size:11px;color:var(--fnos-ui-sub);margin-bottom:8px;min-height:14px;";
+      secBodyScraper.appendChild(csStatus);
+      const csSave = document.createElement("button");
+      csSave.type = "button";
+      csSave.textContent = t("\u4FDD\u5B58");
+      csSave.style.cssText = "align-self:flex-start;padding:6px 18px;border-radius:8px;border:none;cursor:pointer;font-size:11.5px;font-weight:600;background:var(--fnos-ui-accent);color:#fff;";
+      csSave.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const urlStr = csUrlInput.value.trim();
+        if (csToggle.checked && urlStr && !/^https?:\/\//i.test(urlStr)) {
+          csStatus.textContent = t("\u5730\u5740\u9700\u4EE5 http:// \u6216 https:// \u5F00\u5934");
+          csStatus.style.color = "var(--fnos-ui-warn,#b06a3a)";
+          return;
+        }
+        try {
+          await ipcRenderer.invoke("settings:set-custom-scraper-enabled", csToggle.checked);
+          await ipcRenderer.invoke("settings:set-custom-scraper-url", urlStr);
+          S.customScraperEnabled = csToggle.checked;
+          S.customScraperUrl = urlStr;
+          csStatus.textContent = t("\u5DF2\u4FDD\u5B58") + (csToggle.checked ? "\uFF0C\u5B63\u9875\u6309\u94AE\u5373\u523B\u751F\u6548" : "");
+          csStatus.style.color = "var(--fnos-ui-ok,#3f9d63)";
+        } catch (err) {
+          csStatus.textContent = t("\u4FDD\u5B58\u5931\u8D25") + ": " + String(err && err.message || err).substring(0, 60);
+          csStatus.style.color = "var(--fnos-ui-warn,#b06a3a)";
+        }
+        window.setTimeout(() => {
+          csStatus.textContent = "";
+        }, 4e3);
+      });
+      secBodyScraper.appendChild(csSave);
+      overlay._refreshCustomScraperCard = () => {
+        csToggle.checked = S.customScraperEnabled;
+        csUrlInput.value = S.customScraperUrl || "";
+      };
       const secCustomProxy = section("\u81EA\u5B9A\u4E49\u4EE3\u7406");
       const secBodyCustomProxy = secCustomProxy.body;
       secBodyCustomProxy.style.cssText = "padding:14px 16px;flex:1 1 auto;display:flex;flex-direction:column;";
@@ -15951,7 +16259,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         { id: "appearance", label: "\u901A\u7528", els: [secAppearance.el, secDaily.el, secUX.el, secSkip.el] },
         // [lc-1102] 三张「弹幕源」卡并列（内置降级源 → 弹弹play → 自建优选源），最后才是屏蔽/样式
         { id: "danmaku", label: "\u5F39\u5E55", els: [secBili.el, secDandan.el, secDmApi.el, secDanmaku.el] },
-        { id: "account", label: "\u8D26\u53F7\u4E0E\u7F51\u7EDC", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secCustomProxy.el, secTmdbDirect.el] },
+        { id: "account", label: "\u8D26\u53F7\u4E0E\u7F51\u7EDC", els: [secBangumi.el, secTmdb.el, secDouban.el, secTrakt.el, secScraper.el, secCustomProxy.el, secTmdbDirect.el] },
         { id: "diag", label: "\u8BCA\u65AD\u4E0E\u65E5\u5FD7", els: [secDiag.el, secDebug.el] },
         { id: "about", label: "\u5173\u4E8E", els: [secAbout.el] }
       ];
@@ -16399,6 +16707,15 @@ html.fntv-boot-hide #root{visibility:hidden}
         seg2("accounts", () => {
           refreshBili();
           refreshDouban();
+        });
+        seg2("custom-scraper", () => {
+          var _a;
+          S.customScraperEnabled = s.customScraperEnabled === true;
+          S.customScraperUrl = String(s.customScraperUrl || "");
+          try {
+            (_a = overlay._refreshCustomScraperCard) == null ? void 0 : _a.call(overlay);
+          } catch {
+          }
         });
         seg2("debug", () => {
           swDebug.checked = !!s.debugEnabled;
@@ -17168,6 +17485,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         _scheduleTopLeftAfterNav();
         applyDetailBeautify();
         scheduleEpBackfill();
+        scheduleCustomScraperButton();
       };
       history.replaceState = function(...a) {
         const prevPath = location.pathname;
@@ -17186,6 +17504,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         _scheduleTopLeftAfterNav();
         applyDetailBeautify();
         scheduleEpBackfill();
+        scheduleCustomScraperButton();
       };
       window.addEventListener("popstate", () => {
         logNav("popstate");
@@ -17197,6 +17516,7 @@ html.fntv-boot-hide #root{visibility:hidden}
         setTimeout(ensureHomepageEnhanced, 350);
         applyDetailBeautify();
         scheduleEpBackfill();
+        scheduleCustomScraperButton();
       });
       window.addEventListener("hashchange", () => logNav("hashchange"));
       setTimeout(hideStaleViews, 1500);
@@ -17207,9 +17527,11 @@ html.fntv-boot-hide #root{visibility:hidden}
       backfillDetailLogo();
       applyDetailBeautify();
       scheduleEpBackfill();
+      scheduleCustomScraperButton();
       [600, 1500, 3e3].forEach((ms) => setTimeout(() => {
         backfillDetailLogo();
         scheduleEpBackfill();
+        scheduleCustomScraperButton();
       }, ms));
     }
     let _detailGlassTimer = 0;

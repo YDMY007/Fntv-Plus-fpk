@@ -35,7 +35,7 @@ const CONCURRENCY = 4;
 
 // ── 路由/文本纯函数 ──
 
-function seasonGuid(): string | null {
+export function seasonGuid(): string | null {
   const m = location.pathname.match(/\/v\/tv\/season\/([a-f0-9]{32})/);
   return m ? m[1] : null;
 }
@@ -68,7 +68,7 @@ export function decideField(
   return null;
 }
 
-function numOrNull(v: any): number | null {
+export function numOrNull(v: any): number | null {
   if (typeof v === 'number' && !isNaN(v)) return v;
   if (typeof v === 'string' && /^\d+$/.test(v.trim())) return parseInt(v.trim(), 10);
   return null;
@@ -127,7 +127,7 @@ async function fnosPost(origin: string, path: string, body: any): Promise<any | 
 }
 
 /** 枚举本季全部集（guid + type）。item/list 失败时由调用方回落 DOM href 收集。 */
-async function fnosEpisodeList(origin: string, seasonGuid: string): Promise<{ guid: string; index: number | null }[]> {
+export async function fnosEpisodeList(origin: string, seasonGuid: string): Promise<{ guid: string; index: number | null }[]> {
   const data = await fnosPost(origin, '/v/api/v1/item/list', {
     parent_guid: seasonGuid, exclude_folder: 1,
     sort_column: 'sort_title', sort_type: 'ASC', nonce: fnNonce(),
@@ -143,7 +143,7 @@ async function fnosEpisodeList(origin: string, seasonGuid: string): Promise<{ gu
 }
 
 /** DOM 回落：活跃视图选集卡的 a[href="/v/tv/episode/<guid>"]。 */
-function episodeGuidsFromDom(): { guid: string; index: number | null }[] {
+export function episodeGuidsFromDom(): { guid: string; index: number | null }[] {
   const view = findActiveDetailView();
   if (!view) return [];
   const out: { guid: string; index: number | null }[] = [];
@@ -159,14 +159,14 @@ function episodeGuidsFromDom(): { guid: string; index: number | null }[] {
 }
 
 /** 全量回写（仅调用方改好的字段 + nonce；字段锁定由调用方放进了 body）。 */
-async function fnosSaveEditDetail(origin: string, body: any): Promise<boolean> {
+export async function fnosSaveEditDetail(origin: string, body: any): Promise<boolean> {
   const data = await fnosPost(origin, '/v/api/v1/item/saveEditDetail', body);
   return data !== null;
 }
 
 // ── 按钮挂载/状态 ──
 
-function setBtn(btn: HTMLElement, text: string, title?: string): void {
+export function setBtn(btn: HTMLElement, text: string, title?: string): void {
   btn.textContent = text;
   if (title !== undefined) btn.setAttribute('title', title);
 }
@@ -188,7 +188,7 @@ function makeBtn(): HTMLButtonElement {
 }
 
 /** 「选集」标题元素：活跃视图内文本恰为「选集」的可见叶子（防选集计数等变体：再试 ≤8 字前缀）。 */
-function findSelectHeading(): HTMLElement | null {
+export function findSelectHeading(): HTMLElement | null {
   const view = findActiveDetailView();
   if (!view) return null;
   const nodes = view.querySelectorAll('strong,b,h1,h2,h3,h4,p,span,div,em');
@@ -230,7 +230,7 @@ export function removeEpFixButton(): void {
 // ── DOM 即时补丁 ──
 
 /** 标题 p：卡内「含 <p> 的 <a>」首个 <p>（epResolution 实机验证的定位）；简介 p：其余 p 的最后一个。 */
-function patchEpisodeCard(epGuid: string, title: string | null, overview: string | null): void {
+export function patchEpisodeCard(epGuid: string, title: string | null, overview: string | null): void {
   const view = findActiveDetailView();
   if (!view) return;
   const link = view.querySelector<HTMLAnchorElement>('a[href="/v/tv/episode/' + epGuid + '"]');
