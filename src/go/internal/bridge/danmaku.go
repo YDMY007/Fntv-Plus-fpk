@@ -10,6 +10,10 @@
 package bridge
 
 import (
+	"bytes"
+	"compress/flate"
+	"compress/gzip"
+	"compress/zlib"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -438,6 +442,10 @@ func toMapSlice(arr []any) []map[string]any {
 }
 
 // biliFetchDanmakuXML cid → 经典 list.so XML → 解析为 items（time/type/color/text），按 time 升序。
+// [v1.4.4] ⚠ 该端点无视 Accept-Encoding 直接回 **raw deflate** 压缩体（本地全链实测：
+// 37KB 二进制，zlib raw inflate 后 99KB 正常 XML；前 2 字节 0x84bd 非 gzip 魔数 1f8b）。
+// Go http.Transport 只自动解 gzip → 旧版 parseDanmakuXML 收到二进制 → 正则 0 命中 →
+// 手动选定候选报「该条目没有弹幕」（自动加载同断）。检测 gzip / zlib / raw deflate 逐一解压。
 func (b *Bridge) biliFetchDanmakuXML(cid int64) []map[string]any {
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/x/v1/dm/list.so?oid=%d", biliWebAPI, cid), nil)
@@ -452,10 +460,51 @@ func (b *Bridge) biliFetchDanmakuXML(cid int64) []map[string]any {
 	}
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 32*1024*1024))
+	data = decompressDanmakuBody(data)
 	if len(data) < 16 {
 		return nil
 	}
 	return parseDanmakuXML(data)
+}
+
+// decompressDanmakuBody 按魔数识别并解压弹幕体：gzip(1f 8b) / zlib(78 xx) / raw deflate；
+// 已是明文（如 `<` 开头的 XML）原样返回。解压失败原样返回（交给上层按明文尝试）。
+func decompressDanmakuBody(data []byte) []byte {
+	if len(data) < 3 {
+		return data
+	}
+	// 明文 XML 快速路径
+	if data[0] == '<' {
+		return data
+	}
+	readAll := func(r io.Reader) ([]byte, bool) {
+		out, err := io.ReadAll(io.LimitReader(r, 32*1024*1024))
+		if err != nil && len(out) == 0 {
+			return nil, false
+		}
+		return out, len(out) > 0
+	}
+	switch {
+	case data[0] == 0x1f && data[1] == 0x8b: // gzip
+		if zr, err := gzip.NewReader(bytes.NewReader(data)); err == nil {
+			if out, ok := readAll(zr); ok {
+				return out
+			}
+		}
+	case data[0] == 0x78: // zlib（78 01/9C/DA…）
+		zr, zerr := zlib.NewReader(bytes.NewReader(data))
+		if zerr == nil {
+			if out, ok := readAll(zr); ok {
+				return out
+			}
+		}
+	default:
+		// raw deflate（实测 list.so 形态，0x84 开头）：zlib 头解析不过 → 裸 flate
+		if out, ok := readAll(flate.NewReader(bytes.NewReader(data))); ok {
+			return out
+		}
+	}
+	return data
 }
 
 // parseDanmakuXML 解析 B站/danmu_api 弹幕 XML（<d p="time,mode,size,color,...">text</d>），
