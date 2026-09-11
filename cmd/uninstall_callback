@@ -7,6 +7,20 @@
 # 动作与路径会输出到 fnOS 安装日志（应用中心安装/卸载详情可见），便于核对。
 echo "[fntvplus] 卸载数据处理: wizard_delete_data=${wizard_delete_data:-未设置(按保留处理)}"
 echo "[fntvplus] 数据目录: ${TRIM_PKGVAR:-未知}"
+
+# ── Bangumi 刮削代理：随应用卸载还原 trim.media 官方刮削并停用 systemd 单元 ──
+# 代理数据目录 /vol1/@appdata/fnos-scraper 默认保留（备份/日志在里面）；用户选「删除数据」
+# 时一并清理（--purge 语义），保证卸载后系统无残留。
+if [ -f "$TRIM_APPDEST/scraper/scraper-deploy.sh" ]; then
+    echo "[fntvplus] 还原刮削代理（trim.media 官方刮削）…"
+    bash "$TRIM_APPDEST/scraper/scraper-deploy.sh" --disable 2>/dev/null \
+        || echo "[fntvplus] WARN: 刮削代理还原失败,可按方案A文档手动还原 service-setup"
+    if [ "$wizard_delete_data" = "yes" ]; then
+        rm -rf "/vol1/@appdata/fnos-scraper"
+        echo "[fntvplus] 已一并清理刮削代理数据目录 /vol1/@appdata/fnos-scraper"
+    fi
+fi
+
 if [ "$wizard_delete_data" = "yes" ]; then
     if [ -n "$TRIM_PKGVAR" ] && case "$TRIM_PKGVAR" in *@appdata/fntvplus) true;; *) false;; esac; then
         echo "[fntvplus] 用户选择删除数据 -> 清空 $TRIM_PKGVAR"
