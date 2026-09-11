@@ -651,8 +651,10 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     //   prepend 放在所有按钮/版本号就位之后 → 保证折叠条始终位于容器最顶部。
     //   [v1.2.4] 收起态不再全藏——按钮缩成图标行（文字由 CSS 藏），版本号隐藏。
     //   [v1.2.5] 收起态一行四等分（⚙/🕐/💬/▾），默认收起（未存过偏好时收起，显式点过才记忆）。
-    //   [v1.2.9] 收起态改三等分（⚙/🕐/💬），折叠钮不占格——独立小箭头钮浮在容器内顶部居中
-    //   （展开态 ▴ / 收起态 ▾，指向折叠方向）；展开/收起状态持久化（fnos-sidebar-collapsed）。
+    //   [v1.2.9] 收起态三功能按钮一行；折叠钮不占格——独立小箭头钮浮在容器内顶部居中。
+    //   [v1.3.4] 用户反馈三连改：①箭头方向按「指向点击后的动作」——收起态显示 ▴（点击=向上展开）、
+    //   展开态显示 收起 ▾（点击=向下收起），v1.2.9 正好写反；②折叠箭头**不要框**（去底色/边框/阴影）；
+    //   ③三个功能按钮改 1:1 正方形（40px，不追求撑满行宽，一行居中）。
     if (!document.getElementById('fntv-sb-fold-style')) {
       const foldStyle = document.createElement('style');
       foldStyle.id = 'fntv-sb-fold-style';
@@ -661,22 +663,25 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
           + 'cursor:pointer;border-radius:12px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;'
           + 'letter-spacing:.5px;transition:background .15s,color .15s,filter .15s; }',
         '#fnos-sb-toggle:hover { background: rgba(255,255,255,.10); color: #fff; }',
-        /* 收起态：三功能按钮(⚙/🕐/💬)一行三等分；折叠钮不占格，独立浮在按钮上方居中 [v1.2.9] */
-        '#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:stretch !important;'
-          + 'gap:8px !important; padding:30px 10px 10px !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:1 1 0 !important; min-width:0 !important;'
-          + 'width:auto !important; box-sizing:border-box !important; padding:9px 0 !important; }',
+        /* [v1.2.9→v1.3.4] 收起态：三功能按钮(⚙/🕐/💬)改 40px 正方形(1:1)一行居中，不再三等分撑满；
+         * 折叠钮不占格、无框（去底色/边框/阴影），独立浮在按钮上方居中 */
+        '#fnos-sidebar-actions.fnos-sb-collapsed { flex-direction:row !important; align-items:center !important;'
+          + 'justify-content:center !important; gap:10px !important; padding:32px 10px 10px !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > button { flex:0 0 auto !important; width:40px !important; height:40px !important;'
+          + 'min-width:0 !important; padding:0 !important; box-sizing:border-box !important; display:flex !important;'
+          + 'align-items:center !important; justify-content:center !important; font-size:16px !important; }',
         '#fnos-sidebar-actions.fnos-sb-collapsed .fnos-sb-btn-text { display:none !important; }',
         '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sidebar-version { display:none !important; }',
-        /* 折叠钮：容器内顶部居中的小箭头钮（top:7px + 高 20px < padding-top 30px，与三按钮不重叠；
-         * absolute 相对 sticky 容器定位，不出容器 → 不会被面板 overflow 裁掉） */
+        /* 折叠钮：容器内顶部居中的小箭头（top:7px + 高 20px < padding-top 32px，与三按钮不重叠；
+         * absolute 相对 sticky 容器定位，不出容器 → 不会被面板 overflow 裁掉）。
+         * [v1.3.4] 用户明确不要框：去 btn-bg 底色/边框/阴影，只留箭头字符本体。 */
         '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle { position:absolute !important; top:7px !important;'
-          + 'left:50% !important; transform:translateX(-50%) !important; width:auto !important; min-width:44px !important;'
-          + 'height:20px !important; padding:0 12px !important; display:flex !important; align-items:center !important;'
-          + 'justify-content:center !important; font-size:12px !important; font-weight:700 !important; line-height:1 !important;'
-          + 'background:var(--fnos-sidebar-btn-bg)!important; border:1px solid rgba(255,255,255,.28)!important;'
-          + 'box-shadow:0 4px 16px rgba(0,0,0,.18)!important; color:#fff!important; border-radius:10px !important; }',
-        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle:hover { filter:brightness(1.12); background:var(--fnos-sidebar-btn-bg)!important; }',
+          + 'left:50% !important; transform:translateX(-50%) !important; width:auto !important; min-width:28px !important;'
+          + 'height:20px !important; padding:0 6px !important; display:flex !important; align-items:center !important;'
+          + 'justify-content:center !important; font-size:13px !important; font-weight:700 !important; line-height:1 !important;'
+          + 'background:transparent !important; border:none !important; box-shadow:none !important;'
+          + 'color:rgba(255,255,255,.85)!important; border-radius:8px !important; }',
+        '#fnos-sidebar-actions.fnos-sb-collapsed > #fnos-sb-toggle:hover { color:#fff !important; background:transparent !important; filter:none !important; }',
       ].join(String.fromCharCode(10));
       (document.head || document.documentElement).appendChild(foldStyle);
     }
@@ -685,7 +690,9 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
     const paintSbFold = (): void => {
       const collapsed = localStorage.getItem('fnos-sidebar-collapsed') !== '0'; // [v1.2.5] 默认收起
       ctrl.classList.toggle('fnos-sb-collapsed', collapsed);
-      sbFoldRow.textContent = collapsed ? '▾' : '收起 ▴';
+      // [v1.3.4] 箭头指向点击后的动作：收起态→▴（点击向上展开）；展开态→收起 ▾（点击向下收起）。
+      // v1.2.9 写反了（收起态显示 ▾），用户截图纠正。
+      sbFoldRow.textContent = collapsed ? '▴' : '收起 ▾';
       sbFoldRow.title = collapsed ? '展开' : '收起';
     };
     sbFoldRow.addEventListener('click', (e: Event) => {
