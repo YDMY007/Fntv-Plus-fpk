@@ -141,6 +141,10 @@ body.fnos-beautify ${COL}{
   align-content:start !important;
   width:100% !important;
   box-sizing:border-box !important;
+  /* [v1.3.5] 序号视图下 TMDB 卡要 absolute+grid-area 钉在 row2/col2：绝对定位元素的
+     "grid 区包含块"解析要求 grid 容器本身就是其包含块（最近 positioned 祖先），
+     static 时回落到更外层/视口。COL 自任 relative 一劳永逸（流内布局零影响）。 */
+  position:relative !important;
 }
 /* hero 跨全宽(row1) */
 body.fnos-beautify ${COL} > ${HERO}{ grid-area:1 / 1 / 2 / 3 !important; }
@@ -321,24 +325,24 @@ body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scrol
   transform:scale(1.05) !important;
 }
 
-/* ── [v1.3.2→v1.3.3] 序号视图：演职人员沉到选集下方，右栏只留剧集信息卡 ──
-   用户需求：切纯数字选集时「右边剧集信息不动位置，演员信息改到选集下方」。
-   右栏(nth-child(3))真实 DOM（2026-09-11 从 NAS bundle 逐层挖出，BH/RH 组件）：
-     nth-child(3)  div.relative.flex.w-full.flex-col.my-10（BH 根）
-      ├─ .fnos-beautify-card（我们注入的 TMDB 卡，insertBefore firstChild）
-      └─ div.relative（RH 根 —— ⚠ 标题与横滑都包在这层里！）
-          ├─ p.semi-typography（「演职人员」标题）
-          ├─ .ms-container（演员横滑，pi ScrollArea）
-          └─ .semi-color-bg-arrow-mask×2（横滑箭头，absolute 定位，lc-1049 已 display:none）
-   做法：序号门控(COL_NUM)下把 nth-child(3) 与其内层 div.relative **双双 display:contents**——
-   display:contents 只提升一级，孙级的标题/横滑必须连包装层一起 contents 化才能成为 COL
-   grid 的直接 item（v1.3.2 只 contents 了外层 + 用直接子代选择器，被这层 div.relative 挡死，
-   是"没修好"的第二处根因）。然后重新分配网格位：卡留守右栏(2/2)，标题+横滑沉到第 3/4 行
-   左栏（选集数字下方）。
-   · contents 化后盒样式失效：两层的背景本就被 A 段清成 transparent，无视觉损失；
-     右栏入场动画(169-173 行作用于 nth-child(3))随之失效，可接受。
-   · 横滑箭头虽被提升为 grid item，但是 absolute 定位不占网格轨道，且 lc-1049 已隐藏，无扰。
-   · rows 从两行放宽到四行（特异性比 A 段高一个 :has，覆盖生效）。
+/* ── [v1.3.2→v1.3.5] 序号视图：演职人员提到选集正下方（红线处），TMDB 卡绝对定位脱高 ──
+   用户需求（2026-09-11 截图红线）：数字选集下方、与右栏剧照块底部大致齐平处开始放演职人员，
+   右栏剧集信息卡位置与宽度不变。
+   v1.3.3 病灶：卡(2/2)与标题/横滑(3/1、4/1)同为流内 grid item，而 Grid 同一行跨列**共享行高**
+   ——row2 被右栏高卡（含剧照/相似剧/别名…约千 px）撑大，左栏 row2 虚高，标题只能从卡底开始
+   （用户报"演职人员没往上提"）。
+   做法：
+   ① nth-child(3) 与内层 div.relative 双双 display:contents（v1.3.3 结论仍成立：display:contents
+     只提升一级，孙级标题/横滑必须连包装层一起 contents 化才能成为 COL grid 的直接 item）；
+   ② TMDB 卡 position:absolute + grid-area:2/2 —— CSS Grid 规范：绝对定位子元素带确定 grid-area
+     时以该网格区为包含块。卡既钉在原右栏位（顶部对齐数字选集、宽度=右列轨道，视觉与原布局
+     一致），又彻底脱离行高计算 → row2 高度只由左栏选集数字决定。contents 化的两层包装不再
+     生成盒 → 卡与 COL 之间无 positioned 祖先，"grid 容器即包含块"判定成立；卡超出 row2 区时
+     向下自然延展（overflow 可见），右列 3/4 行无流内 item，与左栏演员列表互不重叠。
+   ③ 标题 margin-top:80px（+row-gap 20px ≈ 100px）：用户红线在数字块下方 ~95px（≈右栏剧照块
+     3 张 16:9 横排的底部，2026-09-11 截图实测 390→487px）。剧照高度随栏宽缩放，固定值不追
+     极端窗宽，以此窗宽标定。
+   · 演员列表(row4)随标题下缘自然排列，行高全部由左栏自身内容驱动。
    · 列表视图(卡片选集)完全不命中此段，维持原两栏布局。 */
 
 body.fnos-beautify ${COL_NUM}{
@@ -346,17 +350,23 @@ body.fnos-beautify ${COL_NUM}{
 }
 body.fnos-beautify ${COL_NUM} > :nth-child(3),
 body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative{ display:contents !important; }
-/* TMDB 卡：原位右栏（row2 col2），视觉与原布局一致 */
+/* TMDB 卡：绝对定位钉在原右栏位（row2 col2 网格区 = 包含块），不参与行高计算。
+   ⚠ left/right 必须显式 0：abspos+auto inset 时宽度走 shrink-to-fit（复刻页实测卡缩到
+   ~415px），与原"占满右栏 40% 列"不符；显式贴边后横向铺满网格区轨道。 */
 body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  position:absolute !important;
   grid-area:2 / 2 / 3 / 3 !important;
+  top:0 !important; left:0 !important; right:0 !important;
+  margin:0 !important;
   min-width:0 !important;
 }
-/* 「演职人员」标题 → 选集下方（row3 左栏）：隔 RH 根一层，直接子代选择器打不中 */
+/* 「演职人员」标题 → 选集正下方（row3 左栏），顶部 80px 空当对齐右栏剧照块底部（用户红线） */
 body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
   grid-area:3 / 1 / 4 / 2 !important;
+  margin:80px 0 0 !important;
   min-width:0 !important;
 }
-/* 演员横滑 → 标题下方（row4 左栏） */
+/* 演员列表 → 标题下方（row4 左栏） */
 body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
   grid-area:4 / 1 / 5 / 2 !important;
   min-width:0 !important;
