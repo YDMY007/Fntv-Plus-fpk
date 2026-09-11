@@ -371,6 +371,7 @@ body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
   grid-area:4 / 1 / 5 / 2 !important;
   min-width:0 !important;
 }
+/* [v1.4.0] 手机窄屏单列适配挪到样式表最末尾（同特异性靠源顺序决胜，见文件尾注释） */
 
 /* [lc-1049] 隐藏原生横滑翻页箭头（Semi ScrollList 的 [class*="semi-color-bg-arrow-mask"] 掩膜层）。
    用户报障：选集列表(集数据)与剧集信息卡之间有个「页面切换标签」hover 时短暂闪现 —— 那是原生
@@ -1418,15 +1419,80 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES
 html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card{
   scrollbar-color:rgba(0,0,0,.22) transparent !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   [v1.4.0] 手机网页（窄屏触屏）末段覆盖 —— 必须放在整张样式表的最后！
+   层叠规则：同特异性按源顺序，后者胜。桌面段(两栏 grid/绝对定位卡)与单列段
+   的选择器特异性完全相同（同一条 COL 链 + 同样的 !important），靠声明顺序决胜。
+   门控用 html.fnos-touch-narrow 标记类（injectBeautifyStyle 安装：触屏能力一次性
+   判定 + min-width 媒体查询跟视口宽），不用 @media (pointer:coarse)——后者会被
+   截图工具/外接鼠标等场景中途翻转，布局在两栏/单列间跳变。
+   ═══════════════════════════════════════════════════════════════════ */
+html.fnos-touch-narrow body.fnos-beautify ${COL}{
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto auto auto !important;
+  column-gap:0 !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(2){ grid-area:2 / 1 / 3 / 2 !important; }
+html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(3){ grid-area:3 / 1 / 4 / 2 !important; }
+/* 序号视图：contents 化维持（标题/演员仍要沉到卡下方），卡从绝对定位改回流内 row3 */
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM}{
+  grid-template-rows:auto auto auto auto auto !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  position:static !important;
+  grid-area:3 / 1 / 4 / 2 !important;
+  left:auto !important; right:auto !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
+  grid-area:4 / 1 / 5 / 2 !important;
+  margin:28px 0 0 !important;   /* 单列下无需给右栏剧照留空当，常规段间距 */
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
+  grid-area:5 / 1 / 6 / 2 !important;
+}
 `;
 
-/** 注入美化样式表（幂等：已存在则跳过）。全程只注入这一份 <style>，一次成型。 */
+/** 注入美化样式表（幂等：已存在则跳过）。全程只注入这一份 <style>，一次成型。
+ *  [v1.4.0] 同时给 html 挂触屏窄屏标记类：手机单列段不直接依赖
+ *  `@media (pointer: coarse)`——该查询在 Playwright full_page screenshot / 部分安卓
+ *  WebView 外接鼠标等场景会中途翻转，翻转瞬间布局在两栏/单列间跳变。设备硬事实
+ *  （maxTouchPoints）+ 当前视口宽只在 settle 时刻判一次，随后由 MutationObserver 跟
+ *  视口宽（matchMedia min-width，CSS 引擎自己维护，不会翻转）加减标记类。 */
 export function injectBeautifyStyle(): void {
-  if (document.getElementById(STYLE_ID)) return;
-  const st = document.createElement('style');
-  st.id = STYLE_ID;
-  st.textContent = BEAUTIFY_CSS;
-  (document.head || document.documentElement).appendChild(st);
+  if (!document.getElementById(STYLE_ID)) {
+    const st = document.createElement('style');
+    st.id = STYLE_ID;
+    st.textContent = BEAUTIFY_CSS;
+    (document.head || document.documentElement).appendChild(st);
+  }
+  installMobileFlag();
+}
+
+/** [v1.4.0] html.fnos-touch-narrow 标记：触屏设备 + 窄视口。视口宽用 min-width 媒体
+ *  查询（由 CSS 引擎评估，不受指针模拟重置影响），触屏能力一次性判定后缓存。 */
+let _mobileFlagMq: MediaQueryList | null = null;
+const MOBILE_FLAG_MQ = '(min-width: 641px)';   // ≥641px = 桌面宽，摘除标记
+
+function isTouchCapable(): boolean {
+  try { return 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0; } catch { return false; }
+}
+
+function installMobileFlag(): void {
+  if (!isTouchCapable()) return;               // 无触摸能力：永不加标记（桌面/宽屏语义）
+  const apply = (): void => {
+    const narrow = !_mobileFlagMq || !_mobileFlagMq.matches;   // (min-width:641px) 不匹配 = ≤640
+    document.documentElement.classList.toggle('fnos-touch-narrow', narrow);
+  };
+  if (!_mobileFlagMq && typeof window.matchMedia === 'function') {
+    try {
+      _mobileFlagMq = window.matchMedia(MOBILE_FLAG_MQ);
+      const handler = (): void => apply();
+      if (_mobileFlagMq.addEventListener) _mobileFlagMq.addEventListener('change', handler);
+      else (_mobileFlagMq as any).addListener(handler);
+    } catch { /* matchMedia 不可用则按一次性判定 */ }
+  }
+  apply();
 }
 
 /** 移除美化样式表（离开详情页/关闭开关时；O(1) 廉价）。 */

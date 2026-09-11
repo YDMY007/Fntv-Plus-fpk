@@ -394,6 +394,21 @@ function isPlayerPage(): boolean {
     return !!(document.querySelector('video') && GUID_RE.test(window.location.href));
 }
 
+/** [v1.4.0] 触屏环境判定（手机/平板网页）。主判据用设备硬事实（ontouchstart /
+ *  maxTouchPoints —— 出厂即定，不随运行时状态漂移）；pointer/hover 媒体查询只作加分项。
+ *  ⚠ 不能反过来依赖 matchMedia：Playwright full_page screenshot 等工具会重置指针模拟
+ *  （coarse/hover 翻转为 false），部分安卓 WebView 外接鼠标时也会翻 —— 那会让 toggle
+ *  分支中途失效（面板点开就关不掉）。 */
+function isTouchEnv(): boolean {
+    try {
+        const touch = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
+        if (!touch) return false;
+        // 有触摸能力的设备上，窄屏才走触屏交互（触屏笔记本的大窗口保持鼠标语义）
+        const narrow = Math.min(window.innerWidth, window.innerHeight) <= 640;
+        return narrow;
+    } catch { return false; }
+}
+
 function getGuid(): string | null {
     const m = window.location.href.match(GUID_RE);
     return m?.[1] || null;
@@ -493,6 +508,16 @@ function injectDmPanelStyle(): void {
   transition:opacity .18s cubic-bezier(.22,1,.36,1), transform .18s cubic-bezier(.22,1,.36,1), visibility 0s linear .18s;
 }
 .fntv-dm-list.active{opacity:1; visibility:visible; pointer-events:auto; transform:none; transition-delay:0s}
+/* [v1.4.0] 手机网页：320px 定宽 + right:-6px 会溢出竖屏视口。触屏窄屏(html.fnos-touch-narrow,
+   由 beautifyStyle 注入侧安装;弹幕按钮挂载晚于详情页样式注入,播放页无该标记时此处回退
+   max-width 媒体查询)下改为视口宽减边距、贴视口右缘。 */
+@media (max-width: 640px){
+  html.fnos-touch-narrow .fntv-dm-list{
+    width:min(92vw, 360px);
+    right:calc(-1 * (100vw - 100%) / 2 + 4vw);   /* wrap 右缘≈视口右缘 → 面板右缘内缩 4vw */
+    max-height:72vh;
+  }
+}
 /* 透明桥接: 弹窗与按钮之间留 10px 视觉间隙, 但鼠标穿过时不能算「移出」——
    hover 触发的弹窗若在半路关掉, 就永远移不进去拖滑块。伪元素属于弹窗本身。 */
 .fntv-dm-list::after{content:'';position:absolute;left:0;right:0;top:100%;height:12px}
@@ -712,14 +737,25 @@ function createControls(): void {
     // [lc-1110] 与飞牛原生按钮同交互：鼠标移上去就弹出、移出延时关闭。
     // 延时不可省 —— 弹窗锚在按钮上方(中间 6px 间隙靠 ::after 桥接)，用户还要把鼠标
     // 移进弹窗拖滑块；立即关闭等于弹窗永远碰不到。
-    wrap.addEventListener('mouseenter', () => { cancelClosePanel(); openPanel(); });
-    wrap.addEventListener('mouseleave', () => scheduleClosePanel());
-    // 点击也保留(触控板/键盘用户)：已展开就保持展开，不做 toggle 关掉
+    // [v1.4.0] 触屏(手机网页)改 toggle 语义：①Chromium 触屏 tap 会**合成 mouseenter**
+    // （实测 tap 一次连发 4 次），hover 路径先开面板、click 再 toggle 关掉 = 永远开不了，
+    // 故触屏直接忽略 enter/leave；②没有 hover 就没有"移出关闭"，开→关只能再点按钮或点外。
+    // 鼠标设备行为一字不变。
+    wrap.addEventListener('mouseenter', () => {
+        if (isTouchEnv()) return;
+        cancelClosePanel(); openPanel();
+    });
+    wrap.addEventListener('mouseleave', () => { if (!isTouchEnv()) scheduleClosePanel(); });
+    // 点击也保留(触控板/键盘用户)：触屏=toggle 开关，鼠标=保持展开不关
     flex.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
         cancelClosePanel();
-        openPanel();
+        if (isTouchEnv() && dmList?.classList.contains('active')) {
+            closePanel();               // 触屏：开→点按钮→关（toggle）
+        } else {
+            openPanel();
+        }
     });
     list.addEventListener('click', (e) => e.stopPropagation());
     // 拖滑块时鼠标可能滑出弹窗边界 → 拖动期间不自动关闭（once 注册, 避免重建按钮时累积监听）
@@ -1374,8 +1410,12 @@ function render(): void {
     renderDirty = false;
 
     // [lc-1015] 行高跟随实际字号（旧版固定 ch*0.034，调大字号后相邻行会互相压字）
-    const fontSize = Math.max(14, Math.min(48, ch * style.fontScale));
-    const laneH = Math.max(20, ch * LANE_RATIO, fontSize * 1.08);
+    // [v1.4.0] 手机网页：竖屏 video 高度小，ch*0.036 只有 ~12-14px 且被 max(14,…)
+    // 兜底顶到 14px，观感过小；coarse 窄屏下字号/行高下限放宽为 16px（横屏/桌面不变）。
+    const smallScreen = isTouchEnv() && Math.min(window.innerWidth, window.innerHeight) <= 640;
+    const fontSizeFloor = smallScreen ? 16 : 14;
+    const fontSize = Math.max(fontSizeFloor, Math.min(48, ch * style.fontScale));
+    const laneH = Math.max(smallScreen ? 24 : 20, ch * LANE_RATIO, fontSize * 1.08);
     const usableH = ch * style.displayArea;
     const n = Math.max(6, Math.floor(usableH / laneH));
 
@@ -1509,6 +1549,15 @@ function onDismissClick(e: MouseEvent): void {
     closePanel();
 }
 
+/** [v1.4.0] 触屏 dismiss：手机浏览器 tap 会派发合成 click（部分引擎在 touchend 后 300ms），
+ *  capture 级 click 监听在个别 WebView 上先于按钮自身的 click 触发 → 面板刚点开就被判
+ *  「点了外面」关掉。补 touchstart 捕获监听兜底关闭；wrap 内的触摸在函数头部豁免。 */
+function onDismissTouch(e: TouchEvent): void {
+    const tgt = e.target as Node | null;
+    if (tgt && dmBtnWrap?.contains(tgt)) return;
+    closePanel();
+}
+
 function onDismissKeydown(e: KeyboardEvent): void {
     if (e.key !== 'Escape') return;
     closePanel();
@@ -1521,9 +1570,11 @@ function refreshDismissBinding(): void {
     if (need) {
         document.addEventListener('click', onDismissClick, true);
         document.addEventListener('keydown', onDismissKeydown, true);
+        if (isTouchEnv()) document.addEventListener('touchstart', onDismissTouch, true);
     } else {
         document.removeEventListener('click', onDismissClick, true);
         document.removeEventListener('keydown', onDismissKeydown, true);
+        document.removeEventListener('touchstart', onDismissTouch, true);
     }
 }
 

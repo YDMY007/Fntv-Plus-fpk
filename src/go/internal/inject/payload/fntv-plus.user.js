@@ -3128,6 +3128,16 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   function isPlayerPage() {
     return !!(document.querySelector("video") && GUID_RE2.test(window.location.href));
   }
+  function isTouchEnv() {
+    try {
+      const touch = "ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0;
+      if (!touch) return false;
+      const narrow = Math.min(window.innerWidth, window.innerHeight) <= 640;
+      return narrow;
+    } catch {
+      return false;
+    }
+  }
   function getGuid() {
     const m = window.location.href.match(GUID_RE2);
     return (m == null ? void 0 : m[1]) || null;
@@ -3199,6 +3209,16 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   transition:opacity .18s cubic-bezier(.22,1,.36,1), transform .18s cubic-bezier(.22,1,.36,1), visibility 0s linear .18s;
 }
 .fntv-dm-list.active{opacity:1; visibility:visible; pointer-events:auto; transform:none; transition-delay:0s}
+/* [v1.4.0] \u624B\u673A\u7F51\u9875\uFF1A320px \u5B9A\u5BBD + right:-6px \u4F1A\u6EA2\u51FA\u7AD6\u5C4F\u89C6\u53E3\u3002\u89E6\u5C4F\u7A84\u5C4F(html.fnos-touch-narrow,
+   \u7531 beautifyStyle \u6CE8\u5165\u4FA7\u5B89\u88C5;\u5F39\u5E55\u6309\u94AE\u6302\u8F7D\u665A\u4E8E\u8BE6\u60C5\u9875\u6837\u5F0F\u6CE8\u5165,\u64AD\u653E\u9875\u65E0\u8BE5\u6807\u8BB0\u65F6\u6B64\u5904\u56DE\u9000
+   max-width \u5A92\u4F53\u67E5\u8BE2)\u4E0B\u6539\u4E3A\u89C6\u53E3\u5BBD\u51CF\u8FB9\u8DDD\u3001\u8D34\u89C6\u53E3\u53F3\u7F18\u3002 */
+@media (max-width: 640px){
+  html.fnos-touch-narrow .fntv-dm-list{
+    width:min(92vw, 360px);
+    right:calc(-1 * (100vw - 100%) / 2 + 4vw);   /* wrap \u53F3\u7F18\u2248\u89C6\u53E3\u53F3\u7F18 \u2192 \u9762\u677F\u53F3\u7F18\u5185\u7F29 4vw */
+    max-height:72vh;
+  }
+}
 /* \u900F\u660E\u6865\u63A5: \u5F39\u7A97\u4E0E\u6309\u94AE\u4E4B\u95F4\u7559 10px \u89C6\u89C9\u95F4\u9699, \u4F46\u9F20\u6807\u7A7F\u8FC7\u65F6\u4E0D\u80FD\u7B97\u300C\u79FB\u51FA\u300D\u2014\u2014
    hover \u89E6\u53D1\u7684\u5F39\u7A97\u82E5\u5728\u534A\u8DEF\u5173\u6389, \u5C31\u6C38\u8FDC\u79FB\u4E0D\u8FDB\u53BB\u62D6\u6ED1\u5757\u3002\u4F2A\u5143\u7D20\u5C5E\u4E8E\u5F39\u7A97\u672C\u8EAB\u3002 */
 .fntv-dm-list::after{content:'';position:absolute;left:0;right:0;top:100%;height:12px}
@@ -3390,15 +3410,22 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     list.dataset.fnosUi = "1";
     wrap.appendChild(list);
     wrap.addEventListener("mouseenter", () => {
+      if (isTouchEnv()) return;
       cancelClosePanel();
       openPanel();
     });
-    wrap.addEventListener("mouseleave", () => scheduleClosePanel());
+    wrap.addEventListener("mouseleave", () => {
+      if (!isTouchEnv()) scheduleClosePanel();
+    });
     flex.addEventListener("click", (e) => {
       e.stopPropagation();
       e.preventDefault();
       cancelClosePanel();
-      openPanel();
+      if (isTouchEnv() && (dmList == null ? void 0 : dmList.classList.contains("active"))) {
+        closePanel();
+      } else {
+        openPanel();
+      }
     });
     list.addEventListener("click", (e) => e.stopPropagation());
     list.addEventListener("pointerdown", () => {
@@ -3959,8 +3986,10 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     if (paused && lastPausedDraw && !renderDirty) return;
     lastPausedDraw = paused;
     renderDirty = false;
-    const fontSize = Math.max(14, Math.min(48, ch * style.fontScale));
-    const laneH = Math.max(20, ch * LANE_RATIO, fontSize * 1.08);
+    const smallScreen = isTouchEnv() && Math.min(window.innerWidth, window.innerHeight) <= 640;
+    const fontSizeFloor = smallScreen ? 16 : 14;
+    const fontSize = Math.max(fontSizeFloor, Math.min(48, ch * style.fontScale));
+    const laneH = Math.max(smallScreen ? 24 : 20, ch * LANE_RATIO, fontSize * 1.08);
     const usableH = ch * style.displayArea;
     const n = Math.max(6, Math.floor(usableH / laneH));
     let needRelocate = false;
@@ -4062,6 +4091,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     if (tgt && (dmBtnWrap == null ? void 0 : dmBtnWrap.contains(tgt))) return;
     closePanel();
   }
+  function onDismissTouch(e) {
+    const tgt = e.target;
+    if (tgt && (dmBtnWrap == null ? void 0 : dmBtnWrap.contains(tgt))) return;
+    closePanel();
+  }
   function onDismissKeydown(e) {
     if (e.key !== "Escape") return;
     closePanel();
@@ -4073,9 +4107,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
     if (need) {
       document.addEventListener("click", onDismissClick, true);
       document.addEventListener("keydown", onDismissKeydown, true);
+      if (isTouchEnv()) document.addEventListener("touchstart", onDismissTouch, true);
     } else {
       document.removeEventListener("click", onDismissClick, true);
       document.removeEventListener("keydown", onDismissKeydown, true);
+      document.removeEventListener("touchstart", onDismissTouch, true);
     }
   }
   function invokeWithTimeout(channel, args, ms) {
@@ -9805,6 +9841,7 @@ body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
   grid-area:4 / 1 / 5 / 2 !important;
   min-width:0 !important;
 }
+/* [v1.4.0] \u624B\u673A\u7A84\u5C4F\u5355\u5217\u9002\u914D\u632A\u5230\u6837\u5F0F\u8868\u6700\u672B\u5C3E\uFF08\u540C\u7279\u5F02\u6027\u9760\u6E90\u987A\u5E8F\u51B3\u80DC\uFF0C\u89C1\u6587\u4EF6\u5C3E\u6CE8\u91CA\uFF09 */
 
 /* [lc-1049] \u9690\u85CF\u539F\u751F\u6A2A\u6ED1\u7FFB\u9875\u7BAD\u5934\uFF08Semi ScrollList \u7684 [class*="semi-color-bg-arrow-mask"] \u63A9\u819C\u5C42\uFF09\u3002
    \u7528\u6237\u62A5\u969C\uFF1A\u9009\u96C6\u5217\u8868(\u96C6\u6570\u636E)\u4E0E\u5267\u96C6\u4FE1\u606F\u5361\u4E4B\u95F4\u6709\u4E2A\u300C\u9875\u9762\u5207\u6362\u6807\u7B7E\u300Dhover \u65F6\u77ED\u6682\u95EA\u73B0 \u2014\u2014 \u90A3\u662F\u539F\u751F
@@ -10852,13 +10889,73 @@ html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES
 html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card{
   scrollbar-color:rgba(0,0,0,.22) transparent !important;
 }
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   [v1.4.0] \u624B\u673A\u7F51\u9875\uFF08\u7A84\u5C4F\u89E6\u5C4F\uFF09\u672B\u6BB5\u8986\u76D6 \u2014\u2014 \u5FC5\u987B\u653E\u5728\u6574\u5F20\u6837\u5F0F\u8868\u7684\u6700\u540E\uFF01
+   \u5C42\u53E0\u89C4\u5219\uFF1A\u540C\u7279\u5F02\u6027\u6309\u6E90\u987A\u5E8F\uFF0C\u540E\u8005\u80DC\u3002\u684C\u9762\u6BB5(\u4E24\u680F grid/\u7EDD\u5BF9\u5B9A\u4F4D\u5361)\u4E0E\u5355\u5217\u6BB5
+   \u7684\u9009\u62E9\u5668\u7279\u5F02\u6027\u5B8C\u5168\u76F8\u540C\uFF08\u540C\u4E00\u6761 COL \u94FE + \u540C\u6837\u7684 !important\uFF09\uFF0C\u9760\u58F0\u660E\u987A\u5E8F\u51B3\u80DC\u3002
+   \u95E8\u63A7\u7528 html.fnos-touch-narrow \u6807\u8BB0\u7C7B\uFF08injectBeautifyStyle \u5B89\u88C5\uFF1A\u89E6\u5C4F\u80FD\u529B\u4E00\u6B21\u6027
+   \u5224\u5B9A + min-width \u5A92\u4F53\u67E5\u8BE2\u8DDF\u89C6\u53E3\u5BBD\uFF09\uFF0C\u4E0D\u7528 @media (pointer:coarse)\u2014\u2014\u540E\u8005\u4F1A\u88AB
+   \u622A\u56FE\u5DE5\u5177/\u5916\u63A5\u9F20\u6807\u7B49\u573A\u666F\u4E2D\u9014\u7FFB\u8F6C\uFF0C\u5E03\u5C40\u5728\u4E24\u680F/\u5355\u5217\u95F4\u8DF3\u53D8\u3002
+   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+html.fnos-touch-narrow body.fnos-beautify ${COL}{
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto auto auto !important;
+  column-gap:0 !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(2){ grid-area:2 / 1 / 3 / 2 !important; }
+html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(3){ grid-area:3 / 1 / 4 / 2 !important; }
+/* \u5E8F\u53F7\u89C6\u56FE\uFF1Acontents \u5316\u7EF4\u6301\uFF08\u6807\u9898/\u6F14\u5458\u4ECD\u8981\u6C89\u5230\u5361\u4E0B\u65B9\uFF09\uFF0C\u5361\u4ECE\u7EDD\u5BF9\u5B9A\u4F4D\u6539\u56DE\u6D41\u5185 row3 */
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM}{
+  grid-template-rows:auto auto auto auto auto !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  position:static !important;
+  grid-area:3 / 1 / 4 / 2 !important;
+  left:auto !important; right:auto !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
+  grid-area:4 / 1 / 5 / 2 !important;
+  margin:28px 0 0 !important;   /* \u5355\u5217\u4E0B\u65E0\u9700\u7ED9\u53F3\u680F\u5267\u7167\u7559\u7A7A\u5F53\uFF0C\u5E38\u89C4\u6BB5\u95F4\u8DDD */
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
+  grid-area:5 / 1 / 6 / 2 !important;
+}
 `;
   function injectBeautifyStyle() {
-    if (document.getElementById(STYLE_ID3)) return;
-    const st = document.createElement("style");
-    st.id = STYLE_ID3;
-    st.textContent = BEAUTIFY_CSS;
-    (document.head || document.documentElement).appendChild(st);
+    if (!document.getElementById(STYLE_ID3)) {
+      const st = document.createElement("style");
+      st.id = STYLE_ID3;
+      st.textContent = BEAUTIFY_CSS;
+      (document.head || document.documentElement).appendChild(st);
+    }
+    installMobileFlag();
+  }
+  var _mobileFlagMq = null;
+  var MOBILE_FLAG_MQ = "(min-width: 641px)";
+  function isTouchCapable() {
+    try {
+      return "ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0;
+    } catch {
+      return false;
+    }
+  }
+  function installMobileFlag() {
+    if (!isTouchCapable()) return;
+    const apply = () => {
+      const narrow = !_mobileFlagMq || !_mobileFlagMq.matches;
+      document.documentElement.classList.toggle("fnos-touch-narrow", narrow);
+    };
+    if (!_mobileFlagMq && typeof window.matchMedia === "function") {
+      try {
+        _mobileFlagMq = window.matchMedia(MOBILE_FLAG_MQ);
+        const handler = () => apply();
+        if (_mobileFlagMq.addEventListener) _mobileFlagMq.addEventListener("change", handler);
+        else _mobileFlagMq.addListener(handler);
+      } catch {
+      }
+    }
+    apply();
   }
 
   // src/preload/plugins/embyWall/detail/backdrop.ts
