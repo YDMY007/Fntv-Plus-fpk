@@ -22,6 +22,7 @@ import { ipcRenderer } from 'electron';
 import { registerHook, HookType } from '../core/hooks';
 import logger from '../core/logger';
 import { t } from '../core/i18n';
+import { installMobileFlag } from './embyWall/detail/beautifyStyle';
 
 const log = logger;
 
@@ -96,12 +97,49 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
 .trim-mc__video-player--root div:has(> .semi-spin) {
     display: none !important;
 }
+
+/* ── [v1.4.1] 手机网页：底部控制栏触屏适配 ──
+   真实底栏 8 控件（播放/时间/倍速/原画/选集/弹幕/音量/设置/全屏）在 390px 竖屏
+   实测仅余 4px 横向余量，且文字按钮点击热区只有 22px 高（Apple HIG 最低 44px）。
+   门控 html.fnos-touch-narrow（beautifyStyle 注入侧安装的触屏窄屏标记，设备硬事实
+   判定，无 pointer 媒体查询的中途翻转问题；播放页可能未注入美化样式——v1.4.1 起把
+   installMobileFlag 挂到本样式注入链，两处幂等共用）。
+   措施：触控热区 padding 撑到 ≥40px 高 / ≥32px 宽（视觉文字不动）；字号 14→13px、
+   控件间距 14→10px、时间行 12px 弱化，给热区扩张腾出横向空间；进度条触控带加高
+   （点拖进度是手机最高频操作，原生 14px 命中带太窄）。 */
+html.fnos-touch-narrow xg-controls .control-item,
+html.fnos-touch-narrow xg-controls span.cursor-pointer {
+    font-size: 13px !important;
+    padding: 9px 2px !important;   /* 纵向 9+9 撑热区；横向 2px——右栏 6 控件 390px 里横向预算极紧 */
+    white-space: nowrap !important;   /* 热区 padding 挤占内容宽时「弹幕」两字会竖排折行 */
+}
+html.fnos-touch-narrow xg-controls .plugin-placeholder {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 40px !important;
+}
+html.fnos-touch-narrow xg-right-grid { gap: 2px !important; }
+html.fnos-touch-narrow xg-left-grid { gap: 4px !important; }
+/* 时间行弱化：数字串是底栏最宽的静态元素，缩一号并降透明度（信息保留） */
+html.fnos-touch-narrow xg-left-grid .control-item:not(:first-child) {
+    font-size: 11px !important;
+    opacity: .75;
+    padding: 9px 2px !important;
+}
+/* 进度条触控带加高（原生命中带 ~14px，拇指操作难点中） */
+html.fnos-touch-narrow .xg-progress {
+    height: 26px !important;
+    bottom: 48px !important;
+    display: flex !important;
+    align-items: flex-end !important;
+}
 `;
     const el = document.createElement('style');
     el.id = PLAYER_HEADER_STYLE_ID;
     el.textContent = css;
     (document.head || document.documentElement).appendChild(el);
     _headerStyleInjected = true;
+    installMobileFlag();   // [v1.4.1] 播放页可能先于详情页注入：底栏触屏段依赖触屏窄屏标记
     log.info('[danmakuWeb] 播放页顶部标题栏美化 CSS 已注入');
 }
 
@@ -508,6 +546,11 @@ function injectDmPanelStyle(): void {
   transition:opacity .18s cubic-bezier(.22,1,.36,1), transform .18s cubic-bezier(.22,1,.36,1), visibility 0s linear .18s;
 }
 .fntv-dm-list.active{opacity:1; visibility:visible; pointer-events:auto; transform:none; transition-delay:0s}
+/* [v1.4.1] 手机网页：visibility:hidden 的面板仍占布局，absolute+right 负偏移会把 body 撑出
+   横向滚动（实测页面能左右晃 210px）。隐藏态 display:none 兜住布局（display 不参与过渡，
+   淡入路径：display 先翻块再走 opacity——浏览器对 display:none→block + transition 组合
+   在同帧渲染时过渡会丢，但打开是「瞬间可见可接受」，关闭淡出照常走完才回 none）。 */
+html.fnos-touch-narrow .fntv-dm-list:not(.active){ display:none !important; }
 /* [v1.4.0] 手机网页：320px 定宽 + right:-6px 会溢出竖屏视口。触屏窄屏(html.fnos-touch-narrow,
    由 beautifyStyle 注入侧安装;弹幕按钮挂载晚于详情页样式注入,播放页无该标记时此处回退
    max-width 媒体查询)下改为视口宽减边距、贴视口右缘。 */

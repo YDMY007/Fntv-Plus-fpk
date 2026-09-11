@@ -62,7 +62,7 @@ def detail_html(num_view: bool) -> str:
   </div>
   </div>
 </div>
-<script>{PAYLOAD}</script></body></html>"""
+<script src="/dist/fntv-plus.user.js"></script></body></html>"""
 
 def player_html() -> str:
     return f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
@@ -81,7 +81,7 @@ def player_html() -> str:
   <video src="" controls playsinline></video>
   <xg-controls class="xgplayer-controls"><div style="width:80px">倍速</div><xg-right-grid id="rightgrid"><div class="plugin-placeholder">原画</div></xg-right-grid></xg-controls>
 </div>
-<script>{PAYLOAD}</script></body></html>"""
+<script src="/dist/fntv-plus.user.js"></script></body></html>"""
 
 results = []
 def ok(name, cond, detail=''):
@@ -94,9 +94,8 @@ def rect(page, sel):
 
 def open_replica(page, html, viewport):
     page.set_viewport_size(viewport)
-    page.goto('http://localhost:8137/demo/host.html')
-    html2 = html.replace('<base href="http://localhost:8137/">', '')
-    page.evaluate("(h) => { document.open(); document.write(h); document.close(); }", html2)
+    Path('dev/_replica_v140.html').write_text(html, encoding='utf-8')
+    page.goto('http://localhost:8137/dev/_replica_v140.html')
     page.wait_for_timeout(1300)
 
 def main():

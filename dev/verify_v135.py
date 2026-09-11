@@ -92,7 +92,7 @@ def replica_html(num_view: bool) -> str:
   </div>
   </div>
 </div>
-<script>{PAYLOAD}</script></body></html>"""
+<script src="/dist/fntv-plus.user.js"></script></body></html>"""
 
 def rect(page, sel):
     return page.evaluate(f"""() => {{ const e = document.querySelector({json.dumps(sel)});
@@ -106,9 +106,8 @@ def cs(page, sel, prop):
 def run(page, num_view, checks):
     # payload 需在 /v/tv/season/<id> 路由上执行（isDetailPage 判据）：先走本地服务器导航拿到
     # 同源路由，再 document.write 整页替换（同源、history 保留、内联脚本照常执行）。
-    page.goto('http://localhost:8137/demo/host.html')
-    html = replica_html(num_view).replace('<base href="http://localhost:8137/">', '')
-    page.evaluate("(h) => { document.open(); document.write(h); document.close(); }", html)
+    Path('dev/_replica.html').write_text(replica_html(num_view), encoding='utf-8')
+    page.goto('http://localhost:8137/dev/_replica.html')
     page.wait_for_timeout(1200)
     return checks(page)
 

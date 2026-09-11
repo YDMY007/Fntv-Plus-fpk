@@ -2881,6 +2881,1405 @@ try{if(typeof window!=='undefined'){if(typeof window.require==='undefined'){wind
 
   // src/preload/plugins/danmakuWeb.ts
   init_electron();
+
+  // src/preload/plugins/embyWall/detail/beautifyStyle.ts
+  var STYLE_ID2 = "fnos-beautify-css";
+  var HERO = ':is(.semi-always-dark[class*="h-[470px]"],.semi-always-dark[class*="min-h-[390px]"],.trim-mc__details--key-version)';
+  var COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px"])):has(> :nth-child(3))`;
+  var COL_NUM = `${COL}:has(> :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"])`;
+  var SERIES_PANEL = 'div[class="relative box-border flex w-full flex-col px-[44px]"]';
+  var SERIES_BTNROW = 'div[class="relative w-full"] > div[class^="mt-4 "]';
+  var MOVIE_PANEL = 'div[class="relative flex w-full flex-col box-border px-[46px]"]';
+  var MOVIE_BTNROW = 'div[class="relative w-full"] > div[class^="mt-4 "]';
+  var MOVIE_COL = 'div[class*="mb-[46px]"][class*="flex flex-col gap-3"]:has(> div > .trim-mc__details--key-version)';
+  var BEAUTIFY_CSS = `
+/* ===== 0. \u8BED\u4E49\u8BBE\u8BA1 token\uFF08\u660E/\u6697\u4E24\u5957\uFF1B\u6587\u672C\u8272\u6CBF\u7528 Semi \u4E3B\u9898\u53D8\u91CF\uFF0C\u65E0\u9700\u5728\u6B64\u91CD\u590D\uFF09===== */
+body.fnos-beautify{
+  --fnos-accent:#0071e3;
+  --fnos-hairline:rgba(0,0,0,.10);
+  --fnos-hairline-soft:rgba(0,0,0,.055);
+  --fnos-row-hover:rgba(0,0,0,.035);
+  --fnos-panel-fill:rgba(0,0,0,.038);
+  --fnos-muted:#86868b;
+  --fnos-topbar-fg:rgba(255,255,255,.8);   /* \u8BE6\u60C5\u9875\u9876\u680F\u80CC\u666F\u6052\u6697(\u89C1 K \u6BB5), \u524D\u666F\u8272\u6545\u4E0D\u5206\u4E3B\u9898 */
+  --fnos-backdrop-img-opacity:.30;
+  --fnos-scrim-top:rgba(250,250,252,.62);
+  --fnos-scrim-mid:rgba(250,250,252,.82);
+  --fnos-scrim-bot:rgba(250,250,252,.92);
+}
+html.dark body.fnos-beautify{
+  --fnos-accent:#0a84ff;
+  --fnos-hairline:rgba(255,255,255,.14);
+  --fnos-hairline-soft:rgba(255,255,255,.075);
+  --fnos-row-hover:rgba(255,255,255,.06);
+  --fnos-panel-fill:rgba(255,255,255,.07);
+  --fnos-muted:#98989d;
+  --fnos-topbar-fg:rgba(255,255,255,.8);   /* \u4E0E\u6D45\u8272\u540C\u503C: \u9876\u680F\u6052\u6697\u80CC\u666F\u7531\u98DE\u725B\u94FA, \u4E0E\u4E3B\u9898\u65E0\u5173 */
+  --fnos-backdrop-img-opacity:.42;
+  --fnos-scrim-top:rgba(10,10,12,.32);
+  --fnos-scrim-mid:rgba(10,10,12,.55);
+  --fnos-scrim-bot:rgba(10,10,12,.78);
+}
+
+/* ===== A. \u4E24\u680F Grid\uFF08\u4EC5 season \u9875\uFF1B\u96F6\u8282\u70B9\u642C\u8FD0\uFF0CReact-proof\uFF09===== */
+body.fnos-beautify ${COL}{
+  display:grid !important;
+  grid-template-columns:minmax(0,60fr) minmax(0,40fr) !important;
+  grid-template-rows:auto auto !important;
+  column-gap:32px !important;
+  row-gap:20px !important;
+  align-items:start !important;
+  align-content:start !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+  /* [v1.3.5] \u5E8F\u53F7\u89C6\u56FE\u4E0B TMDB \u5361\u8981 absolute+grid-area \u9489\u5728 row2/col2\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5143\u7D20\u7684
+     "grid \u533A\u5305\u542B\u5757"\u89E3\u6790\u8981\u6C42 grid \u5BB9\u5668\u672C\u8EAB\u5C31\u662F\u5176\u5305\u542B\u5757\uFF08\u6700\u8FD1 positioned \u7956\u5148\uFF09\uFF0C
+     static \u65F6\u56DE\u843D\u5230\u66F4\u5916\u5C42/\u89C6\u53E3\u3002COL \u81EA\u4EFB relative \u4E00\u52B3\u6C38\u9038\uFF08\u6D41\u5185\u5E03\u5C40\u96F6\u5F71\u54CD\uFF09\u3002 */
+  position:relative !important;
+}
+/* hero \u8DE8\u5168\u5BBD(row1) */
+body.fnos-beautify ${COL} > ${HERO}{ grid-area:1 / 1 / 2 / 3 !important; }
+/* \u9009\u96C6\uFF1A\u5DE6\u5217 row2\uFF08\u7AD6\u5411\u5217\u8868\uFF0C\u5360 6 \u6210\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(2){ grid-area:2 / 1 / 3 / 2 !important; min-width:0 !important; }
+/* \u6F14\u804C\u4EBA\u5458 + \u6CE8\u5165\u7684\u5267\u96C6\u4FE1\u606F\u5361\uFF1A\u53F3\u5217 row2\uFF08\u5360 4 \u6210\uFF0C\u9876\u90E8\u5BF9\u9F50\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(3){ grid-area:2 / 2 / 3 / 3 !important; min-width:0 !important; }
+/* \u53F3\u5217\u6E05\u6846\uFF1A\u539F\u751F\u5BB9\u5668\u82E5\u5E26 border/\u5E95\u8272/\u9634\u5F71\uFF0C\u4F1A\u4E0E\u5361\u5185\u5206\u9694\u7EBF\u62FC\u51FA\u300C\u534A\u95ED\u5408\u6846\u300D\u2192 \u4E00\u5F8B\u62B9\u6389\u3002
+   \u552F\u4E00\u8C41\u514D .fnos-beautify-card\uFF08\u6211\u4EEC\u6CE8\u5165\u7684 TMDB \u4FE1\u606F\u5361\uFF09\uFF1A\u7528\u6237\u8981\u6C42\u53F3\u680F\u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\u300D\uFF0C
+   \u90A3\u4E2A\u5BB9\u5668\u5C31\u662F\u5B83\u3002\u82E5\u4E0D\u8C41\u514D\uFF0C\u8FD9\u6761\u89C4\u5219\u7684\u7279\u5F02\u6027(COL \u7684 :has \u94FE + body.fnos-beautify = 0,5,1)\u4F1A\u538B\u8FC7
+   I \u6BB5\u5361\u672C\u8EAB\u7684 (0,1,0)\uFF0C\u73BB\u7483\u6A21\u5F0F\u5173\u95ED\u65F6\u5361\u4F1A\u88AB\u6253\u6210\u5168\u900F\u660E \u2192 \u4E00\u4E2A\u5BB9\u5668\u90FD\u4E0D\u5269\u3002
+   \u540C\u7406\uFF0C\u8C41\u514D\u8D70 :not() \u8BA9\u9009\u62E9\u5668\u6839\u672C\u4E0D\u5339\u914D\uFF0C\u800C\u4E0D\u662F\u518D\u5199\u4E00\u6761\u66F4\u9AD8\u7279\u5F02\u6027\u7684\u89C4\u5219\u53BB\u5BF9\u6297\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3),
+body.fnos-beautify ${COL} > :nth-child(3) > *:not(.fnos-beautify-card){
+  background:transparent !important;
+  border:none !important; box-shadow:none !important;
+}
+/* \u539F\u751F\u300C\u94FE\u63A5\uFF1AIMDB\u94FE\u63A5\u300D\u533A\u5757\uFF1A\u9690\u85CF\uFF08\u7528\u6237\u660E\u786E\u8981\u6C42\u53BB\u6389\uFF09\u3002
+   \u5B9E\u673A DOM(\u76D7\u5893\u738B\u5B63\u9875)\uFF1A\u5B83\u662F\u5185\u5BB9\u5217\u7B2C 4 \u4E2A\u5B50\u8282\u70B9 DIV.box-border.w-full.px-[46px]\uFF0C
+   \u5185\u90E8\u53EA\u6709\u4E00\u4E2A a[href*=imdb.com/title/]\uFF0C\u6CA1\u6709 person \u94FE\u63A5\u3002
+   \u26A0 \u53CC\u4FDD\u9669\u7F3A\u4E00\u4E0D\u53EF\uFF1A\u53EA\u6309 nth-child(4) \u4F1A\u5728\u67D0\u4E9B\u5B63\u9875\u5C11\u4E00\u4E2A\u8282\u70B9\u65F6\u8BEF\u4F24\u522B\u7684\u4E1C\u897F\uFF1B
+     \u53EA\u6309\u300C\u542B imdb \u94FE\u63A5\u300D\u5219\u53EF\u80FD\u547D\u4E2D\u6F14\u804C\u4EBA\u5458\u533A\u91CC\u7684\u5916\u94FE\u3002\u4E24\u6761\u90FD\u8981\u6EE1\u8DB3\u300C\u6709\u5916\u94FE \u4E14 \u65E0\u4EBA\u7269\u94FE\u63A5\u300D\u3002
+   \u26A0 \u7528 display:none \u800C\u4E0D\u662F\u5220\u8282\u70B9\uFF1A\u8282\u70B9\u5F52 React \u6240\u6709\uFF0C\u5220\u4E86\u4F1A\u5728\u4E0B\u6B21\u91CD\u6E32\u67D3\u65F6\u70B8\uFF1B
+     \u4E14 collectNativeImdb() \u9760 querySelectorAll('a') \u53D6 IMDb \u505A\u56DE\u9000\uFF0Cdisplay:none \u4E0D\u5F71\u54CD\u5B83\u3002
+   \u26A0 grid-template-rows \u5FC5\u987B\u540C\u6B65\u6536\u6210\u4E24\u884C(auto auto)\uFF1A\u7559\u7B2C\u4E09\u884C\u7684\u8BDD\uFF0C\u9690\u85CF\u540E\u4F1A\u591A\u51FA\u4E00\u6761 20px row-gap\u3002 */
+body.fnos-beautify ${COL} > :nth-child(4):has(a[href*="imdb.com"], a[href*="themoviedb.org"]):not(:has(a[href*="/v/person/"])),
+body.fnos-beautify ${COL} > div[class*="px-[46px]"]:has(a[href*="imdb.com"], a[href*="themoviedb.org"]):not(:has(a[href*="/v/person/"])){
+  display:none !important;
+}
+
+/* ===== A2. \u4E24\u680F\u5185\u5BB9\u5165\u573A\u8FC7\u6E21\uFF08lc-1011\uFF0C\u8F7B\u5FAE\uFF09=====
+   \u7F8E\u5316\u5957\u7528\u77AC\u95F4(settle \u65F6 body.fnos-beautify \u6302\u4E0A, \u4E24\u680F Grid \u540C\u65F6\u751F\u6548)\u7ED9\u9009\u96C6\u5217/\u53F3\u680F\u4E00\u4E2A
+   \u8F7B\u5FAE\u6DE1\u5165\u4E0A\u79FB, \u4E0E N \u6BB5\u7CFB\u5217\u9875\u9762\u677F(fnos-series-panel-in)\u540C\u4E00\u624B\u611F; TMDB \u5361\u662F settle \u540E\u5F02\u6B65
+   \u63D2\u5165\u7684\u65B0\u8282\u70B9, \u6302\u8F7D\u65F6\u5404\u81EA\u64AD\u653E\u3002\u4EC5 opacity+translateY(\u5408\u6210\u5668\u5C5E\u6027, \u4E0D\u89E6\u53D1\u5E03\u5C40);
+   teardown \u6458 body class \u2192 \u518D\u8FDB\u8BE6\u60C5\u9875\u91CD\u653E, \u6BCF\u6B21\u5BFC\u822A\u6070\u597D\u4E00\u6B21, \u96F6\u5E38\u9A7B\u5F00\u9500\u3002
+   \u26A0 \u4E0D\u52A8 hero(row1): veil \u5DF2\u6709\u9875\u9762\u7EA7\u8FC7\u6E21, \u518D\u53E0\u4F1A\u663E\u62D6\u6C93\u3002 */
+@media (prefers-reduced-motion: no-preference){
+  body.fnos-beautify ${COL} > :nth-child(2),
+  body.fnos-beautify ${COL} > :nth-child(3){
+    animation:fnos-series-panel-in .42s cubic-bezier(.22,.61,.36,1) both;
+  }
+  body.fnos-beautify ${COL} > :nth-child(3){ animation-delay:.06s; }
+  body.fnos-beautify ${COL} .fnos-beautify-card{
+    animation:fnos-series-panel-in .45s cubic-bezier(.22,.61,.36,1) both;
+  }
+}
+
+/* ===== B. \u9875\u9762\u80CC\u666F\u900F\u660E\u5316\uFF1A\u8BA9\u6CE8\u5165\u7684\u5168\u5C4F\u5E95\u56FE\u900F\u51FA\uFF08\u4EC5\u8BE6\u60C5\u9875 body.fnos-beautify \u751F\u6548\uFF09===== */
+body.fnos-beautify [class*="bg-[var(--semi-color-bg-1)]"]{ background-color:transparent !important; }
+
+/* ===== C. \u5BFC\u822A\u680F\u6C89\u6D78\u900F\u660E ===== */
+body.fnos-beautify div.relative.z-20.flex.items-center.justify-between.px-11.py-5{
+  background:transparent !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  box-shadow:none !important;
+  border:none !important;
+}
+
+/* ===== D. \u9009\u96C6\uFF1A\u6A2A\u5411\u6EDA\u52A8 \u2192 Apple TV+ \u5F0F\u7AD6\u5411\u884C\uFF08CSS-only\uFF0C\u96F6\u8282\u70B9\u642C\u8FD0\uFF09=====
+   \u539F\u751F\u7ED3\u6784: .ms-container[!overflow-x-scroll whitespace-nowrap] > .flex.w-max > [data-id=details]
+             \u6BCF\u5F20\u5361 = .relative.flex.flex-col.w-[260px].max-h-[260px]\uFF083 \u5B50\uFF1B\u6D77\u62A5\u5F0F\uFF0C\u7F29\u7565\u56FE\u5728\u9876\uFF09
+   \u76EE\u6807: \u5217\u8868\u7AD6\u6392\uFF1B\u6BCF\u884C = 180px 16:9 \u7F29\u7565\u56FE(\u5DE6\uFF0C\u9996\u5B50\u8282\u70B9) + \u6587\u672C(\u53F3\uFF0C\u5176\u4F59\u5B50\u8282\u70B9\u81EA\u52A8\u5806\u53E0)\u3002
+   \u26A0 \u57511(lc-982 \u5B9E\u6D4B): \u672C\u6BB5\u6BCF\u6761\u89C4\u5219\u90FD\u5FC5\u987B\u7528\u300C> :nth-child(2)\u300D\u6536\u7A84\u5230\u9009\u96C6\u533A\u3002
+     \u53F3\u680F\u300C\u6F14\u804C\u4EBA\u5458\u300D\u7684\u6A2A\u6ED1\u5BB9\u5668\u5E26\u5B8C\u5168\u76F8\u540C\u7684 .ms-container[overflow-x-scroll] > .w-max \u7ED3\u6784\uFF0C
+     \u5199\u6210 COL \u540E\u4EE3\u9009\u62E9\u5668\u4F1A\u628A\u6F14\u5458\u4E00\u8D77\u6539\u6210\u7AD6\u6392(\u5355\u4E2A\u7AD6\u5411\u6392\u5217)\u3002
+   \u26A0 \u57512: img \u89C4\u5219\u5FC5\u987B\u9650\u5B9A\u5728\u300C> :first-child img\u300D(\u7F29\u7565\u56FE\u5185)\u3002\u5199\u6210\u300C[data-id=details] img\u300D
+     \u4F1A\u628A\u6E05\u6670\u5EA6\u89D2\u6807/\u64AD\u653E\u6309\u94AE\u7B49\u5C0F\u56FE\u4E5F\u5F3A\u5236\u62C9\u6210 16:9 \u6EE1\u5BBD\u3002
+   \u26A0 \u57513: \u672C\u6587\u4EF6 CSS \u6574\u4F53\u662F\u53CD\u5F15\u53F7\u6A21\u677F\u5B57\u7B26\u4E32\uFF0C\u6CE8\u91CA\u91CC\u7EDD\u4E0D\u80FD\u51FA\u73B0\u53CD\u5F15\u53F7\uFF0C\u5426\u5219\u6A21\u677F\u63D0\u524D\u95ED\u5408(tsc TS1109)\u3002 */
+/* \u9009\u96C6\u533A(nth-child 2)\u53CA\u5176\u76F4\u63A5 .relative \u5305\u88F9\u5C42\uFF1A\u539F\u751F\u4E3A\u5B9A\u9AD8\u6A2A\u6ED1\u5E26\uFF0C\u53EF\u80FD\u5E26 overflow/max-h
+   \u4F1A\u88C1\u6389\u7AD6\u6392\u540E\u53D8\u9AD8\u7684\u5217\u8868 \u2192 \u5F3A\u5236 auto \u9AD8\u5EA6 + visible\uFF0C\u8BA9\u5217\u8868\u81EA\u7136\u5C55\u5F00\u3001\u9875\u9762\u6B63\u5E38\u6EDA\u52A8\u3002 */
+body.fnos-beautify ${COL} > :nth-child(2),
+body.fnos-beautify ${COL} > :nth-child(2) > .relative{
+  height:auto !important; max-height:none !important; overflow:visible !important;
+}
+body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"]{
+  overflow:visible !important;
+  white-space:normal !important;
+  max-height:none !important; height:auto !important;
+  padding:0 44px !important;   /* \u4E0E\u300C\u9009\u96C6\u300D\u6807\u9898 px-11(44px) \u5DE6\u53F3\u5BF9\u9F50 */
+}
+body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] > [class*="w-max"]{
+  display:flex !important; flex-direction:column !important;
+  width:100% !important; height:auto !important; gap:0 !important;
+}
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]{
+  display:grid !important;
+  grid-template-columns:180px minmax(0,1fr) !important;
+  grid-auto-rows:min-content !important;
+  align-items:center !important;
+  gap:3px 18px !important;
+  width:100% !important; max-width:none !important;
+  height:auto !important; min-height:0 !important; max-height:none !important;
+  padding:14px 0 !important;
+  white-space:normal !important;
+  background:transparent !important;
+  border:none !important; box-shadow:none !important;
+  border-radius:12px !important;
+  transition:background .2s ease !important;
+}
+/* \u7F29\u7565\u56FE = \u5361\u7247\u9996\u5B50\u8282\u70B9\uFF08\u539F\u751F div.rounded-lg.relative.mb-3.flex.h-[146px].w-full.shrink-0.overflow-hidden\uFF09
+   \u2192 \u56FA\u5B9A\u5DE6\u5217\u5E76\u8DE8\u884C\u5C45\u4E2D\uFF1B\u5176\u4F59\u6587\u672C\u5B50\u8282\u70B9\u7531 Grid \u81EA\u52A8\u6D41\u5165\u53F3\u5217\u9010\u884C\u5806\u53E0\u3002
+   \u26A0 \u584C\u9677\u5751(lc-986, \u7528\u6237\u5B9E\u673A DOM \u5B9E\u8BC1): \u8FD9\u4E2A\u5BB9\u5668**\u5185\u90E8\u6CA1\u6709\u4EFB\u4F55\u5728\u6587\u6863\u6D41\u91CC\u6491\u9AD8\u7684\u4E1C\u897F**\u2014\u2014
+     \xB7 \u56FE\u7247\u94FE div.box-border > div.relative.size-full > div.size-full > picture > img \u4E2D\uFF0C
+       picture/img \u5E26\u5185\u8054 position:absolute + width/height:100%\uFF08absolute \u4E0D\u53C2\u4E0E\u7236\u9AD8\u8BA1\u7B97\uFF09\uFF0C
+       \u4E2D\u95F4\u5C42\u662F size-full = height:100%\uFF0C\u7236\u9AD8\u4E3A auto \u65F6\u767E\u5206\u6BD4\u89E3\u6790\u4E0D\u51FA\u6765 \u2192 0\uFF1B
+     \xB7 \u53E6\u5916\u4E09\u4E2A\u76F4\u63A5\u5B50\u8282\u70B9(\u89C2\u770B\u8FDB\u5EA6\u6761 / \u5E95\u90E8\u6E10\u53D8\u5C42 / hover overlay)\u5168\u662F absolute\u3002
+     \u6240\u4EE5\u4E00\u65E6\u7528 height:auto \u6E05\u6389\u539F\u751F h-[146px]\uFF0C\u5BB9\u5668\u5C31\u584C\u6210 border \u7684\u7EA6 2px =\u300C\u7EC6\u6210\u4E00\u6761\u7EBF\u300D\u3002
+     \u7ED9\u5185\u90E8 img \u8865 aspect-ratio \u4E5F\u6551\u4E0D\u4E86\uFF1A\u5B83\u7684\u5185\u8054 position:absolute \u6CA1\u88AB\u8986\u76D6\uFF0Cabsolute \u6491\u4E0D\u5F00\u7236\u7EA7\u3002
+   \u6B63\u89E3\uFF1A\u4E0D\u7ED9 height\uFF0C\u7ED9\u5BB9\u5668 aspect-ratio\u3002width \u5DF2\u5B9A 180px \u2192 \u81EA\u52A8\u7B97\u51FA 101.25px\uFF0C
+     \u5185\u90E8 absolute \u94FE\u7684 height:100% \u968F\u4E4B\u6709\u4E86\u786E\u5B9A\u53C2\u7167 \u2192 \u56FE\u7247\u6B63\u5E38\u586B\u6EE1\u3002
+   (\u539F\u751F h-[146px] \u672C\u5C31\u662F 260px \u5BBD\u7684 16:9: 260\xD79/16=146.25 \u2192 16/9 \u662F\u8FD8\u539F\u539F\u751F\u6BD4\u4F8B\uFF0C\u4E0D\u662F\u65B0\u53D1\u660E\u3002) */
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] > :first-child{
+  grid-column:1 !important; grid-row:1 / span 3 !important;
+  align-self:center !important; justify-self:start !important;
+  width:180px !important; max-width:180px !important;
+  height:auto !important; min-height:0 !important; max-height:none !important;
+  aspect-ratio:16 / 9 !important;
+  margin:0 !important;              /* \u539F\u751F mb-3 \u4F1A\u5728 Grid \u5355\u5143\u91CC\u989D\u5916\u9876\u51FA 12px */
+  position:relative !important;
+  border-radius:10px !important;
+  /* \u9634\u5F71\u6253\u5728\u5BB9\u5668\u4E0A\uFF1A\u5BB9\u5668\u81EA\u5E26 overflow-hidden\uFF0C\u6253\u5728\u5185\u90E8 img \u4E0A\u4F1A\u88AB\u81EA\u5DF1\u88C1\u6389 */
+  box-shadow:0 2px 12px rgba(0,0,0,.16) !important;
+}
+/* \u7F29\u7565\u56FE\u672C\u4F53 img\uFF1A\u539F\u751F\u5DF2\u5E26\u5185\u8054 position:absolute + width/height:100% \u4E0E object-cover\uFF0C
+   **\u5C3A\u5BF8\u4EC0\u4E48\u90FD\u4E0D\u7528\u6539**\uFF0C\u53EA\u52A0 hover \u8FC7\u6E21\u3002
+   \u26A0 \u522B\u5199 width/height/aspect-ratio\uFF1Aheight:auto \u4F1A\u5E9F\u6389 absolute \u7684 100% \u586B\u6EE1\uFF0C\u56FE\u7247\u4F1A\u6309\u56FA\u6709\u6BD4\u4F8B\u4E71\u7A9C\u3002
+   \u26A0 \u5FC5\u987B\u7528 picture \u6536\u7A84\uFF1A\u5BB9\u5668\u5185\u8FD8\u6709\u6E05\u6670\u5EA6\u6807\u8BC6\u4F4D\u56FE(data:image/png;base64)\u7B49\u5C0F\u56FE\uFF0C
+     \u5199\u6210\u300C> :first-child img\u300D\u4F1A\u628A\u5B83\u4EEC\u4E00\u8D77\u62C9\u6210 16:9 \u6EE1\u5BBD\u5E76\u5957\u4E0A\u5706\u89D2\u9634\u5F71(lc-983 \u5B9E\u9645\u53D1\u751F\u8FC7)\u3002 */
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] > :first-child picture img{
+  transition:transform .34s cubic-bezier(.25,.1,.25,1) !important;
+}
+/* \u5E95\u90E8\u6E10\u53D8\u5C42\u539F\u751F h-[76px] \u914D 146px \u5BB9\u5668 \u2248 52%\uFF1B\u5BB9\u5668\u7F29\u5230 101px \u540E\u4E0D\u52A8\u5B83\u5C31\u4F1A\u76D6\u4F4F 3/4 \u7F29\u7565\u56FE
+   (\u5E95\u90E8\u4E00\u7247\u6B7B\u9ED1)\u3002\u7B49\u6BD4\u7F29\u5230 52px \u4FDD\u6301\u539F\u751F\u89C2\u611F\u3002\u6E05\u6670\u5EA6\u6807\u8BC6\u5728 bottom-2.5\uFF0C\u4E0D\u53D7\u5F71\u54CD\u3002 */
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] > :first-child [class*="bg-gradient-to-t"]{
+  height:52px !important;
+}
+/* \u884C\u95F4\u53D1\u4E1D\u5206\u9694\uFF08\u76F8\u90BB\u5361\uFF09+ \u60AC\u505C\u5FAE\u5E95\u8272 & \u7F29\u7565\u56FE\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u65E0 lift/\u65E0\u5927\u9634\u5F71\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] + [data-id="details"]{
+  border-top:1px solid var(--fnos-hairline-soft) !important;
+}
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover{ background:var(--fnos-row-hover) !important; }
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover > :first-child picture img{ transform:scale(1.035) !important; }
+
+/* \u2500\u2500 [lc-1124] \u5E8F\u53F7\u89C6\u56FE\uFF08\u7EAF\u6570\u5B57\u9009\u96C6\uFF09\u4E0E\u6F14\u804C\u4EBA\u5458 \u7CBE\u4FEE \u2500\u2500
+   \u539F\u751F\u300C\u5207\u6362\u4E3A\u5E8F\u53F7\u89C6\u56FE\u300D(\u5DE5\u5177\u884C title="\u5207\u6362\u4E3A\u5E8F\u53F7\u89C6\u56FE") \u5728\u7F8E\u5316\u4F5C\u7528\u57DF\u4E0B\u529F\u80FD\u5B8C\u597D
+   \uFF08\u7AD6\u6392\u89C4\u5219 [data-id=details] \u4E0D\u547D\u4E2D\u6B64\u89C6\u56FE\u7684\u6570\u5B57\u5757\uFF0C\u5B9E\u6D4B beautifyGridHit=false\uFF09\uFF0C
+   \u672C\u6BB5\u53EA\u505A\u89C6\u89C9\u8BED\u8A00\u7EDF\u4E00\uFF1A
+   \xB7 \u6570\u5B57\u5757\uFF08.grid[grid-cols-[repeat(auto-fill,52px)]] \u5185\u7684 semi-button\uFF09\u52A0\u53D1\u4E1D\u7EBF +
+     \u7EDF\u4E00 10px \u5706\u89D2 + hover \u5FAE\u6D6E\uFF1B\u5F53\u524D\u96C6(.semi-button-primary)\u4FDD\u7559\u539F\u751F\u54C1\u724C\u5E95\uFF0C\u53EA\u8865\u63CF\u8FB9\u5149\u73AF\uFF1B
+   \xB7 \u6F14\u804C\u4EBA\u5458\u5361 hover \u5934\u50CF\u5FAE\u653E\u5927\uFF08\u4E0E\u9009\u96C6\u7F29\u7565\u56FE hover \u540C\u8BED\u8A00\uFF09\u3002
+   \u6F14\u804C\u4EBA\u5458\u4E0E\u9009\u96C6\u5171\u7528 .ms-container[overflow-x-scroll] \u6A2A\u6ED1\uFF08I \u6BB5\u5DF2\u7ED9 44px \u5BF9\u9F50\uFF09\u3002 */
+
+/* \u6570\u5B57\u5757\uFF08\u975E\u5F53\u524D\u96C6\uFF09\uFF1A\u53D1\u4E1D\u7EBF + \u5706\u89D2 + hover \u5FAE\u6D6E\uFF0C\u5E95\u8272\u4EA4\u56DE\u539F\u751F tertiary \u81EA\u9002\u5E94\u660E\u6697 */
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button:not(.semi-button-primary){
+  border-radius:10px !important;
+  border:1px solid var(--fnos-hairline-soft) !important;
+  transition:background .16s ease, border-color .16s ease, transform .16s ease !important;
+}
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button:not(.semi-button-primary):hover{
+  background:var(--fnos-row-hover) !important;
+  border-color:rgba(140,150,180,.45) !important;
+  transform:translateY(-1px) !important;
+}
+/* \u5F53\u524D\u96C6\uFF1A\u54C1\u724C\u63CF\u8FB9\u5149\u73AF\uFF08\u539F\u751F primary \u5E95\u4FDD\u7559\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button.semi-button-primary{
+  border-radius:10px !important;
+  box-shadow:0 0 0 1px var(--semi-color-primary, #6d7ff2), 0 2px 12px -2px rgba(109, 127, 242, .4) !important;
+}
+
+/* \u6F14\u5458\u5361 hover\uFF1A\u5934\u50CF\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u4E0E\u9009\u96C6\u7F29\u7565\u56FE scale \u540C\u6863\uFF09\u3002
+   \u26A0 [v1.3.2] \u4F5C\u7528\u57DF\u4FEE\u6B63\uFF1A\u6F14\u804C\u4EBA\u5458\u6A2A\u6ED1\u5728 COL>nth-child(3)\uFF08\u53F3\u680F\uFF0CtmdbCard._cardHost \u7684
+   children[2]\uFF09\uFF0C\u65E7\u7248\u5199\u6210 nth-child(2) \u662F\u6761\u6C38\u4E0D\u547D\u4E2D\u7684\u6B7B\u89C4\u5219\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
+  transition:transform .3s cubic-bezier(.25, .1, .25, 1) !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
+  transform:scale(1.05) !important;
+}
+
+/* \u2500\u2500 [v1.3.2\u2192v1.3.5] \u5E8F\u53F7\u89C6\u56FE\uFF1A\u6F14\u804C\u4EBA\u5458\u63D0\u5230\u9009\u96C6\u6B63\u4E0B\u65B9\uFF08\u7EA2\u7EBF\u5904\uFF09\uFF0CTMDB \u5361\u7EDD\u5BF9\u5B9A\u4F4D\u8131\u9AD8 \u2500\u2500
+   \u7528\u6237\u9700\u6C42\uFF082026-09-11 \u622A\u56FE\u7EA2\u7EBF\uFF09\uFF1A\u6570\u5B57\u9009\u96C6\u4E0B\u65B9\u3001\u4E0E\u53F3\u680F\u5267\u7167\u5757\u5E95\u90E8\u5927\u81F4\u9F50\u5E73\u5904\u5F00\u59CB\u653E\u6F14\u804C\u4EBA\u5458\uFF0C
+   \u53F3\u680F\u5267\u96C6\u4FE1\u606F\u5361\u4F4D\u7F6E\u4E0E\u5BBD\u5EA6\u4E0D\u53D8\u3002
+   v1.3.3 \u75C5\u7076\uFF1A\u5361(2/2)\u4E0E\u6807\u9898/\u6A2A\u6ED1(3/1\u30014/1)\u540C\u4E3A\u6D41\u5185 grid item\uFF0C\u800C Grid \u540C\u4E00\u884C\u8DE8\u5217**\u5171\u4EAB\u884C\u9AD8**
+   \u2014\u2014row2 \u88AB\u53F3\u680F\u9AD8\u5361\uFF08\u542B\u5267\u7167/\u76F8\u4F3C\u5267/\u522B\u540D\u2026\u7EA6\u5343 px\uFF09\u6491\u5927\uFF0C\u5DE6\u680F row2 \u865A\u9AD8\uFF0C\u6807\u9898\u53EA\u80FD\u4ECE\u5361\u5E95\u5F00\u59CB
+   \uFF08\u7528\u6237\u62A5"\u6F14\u804C\u4EBA\u5458\u6CA1\u5F80\u4E0A\u63D0"\uFF09\u3002
+   \u505A\u6CD5\uFF1A
+   \u2460 nth-child(3) \u4E0E\u5185\u5C42 div.relative \u53CC\u53CC display:contents\uFF08v1.3.3 \u7ED3\u8BBA\u4ECD\u6210\u7ACB\uFF1Adisplay:contents
+     \u53EA\u63D0\u5347\u4E00\u7EA7\uFF0C\u5B59\u7EA7\u6807\u9898/\u6A2A\u6ED1\u5FC5\u987B\u8FDE\u5305\u88C5\u5C42\u4E00\u8D77 contents \u5316\u624D\u80FD\u6210\u4E3A COL grid \u7684\u76F4\u63A5 item\uFF09\uFF1B
+   \u2461 TMDB \u5361 position:absolute + grid-area:2/2 \u2014\u2014 CSS Grid \u89C4\u8303\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5B50\u5143\u7D20\u5E26\u786E\u5B9A grid-area
+     \u65F6\u4EE5\u8BE5\u7F51\u683C\u533A\u4E3A\u5305\u542B\u5757\u3002\u5361\u65E2\u9489\u5728\u539F\u53F3\u680F\u4F4D\uFF08\u9876\u90E8\u5BF9\u9F50\u6570\u5B57\u9009\u96C6\u3001\u5BBD\u5EA6=\u53F3\u5217\u8F68\u9053\uFF0C\u89C6\u89C9\u4E0E\u539F\u5E03\u5C40
+     \u4E00\u81F4\uFF09\uFF0C\u53C8\u5F7B\u5E95\u8131\u79BB\u884C\u9AD8\u8BA1\u7B97 \u2192 row2 \u9AD8\u5EA6\u53EA\u7531\u5DE6\u680F\u9009\u96C6\u6570\u5B57\u51B3\u5B9A\u3002contents \u5316\u7684\u4E24\u5C42\u5305\u88C5\u4E0D\u518D
+     \u751F\u6210\u76D2 \u2192 \u5361\u4E0E COL \u4E4B\u95F4\u65E0 positioned \u7956\u5148\uFF0C"grid \u5BB9\u5668\u5373\u5305\u542B\u5757"\u5224\u5B9A\u6210\u7ACB\uFF1B\u5361\u8D85\u51FA row2 \u533A\u65F6
+     \u5411\u4E0B\u81EA\u7136\u5EF6\u5C55\uFF08overflow \u53EF\u89C1\uFF09\uFF0C\u53F3\u5217 3/4 \u884C\u65E0\u6D41\u5185 item\uFF0C\u4E0E\u5DE6\u680F\u6F14\u5458\u5217\u8868\u4E92\u4E0D\u91CD\u53E0\u3002
+   \u2462 \u6807\u9898 margin-top:80px\uFF08+row-gap 20px \u2248 100px\uFF09\uFF1A\u7528\u6237\u7EA2\u7EBF\u5728\u6570\u5B57\u5757\u4E0B\u65B9 ~95px\uFF08\u2248\u53F3\u680F\u5267\u7167\u5757
+     3 \u5F20 16:9 \u6A2A\u6392\u7684\u5E95\u90E8\uFF0C2026-09-11 \u622A\u56FE\u5B9E\u6D4B 390\u2192487px\uFF09\u3002\u5267\u7167\u9AD8\u5EA6\u968F\u680F\u5BBD\u7F29\u653E\uFF0C\u56FA\u5B9A\u503C\u4E0D\u8FFD
+     \u6781\u7AEF\u7A97\u5BBD\uFF0C\u4EE5\u6B64\u7A97\u5BBD\u6807\u5B9A\u3002
+   \xB7 \u6F14\u5458\u5217\u8868(row4)\u968F\u6807\u9898\u4E0B\u7F18\u81EA\u7136\u6392\u5217\uFF0C\u884C\u9AD8\u5168\u90E8\u7531\u5DE6\u680F\u81EA\u8EAB\u5185\u5BB9\u9A71\u52A8\u3002
+   \xB7 \u5217\u8868\u89C6\u56FE(\u5361\u7247\u9009\u96C6)\u5B8C\u5168\u4E0D\u547D\u4E2D\u6B64\u6BB5\uFF0C\u7EF4\u6301\u539F\u4E24\u680F\u5E03\u5C40\u3002 */
+
+body.fnos-beautify ${COL_NUM}{
+  grid-template-rows:auto auto auto auto !important;
+}
+body.fnos-beautify ${COL_NUM} > :nth-child(3),
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative{ display:contents !important; }
+/* TMDB \u5361\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u9489\u5728\u539F\u53F3\u680F\u4F4D\uFF08row2 col2 \u7F51\u683C\u533A = \u5305\u542B\u5757\uFF09\uFF0C\u4E0D\u53C2\u4E0E\u884C\u9AD8\u8BA1\u7B97\u3002
+   \u26A0 left/right \u5FC5\u987B\u663E\u5F0F 0\uFF1Aabspos+auto inset \u65F6\u5BBD\u5EA6\u8D70 shrink-to-fit\uFF08\u590D\u523B\u9875\u5B9E\u6D4B\u5361\u7F29\u5230
+   ~415px\uFF09\uFF0C\u4E0E\u539F"\u5360\u6EE1\u53F3\u680F 40% \u5217"\u4E0D\u7B26\uFF1B\u663E\u5F0F\u8D34\u8FB9\u540E\u6A2A\u5411\u94FA\u6EE1\u7F51\u683C\u533A\u8F68\u9053\u3002 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  position:absolute !important;
+  grid-area:2 / 2 / 3 / 3 !important;
+  top:0 !important; left:0 !important; right:0 !important;
+  margin:0 !important;
+  min-width:0 !important;
+}
+/* \u300C\u6F14\u804C\u4EBA\u5458\u300D\u6807\u9898 \u2192 \u9009\u96C6\u6B63\u4E0B\u65B9\uFF08row3 \u5DE6\u680F\uFF09\uFF0C\u9876\u90E8 80px \u7A7A\u5F53\u5BF9\u9F50\u53F3\u680F\u5267\u7167\u5757\u5E95\u90E8\uFF08\u7528\u6237\u7EA2\u7EBF\uFF09 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
+  grid-area:3 / 1 / 4 / 2 !important;
+  margin:80px 0 0 !important;
+  min-width:0 !important;
+}
+/* \u6F14\u5458\u5217\u8868 \u2192 \u6807\u9898\u4E0B\u65B9\uFF08row4 \u5DE6\u680F\uFF09 */
+body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
+  grid-area:4 / 1 / 5 / 2 !important;
+  min-width:0 !important;
+}
+/* [v1.4.0] \u624B\u673A\u7A84\u5C4F\u5355\u5217\u9002\u914D\u632A\u5230\u6837\u5F0F\u8868\u6700\u672B\u5C3E\uFF08\u540C\u7279\u5F02\u6027\u9760\u6E90\u987A\u5E8F\u51B3\u80DC\uFF0C\u89C1\u6587\u4EF6\u5C3E\u6CE8\u91CA\uFF09 */
+
+/* [lc-1049] \u9690\u85CF\u539F\u751F\u6A2A\u6ED1\u7FFB\u9875\u7BAD\u5934\uFF08Semi ScrollList \u7684 [class*="semi-color-bg-arrow-mask"] \u63A9\u819C\u5C42\uFF09\u3002
+   \u7528\u6237\u62A5\u969C\uFF1A\u9009\u96C6\u5217\u8868(\u96C6\u6570\u636E)\u4E0E\u5267\u96C6\u4FE1\u606F\u5361\u4E4B\u95F4\u6709\u4E2A\u300C\u9875\u9762\u5207\u6362\u6807\u7B7E\u300Dhover \u65F6\u77ED\u6682\u95EA\u73B0 \u2014\u2014 \u90A3\u662F\u539F\u751F
+   \u6A2A\u6ED1\u5E26\u7684\u53F3\u7F18\u7FFB\u9875\u7BAD\u5934\uFF1A\u7AD6\u6392\u6539\u9020\u540E\u6A2A\u6ED1\u5E26\u5DF2\u4E0D\u5B58\u5728\uFF0C\u7BAD\u5934\u6210\u4E3A\u60AC\u5728\u4E24\u5BB9\u5668\u4E4B\u95F4\u7684\u6E38\u9B42\uFF08Semi \u539F\u751F
+   opacity \u60AC\u505C\u903B\u8F91\u8BA9\u5B83\u53EA\u5728\u9F20\u6807\u7ECF\u8FC7\u65F6\u77ED\u6682\u663E\u5F62\uFF09\u3002
+   wheelToScroll \u53EA\u5728\u300C\u6EDA\u8F6E\u6A2A\u5411\u6EDA\u52A8\u300D\u5F00\u5173\u5F00\u542F\u65F6\u4EE5\u884C\u5185 opacity:0 \u89C6\u89C9\u9690\u85CF\u5B83\u4EEC\uFF08\u7EDD\u4E0D\u78B0 display\uFF0C
+   \u6015\u7834\u574F\u539F\u751F\u6062\u590D\u903B\u8F91\uFF09\uFF1B\u800C\u7F8E\u5316\u7AD6\u6392\u540E\u6574\u4E2A COL \u5185\u5DF2\u65E0\u4EFB\u4F55\u5408\u6CD5\u6A2A\u6ED1\u5E26 \u2192 \u6309\u7F8E\u5316\u4F5C\u7528\u57DF\u76F4\u63A5 display:none
+   \u5373\u53EF"\u5220\u6389"\u3002\u5173\u7F8E\u5316 = body class \u6458\u9664 \u2192 \u89C4\u5219\u5931\u6548\uFF0C\u539F\u751F\u7BAD\u5934\u5B8C\u6574\u8FD8\u539F\uFF1B\u4E24\u8005\u4E92\u4E0D\u51B2\u7A81\uFF08CSS !important
+   \u538B\u8FC7 wheelToScroll \u7684\u884C\u5185\u975E\u91CD\u8981\u58F0\u660E\uFF0C\u884C\u5185\u6E05\u4E0D\u6389\u4E5F\u4E0D\u788D\u4E8B\uFF09\u3002\u6F14\u804C\u4EBA\u5458\u6A2A\u6ED1\u5E26\u540C\u75C5\u540C\u6CBB\uFF08lc-1034
+   \u7AD6\u6392\u6539\u9020\u540E\u5176\u7BAD\u5934\u540C\u4E3A\u6B8B\u7559\uFF09\u3002 */
+body.fnos-beautify ${COL} [class*="semi-color-bg-arrow-mask"]{
+  display:none !important;
+}
+
+/* ===== E. \u6F14\u804C\u4EBA\u5458 / \u4EBA\u7269\u9879\uFF1A\u53BB lift\uFF0C\u4EC5\u900F\u660E\u5EA6\u53CD\u9988\uFF08\u53F3\u5217\u539F\u751F\u6A2A\u6ED1\uFF0C\u4FDD\u6301\u4E0D\u52A8\uFF09===== */
+body.fnos-beautify a[href*="/v/person/"]{
+  border-radius:14px !important;
+  transition:opacity .2s ease !important;
+}
+body.fnos-beautify a[href*="/v/person/"]:hover{ opacity:.8 !important; }
+body.fnos-beautify a[href*="/v/person/"] img{ border-radius:12px !important; }
+
+/* ===== E2. \u6F14\u804C\u4EBA\u5458\u7CBE\u4FEE\uFF08lc-1020\uFF0C\u6309\u5B9E\u673A DOM \u5BF9\u9F50\uFF09\uFF1A\u4E0E\u53F3\u680F\u4FE1\u606F\u5361\u540C\u4E00\u5957\u6392\u7248\u8BED\u8A00 =====
+   \u539F\u751F\u5F62\u6001\uFF1A16px \u5927\u5B57\u6807\u9898 + \u5E38\u9A7B\u6A2A\u5411\u6EDA\u52A8\u6761 + 16px \u4EBA\u540D\uFF0C\u4E0E\u4E0A\u65B9\u78E8\u7802\u4FE1\u606F\u5361\u7684 11px \u5C0F\u6807\u7B7E
+   \u5C42\u7EA7\u8BED\u8A00\u4E0D\u4E00\u81F4\uFF08\u7528\u6237\u8981\u6C42\u6F14\u5458\u4FE1\u606F\u5C55\u793A\u8D34\u5408\u6574\u4F53\u6837\u5F0F\uFF09\u3002\u6536\u655B\u4E3A\uFF1A\u5C0F\u53F7\u5F31\u5316\u5206\u533A\u6807\u7B7E /
+   \u5934\u50CF\u65E0\u63CF\u8FB9\u65E0\u6295\u5F71\uFF08lc-1038 \u7528\u6237\u8981\u6C42\u53BB\u6389\u67D4\u6295\u5F71\uFF09/ \u60AC\u6D6E\u8F7B\u62AC\u5347 / \u9690\u85CF\u6EDA\u52A8\u6761\u3002
+   \u5B9E\u673A\u7ED3\u6784\uFF1A\u5BBF\u4E3B COL>nth-child(3) \u5185 p.semi-typography(\u6807\u9898) + .ms-container(\u6A2A\u6ED1) >
+   a[href*=/v/person/] > div.size-[90px].rounded-full(\u5934\u50CFwrapper,\u539F\u751Ftransition-all) + p \u540D\u5B57(text-base) + p \u89D2\u8272(text-xs)\u3002
+   \u6CE8\uFF1ATMDB \u5361\u4E5F\u63D2\u5728\u672C\u5BBF\u4E3B\u9876\u90E8\uFF0C\u4F46\u5176 HTML \u5168\u90E8\u7528 .fnos-showinfo__* \u7C7B\u3001\u65E0 p.semi-typography\uFF0C\u4E92\u4E0D\u8BEF\u4F24\u3002 */
+/* \u2460 \u5206\u533A\u6807\u9898\u300C\u6F14\u804C\u4EBA\u5458\u300D\uFF1A16px \u5927\u5B57 \u2192 12px \u5F31\u5316\u5B57\u8DDD\u6807\u7B7E\uFF08\u4E0E\u4FE1\u606F\u5361 block label \u540C\u5C42\u7EA7\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(3) p.semi-typography{
+  font-size:12px !important; letter-spacing:.14em !important;
+  color:var(--fnos-ui-sub) !important; font-weight:500 !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) p.semi-typography strong,
+body.fnos-beautify ${COL} > :nth-child(3) p.semi-typography span{
+  font-size:inherit !important; color:inherit !important;
+  font-weight:inherit !important; letter-spacing:inherit !important;
+}
+/* \u2461 \u9690\u85CF\u6A2A\u6ED1\u6EDA\u52A8\u6761\uFF08\u65E0\u8FB9\u6846\u65E0\u7EBF\u6761\uFF1B\u6EDA\u8F6E/\u89E6\u63A7\u677F\u6A2A\u6ED1\u4ECD\u53EF\u7528\uFF09 */
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container{ scrollbar-width:none !important; }
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container::-webkit-scrollbar{
+  width:0 !important; height:0 !important; display:none !important;
+}
+/* \u2461b [lc-1036] \u6F14\u804C\u4EBA\u5458\u6539**\u7AD6\u5411\u5217\u8868**\uFF08\u7528\u6237\u6307\u5B9A\uFF1A\u5355\u4E2A\u6A2A\u5411\u5C55\u793A\u3001\u4E0D\u8981\u65B9\u6846\u3001\u6BCF\u884C\u95F4\u5FAE\u5C0F\u7EC6\u7EBF\uFF09\uFF1A
+   \u539F\u751F .ms-container \u5B9A\u9AD8\u6A2A\u6ED1\u5E26\u5168\u90E8\u89E3\u9664\uFF08auto \u9AD8/overflow visible/white-space normal/\u53BB pl-44\uFF09\uFF0C
+   \u5185\u5BB9\u884C\u6539\u5757\u7EA7\u5806\u53E0\u2014\u2014\u6BCF\u4E2A\u6F14\u5458\u4E00\u884C\uFF1A\u5934\u50CF(56px \u5706) \u5DE6 + \u540D\u5B57/\u9970\u6F14\u89D2\u8272\u6A2A\u6392 + \u53F3\u7F18\u8865\u5145\u4FE1\u606F\u69FD\uFF0C
+   \u884C\u4E0E\u884C\u4E4B\u95F4 hairline \u7EC6\u7EBF\uFF08--fnos-hairline-soft \u968F\u660E\u6697\u4E3B\u9898\uFF09\u3002\u5BB9\u5668\u540C\u65F6\u662F TMDB \u5361\u5BBF\u4E3B\uFF0C
+   \u5217\u8868\u6491\u9AD8\u540E\u5361\u968F\u4E4B\u53D8\u9AD8\uFF08\u5185\u90E8\u6EDA\u52A8\uFF09\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container{
+  height:auto !important; max-height:none !important;
+  overflow:visible !important;
+  white-space:normal !important;
+  padding-left:0 !important; padding-right:0 !important;
+}
+/* \u26A0 [lc-1036] \u53EA\u6536\u7A84\u5230\u300C\u884C wrapper\u300D\u5C42\uFF08.ms-container > div > div.group\uFF09\uFF1A
+   \u5934\u50CF div \u7C7B\u540D\u91CC\u4E5F\u5E26 group-hover: \u5DE5\u5177\u7C7B\uFF0C\u5BBD\u5339\u914D div[class*="group"] \u4F1A\u8FDE\u5934\u50CF\u4E00\u8D77
+   width/height:auto !important\uFF0C\u4E0E \u2462 \u7684 56px \u6253\u6210 important \u5BF9 important\u3002
+   wrapper \u539F\u751F w-[120px] h-[145px]\uFF08120x145 \u7AD6\u5361\uFF09\u9700\u5728\u6B64\u89E3\u9664\u6210\u884C\u5BBD\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container > div > div[class*="group"]{
+  width:auto !important; height:auto !important; max-width:none !important;
+  flex:0 0 auto !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container > div{
+  display:block !important;
+  width:100% !important; max-width:none !important; height:auto !important;
+  overflow:visible !important;
+}
+/* \u2462 \u884C\u5E03\u5C40\uFF1A\u5934\u50CF\u5DE6 + \u540D\u5B57/\u9970\u6F14\u6A2A\u6392 + \u7EC6\u7EBF\u5206\u9694\uFF1B\u60AC\u6D6E\u8F7B\u5FAE\u5E95\u8272\uFF08\u65E0\u65B9\u6846\uFF09\u3002
+   \u26A0 [lc-1036] \u7EC6\u7EBF\u6302\u5728 a \u4E0A\u65F6 :last-of-type \u4F1A\u5168\u91CF\u547D\u4E2D\u2014\u2014\u6BCF\u4E2A a \u90FD\u662F\u81EA\u5DF1 wrapper
+   \uFF08div.group\uFF09\u91CC\u552F\u4E00\u7684 a\uFF0C12 \u884C\u8FB9\u6846\u5168\u88AB\u300C\u672B\u884C\u8C41\u514D\u300D\u6390\u6389\u3002\u672B\u884C\u8C41\u514D\u5FC5\u987B\u6309 wrapper
+   \u5C42\u7EA7\uFF08div:last-child > a\uFF09\u8868\u8FBE\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"]{
+  display:flex !important; flex-direction:row !important; align-items:center !important;
+  width:100% !important; padding:9px 12px 9px 4px !important; box-sizing:border-box !important;
+  background:transparent !important; border-radius:0 !important;
+  border-bottom:1px solid var(--fnos-hairline-soft, rgba(128,128,128,.14)) !important;
+  transition:background .18s ease !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"]:hover{
+  background:var(--semi-color-fill-0) !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) .ms-container > div > div[class*="group"]:last-child > a[href*="/v/person/"]{
+  border-bottom:none !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] > div:first-of-type{
+  width:56px !important; height:56px !important;
+  margin:0 14px 0 0 !important;   /* \u6E05\u6389\u539F\u751F mx-auto\uFF08\u5934\u50CF\u968F\u884C\u5185\u5BB9\u957F\u77ED\u6C34\u5E73\u6F02\u79FB\uFF09+ mb-2.5 */
+  flex-shrink:0 !important;
+  /* [lc-1038] \u5934\u50CF\u6295\u5F71\u5DF2\u53BB\u6389\uFF08\u7528\u6237\u62A5\uFF1A\u6F14\u5458\u5217\u8868\u5DE6\u4E0B\u89D2\u9634\u5F71\u4E0D\u597D\u770B\uFF09\u2014\u2014E2 \u521D\u7248\u7684
+     \u300C\u67D4\u6295\u5F71\u66FF\u4EE3\u63CF\u8FB9\u300D\u5728\u6D45\u8272\u4E3B\u9898\u4E0B\u6BCF\u9897\u5934\u50CF\u4E0B\u65B9\u90FD\u62D6\u51FA\u4E00\u56E2\u7070\u5F71\uFF0C\u89C2\u611F\u810F\u3002 */
+}
+/* \u2463 \u4EBA\u540D 13.5px \u534A\u7C97 + \u9970\u6F14\u89D2\u8272\u6A2A\u6392\u8DDF\u968F\uFF0812px \u5F31\u5316\uFF09\u3002
+   \u26A0 \u539F\u751F\u540D\u5B57/\u89D2\u8272 p \u90FD\u5E26 w-[120px] text-center\u2014\u2014\u4E0D\u6E05\u6389\u7684\u8BDD\u884C\u4E2D\u90E8\u51FA\u73B0\u5927\u7A7A\u9699\u3001
+   \u6587\u5B57\u5728\u56FA\u5B9A\u5BBD\u76D2\u5B50\u91CC\u5C45\u4E2D\uFF0C\u89C6\u89C9\u4E0A\u300C\u504F\u79FB\u6563\u4E71\u300D\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] p[class*="text-base"]{
+  font-size:13.5px !important; font-weight:600 !important;
+  margin:0 !important; flex-shrink:0 !important;
+  width:auto !important; text-align:left !important;
+}
+body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] p:not([class*="text-base"]){
+  font-size:12px !important; margin:0 0 0 10px !important;
+  color:var(--fnos-muted,#86868b) !important;
+  width:auto !important; text-align:left !important;
+  flex:0 1 auto !important; min-width:0 !important;
+  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+}
+/* \u2463b [lc-1036] TMDB/\u672C\u5730\u8865\u5145\u4FE1\u606F\u69FD\uFF08\u53F3\u7F18\u5BF9\u9F50\uFF1BpersonWorks \u9010\u6F14\u5458\u5F02\u6B65\u6CE8\u5165\uFF09\uFF1A
+   \u804C\u4E1A\u5206\u7C7B / \u751F\u65E5 / \u4EE3\u8868\u4F5C\uFF08\u53D6 TMDB \u4EBA\u7269\u8D44\u8BAF\u4E0E\u70ED\u95E8\u4F5C\u54C1\uFF09\u3002\u53EF\u6536\u7F29\uFF08min-width:0\uFF09\uFF0C
+   \u884C\u5185\u62E5\u6324\u65F6\u5148\u4E8E\u540D\u5B57\u8BA9\u4F4D\u5E76\u7701\u7565\uFF0C\u4E0D\u4F1A\u9876\u5230\u5BB9\u5668\u53F3\u7F18\u5916\u3002 */
+body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] .fn-cast-extra{
+  margin-left:auto !important; flex:0 1 auto !important; min-width:0 !important;
+  font-size:11px !important; color:var(--fnos-muted,#86868b) !important;
+  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+  max-width:44% !important; text-align:right !important;
+}
+
+/* ===== F. hero \u6D77\u62A5\u5FAE\u6295\u5F71\uFF08hero \u6574\u4F53\u4FDD\u6301\u539F\u751F\uFF0C\u53EA\u8BA9\u6D77\u62A5\u66F4\u7ACB\u4F53\uFF09===== */
+body.fnos-beautify ${HERO} img[class*="rounded"], body.fnos-beautify ${HERO} .shrink-0 img{
+  box-shadow:0 16px 44px rgba(0,0,0,.34) !important;
+}
+
+/* ===== G. \u6CE8\u5165\u7684\u5168\u5C4F\u5E95\u56FE\u5C42\uFF08backdrop.ts \u521B\u5EFA\uFF09\uFF1A\u660E\u6697\u81EA\u9002\u5E94 scrim =====
+   [lc-1017] __img \u4E3A A/B \u53CC\u5C42\u4EA4\u53C9\u6DE1\u6362\u7ED3\u6784\uFF0Copacity \u7531 backdrop.ts \u9010\u5C42 inline \u9A71\u52A8
+   (\u6D3B\u8DC3\u5C42=var(--fnos-backdrop-img-opacity,.30)\uFF0C\u975E\u6D3B\u8DC3\u5C42=0)\uFF0C\u6837\u5F0F\u8868\u53EA\u7ED9\u8FC7\u6E21\u3002 */
+.fnos-detail-backdrop{
+  position:fixed !important; inset:0 !important; z-index:-1 !important;
+  pointer-events:none !important; overflow:hidden !important;
+  border-radius:16px !important; /* [lc-1025] \u56DB\u89D2\u968F\u7A97\u53E3\u5706\u89D2\uFF1Alight \u4E3B\u9898 __scrim \u9876\u90E8\u8FD1\u767D\uFF0C\u65B9\u5F62\u89D2\u4F1A\u9732\u767D\u8FB9 */
+  transition:opacity .34s ease !important;
+}
+.fnos-detail-backdrop.is-leaving{ opacity:0 !important; }
+.fnos-detail-backdrop__img{
+  position:absolute !important; inset:-8% !important;
+  background-size:cover !important; background-position:center 18% !important;
+  filter:blur(52px) saturate(1.22) !important;
+  transform:scale(1.12) !important;
+  transition:opacity .5s ease !important;
+}
+.fnos-detail-backdrop__scrim{
+  position:absolute !important; inset:0 !important;
+  background:linear-gradient(to bottom,
+    var(--fnos-scrim-top) 0%,
+    var(--fnos-scrim-mid) 42%,
+    var(--fnos-scrim-bot) 100%) !important;
+}
+
+/* ===== H. \u77AC\u95F4\u52A0\u8F7D\u5C42\uFF08backdrop.ts \u521B\u5EFA\uFF09\uFF1A\u7F13\u5B58\u6D77\u62A5 + \u9AA8\u67B6 shimmer\uFF0C\u76D6\u4F4F fnOS \u539F\u751F\u767D\u5C4F ===== */
+.fnos-instant-layer{
+  position:fixed !important; inset:0 !important; z-index:2147483000 !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  background:var(--semi-color-bg-0,#0b0b0f) !important;
+  border-radius:16px !important; /* [lc-1025] \u8FDB\u8BE6\u60C5\u77AC\u95F4\u7684\u5168\u7A97\u5B9E\u5FC3\u5C42\uFF0C\u56DB\u89D2\u968F\u7A97\u53E3\u5706\u89D2 */
+  transition:opacity .32s ease !important; overflow:hidden !important;
+}
+.fnos-instant-layer.is-hiding{ opacity:0 !important; pointer-events:none !important; }
+.fnos-instant-layer__bg{
+  position:absolute !important; inset:-6% !important;
+  background-size:cover !important; background-position:center 22% !important;
+  filter:blur(40px) saturate(1.2) !important; transform:scale(1.1) !important; opacity:.5 !important;
+}
+.fnos-instant-layer__scrim{ position:absolute !important; inset:0 !important; background:linear-gradient(to bottom,rgba(0,0,0,.2),rgba(0,0,0,.6)) !important; }
+.fnos-instant-layer__body{ position:relative !important; z-index:2 !important; display:flex !important; gap:22px !important; align-items:flex-start !important; padding:0 46px !important; width:100% !important; max-width:1180px !important; box-sizing:border-box !important; }
+.fnos-instant-layer__poster{ width:214px !important; height:320px !important; flex:0 0 214px !important; border-radius:14px !important; object-fit:cover !important; box-shadow:0 14px 40px rgba(0,0,0,.5) !important; background:rgba(255,255,255,.06) !important; }
+.fnos-instant-layer__lines{ flex:1 1 auto !important; min-width:0 !important; display:flex !important; flex-direction:column !important; gap:14px !important; padding-top:116px !important; }
+.fnos-instant-skel{ border-radius:8px !important; background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%) !important; background-size:400% 100% !important; animation:fnos-instant-shimmer 1.3s ease infinite !important; }
+@keyframes fnos-instant-shimmer{ 0%{background-position:100% 50%} 100%{background-position:0 50%} }
+
+/* ===== I. \u5EF6\u540E\u6CE8\u5165\u7684 TMDB \u5267\u96C6\u4FE1\u606F\u5361\uFF08tmdbCard.ts\uFF0C\u8FFD\u52A0\u8FDB\u53F3\u5217\uFF09=====
+   \u6392\u7248\u8303\u5F0F(lc-985 \u7ACB\u3001lc-988 \u6269)\uFF1A\u5BF9\u6807 Netflix / Apple TV+ / TMDB \u4FA7\u680F\uFF0C\u5F03\u7528\u540E\u53F0\u8868\u5355\u5F0F label-value \u53CC\u5217\u3002
+   \u5206\u6BB5(lc-988 \u7ACB\u3001lc-1006 \u53BB\u7B80\u4ECB)\uFF1A\u8BC4\u5206\u5757(\u89C6\u89C9\u951A) \u2192 \u6807\u8BED \u2192 meta \u4E32(\u65E0 label) \u2192 \u4E8B\u5B9E\u533A(\u7A84 label)
+     \u2192 \u4E3B\u521B \u2192 \u672C\u5B63 \u2192 \u5267\u7167 \u2192 \u76F8\u4F3C\u5267\u96C6 \u2192 \u66F4\u591A(\u522B\u540D/\u5173\u952E\u8BCD/\u5728\u7EBF\u770B/\u70ED\u5EA6/\u7F16\u53F7) \u2192 \u5916\u94FE \u2192 \u6765\u6E90\u884C\u3002
+   \u4E3A\u4EC0\u4E48\u8FD9\u4E48\u957F\uFF1A\u98DE\u725B\u539F\u751F\u5B63\u9875**\u5B8C\u5168\u6CA1\u6709**\u8FD9\u4E9B\u6570\u636E\uFF0C\u5168\u662F\u672C\u63D2\u4EF6\u4ECE TMDB \u8865\u7684\uFF1B
+     \u7528\u6237\u660E\u786E\u8981\u6C42\u300C\u5C3D\u53EF\u80FD\u591A\u83B7\u53D6\u548C\u663E\u793A\u300D\u3002\u2234 \u5185\u5BB9\u4EE5\u300C\u539F\u751F\u6CA1\u6709\u7684\u300D\u4E3A\u754C\uFF0C\u4E0D\u505A\u5220\u51CF\u3002
+     \u26A0 \u5267\u96C6\u7B80\u4ECB(lc-1006 \u6309\u7528\u6237\u8981\u6C42\u79FB\u9664)\uFF1A\u5361\u5185**\u4E0D\u518D\u6E32\u67D3** show overview(\u539F\u2463)\u4E0E season overview
+       (\u539F\u2466\u5185)\u3002\u7528\u6237\u5B9E\u6D4B\u5F53\u524D\u5267 hero \u9876\u90E8\u5DF2\u6709\u539F\u751F\u7B80\u4ECB\uFF0C\u5361\u5185\u4E24\u6BB5\u5C5E\u91CD\u590D\u3002**\u4EE3\u4EF7(\u5DF2\u77E5\u53D6\u820D)**\uFF1A
+       \u539F\u751F hero \u7B80\u4ECB\u4E3A\u7A7A\u7684\u5267\u5C06\u5361\u5185\u4E5F\u65E0\u7B80\u4ECB \u2014\u2014 lc-988 \u5B9E\u6D4B\u76D7\u5893\u738B hero innerText \u4EC5
+       \u300C\u76D7\u5893\u738B \u7B2C 1 \u5B63 \u7B2C 1 \u96C6 2026\u300D\u3001\u6D4B\u8BD5/Betas \u5B63 getEditDetail overview="" \u5373\u5C5E\u6B64\u7C7B\u3002
+       \u7528\u6237\u5DF2\u786E\u8BA4\u63A5\u53D7\u6B64\u53D6\u820D\uFF0C\u52FF\u518D"\u628A\u7B80\u4ECB\u8865\u56DE\u5361\u5185"\u3002
+   \u53BB\u91CD(\u4ECD\u7136\u6210\u7ACB)\uFF1A\u6807\u9898\u4E0D\u6E32\u67D3(hero \u5DF2\u6709)\uFF1B\u4E3B\u6F14 cast \u4E0D\u6E32\u67D3(\u539F\u751F\u300C\u6F14\u804C\u4EBA\u5458\u300D\u533A\u5B9E\u673A\u786E\u8BA4\u6709\u5934\u50CF+\u59D3\u540D\u6A2A\u6ED1)\uFF0C
+     \u4F46\u4E3B\u521B\u5206\u5DE5(\u521B\u4F5C\u8005/\u5BFC\u6F14/\u7F16\u5267/\u4F5C\u66F2/\u5236\u7247/\u5236\u4F5C)\u539F\u751F\u533A\u6CA1\u6709 \u2192 \u8865\uFF1B
+     \u539F\u540D\u964D\u5230\u4E8B\u5B9E\u533A\u672B\u884C(\u65E5\u6587/\u97E9\u6587\u539F\u540D\u5E38\u5360\u4E24\u4E09\u884C\uFF0C\u653E\u9876\u90E8\u4F1A\u51B2\u6563\u8BC4\u5206\u5757\u4E0E meta \u4E32\u7684\u8282\u594F)\u3002
+   \u5206\u7EC4\u53EA\u9760\u7559\u767D + \u53D1\u4E1D\u7EBF(__sec \u7684 border-top) + 11px \u5C0F\u6807\u9898\uFF0C**\u8282\u5185\u96F6\u5BB9\u5668**(\u7528\u6237\u660E\u786E\u8981\u6C42
+     \u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\uFF0C\u5185\u90E8\u7684\u5404\u5C0F\u6807\u9898\u6587\u5B57\u90FD\u4E0D\u8981\u6709\u5BB9\u5668\u5305\u88F9\u300D)\u3002
+
+   \u26A0 \u547D\u540D\u786C\u7EA6\u675F(lc-987, \u7528\u6237\u660E\u786E\u8981\u6C42\u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\uFF0C\u5185\u90E8\u7684\u5404\u5C0F\u6807\u9898\u6587\u5B57\u90FD\u4E0D\u8981\u6709\u5BB9\u5668\u5305\u88F9\u300D)\uFF1A
+     glassUI.ts \u7684\u7EC4\u4EF6\u7EA7\u73BB\u7483\u89C4\u5219\u5199\u4F5C [class*="card"] \u2014\u2014 \u90A3\u662F**\u5B50\u4E32**\u5339\u914D\u3002\u5185\u90E8\u5757\u539F\u5148\u53EB
+     fnos-beautify-card__*\uFF0C\u5168\u90FD\u542B card \u5B50\u4E32 \u2192 \u8BC4\u5206\u5757/meta/\u4E8B\u5B9E\u533A/\u5916\u94FE/\u6765\u6E90\u884C\u4E43\u81F3\u6BCF\u4E00\u4E2A __row
+     \u90FD\u88AB\u5404\u81EA\u5957\u4E0A background + backdrop-filter:blur(14px) + border + box-shadow\uFF0C\u4E00\u5C42\u5C42\u5C0F\u73BB\u7483\u6846
+     \u53E0\u5728\u5927\u6846\u91CC(\u8FD8\u987A\u5E26\u8FDD\u80CC\u672C\u6587\u4EF6\u5F53\u65F6\u300C\u5168\u8868\u96F6 backdrop-filter\u300D\u7684\u4F4E GPU \u7EA6\u675F\uFF1B
+     \u8BE5\u7EA6\u675F\u5DF2\u4E8E lc-990 \u4E3A\u9876\u680F\u73BB\u7483\u6761\u7834\u4F8B**\u4E00\u5904**\uFF0C\u89C1 L \u6BB5\u4E0E\u6587\u4EF6\u5934\u7B2C 7 \u6761)\u3002
+     \u4FEE\u6CD5\u9009\u300C\u6539\u540D\u8BA9\u9009\u62E9\u5668\u6839\u672C\u4E0D\u5339\u914D\u300D\u800C\u4E0D\u662F\u5199\u66F4\u9AD8\u7279\u5F02\u6027 !important \u53BB\u5BF9\u6297 \u2014\u2014
+     \u4F9D\u636E\u662F glassUI.ts \u81EA\u5DF1\u7684\u6559\u8BAD\u6CE8\u91CA\u300C\u4E8B\u540E\u6392\u9664\u89C4\u5219 !important \u5BF9\u6297\u4E0D\u7A33\u5B9A\u300D\u3002
+     \u2234 \u5185\u90E8\u4E00\u5F8B\u7528 fnos-showinfo__ \u524D\u7F00(\u4E0D\u542B glassUI \u4EFB\u4F55\u5B50\u4E32 token)\uFF1B
+       \u5916\u5C42**\u523B\u610F\u4FDD\u7559** fnos-beautify-card \u8FD9\u4E2A\u540D\u5B57\uFF0C\u8BA9\u5B83\u6210\u4E3A\u5168\u7AD9\u73BB\u7483\u89C4\u5219\u552F\u4E00\u547D\u4E2D\u7684\u5143\u7D20 = \u90A3\u4E2A\u5927\u5BB9\u5668\u3002
+     \u5F80\u5185\u90E8\u5757\u52A0\u65B0 class \u65F6\uFF0C\u5FC5\u987B\u5148\u786E\u8BA4\u540D\u5B57\u91CC\u4E0D\u542B card/Card/panel/Panel/search/Search/navbar/topbar/
+     appbar/toolbar/playbar/control-bar/z-10/z-20/header-bar/nav-bar/page-header/list-head \u4EFB\u4E00\u5B50\u4E32\u3002 */
+/* \u5927\u5BB9\u5668\u672C\u4F53\u3002\u73BB\u7483\u6A21\u5F0F\u5F00\uFF1AglassUI \u7684\u89C4\u5219\u7279\u5F02\u6027\u66F4\u9AD8\uFF0C\u4F1A\u628A\u4E0B\u9762\u7684 background/border/box-shadow
+   \u6362\u6210\u78E8\u7802\u9762\u677F(\u5B83\u4ECE\u4E0D\u8BBE border-radius/padding\uFF0C\u6545\u5706\u89D2\u4E0E\u5185\u8FB9\u8DDD\u59CB\u7EC8\u7531\u672C\u89C4\u5219\u51B3\u5B9A)\u3002
+   \u73BB\u7483\u6A21\u5F0F\u5173\uFF1AglassUI \u6574\u7EC4\u89C4\u5219\u8981\u6C42 html[data-fntv-glass]\uFF0C\u4E0D\u5339\u914D \u2192 \u53EA\u6709\u672C\u89C4\u5219\u751F\u6548\uFF0C
+   \u9760\u534A\u900F\u660E\u586B\u5145 + \u53D1\u4E1D\u8FB9\u6846\u7ED9\u51FA\u540C\u7B49\u7684\u300C\u6D6E\u8D77\u9762\u677F\u300D\u89C2\u611F\uFF0C\u4E24\u79CD\u6A21\u5F0F\u4E0B\u90FD\u6070\u597D\u4E00\u4E2A\u5927\u5BB9\u5668\u3002
+   \u524D\u63D0\uFF1AA \u6BB5\u7684\u53F3\u5217\u6E05\u6846\u89C4\u5219\u5DF2\u7528 :not(.fnos-beautify-card) \u8C41\u514D\u672C\u5361\uFF0C\u5426\u5219\u5B83 (0,5,1) \u4F1A\u538B\u6389\u8FD9\u91CC (0,1,0)\u3002 */
+.fnos-beautify-card{
+  background:var(--fnos-panel-fill) !important;
+  border:1px solid var(--fnos-hairline-soft) !important;
+  box-shadow:none !important;
+  border-radius:14px !important;
+  padding:16px 18px !important; margin:0 0 10px !important;
+  box-sizing:border-box !important;
+  color:var(--semi-color-text-0,#1d1d1f) !important;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif !important;
+  font-size:13px !important; line-height:1.6 !important;
+  -webkit-font-smoothing:antialiased !important;
+}
+/* \u7EC4\u95F4\u8DDD\u7531\u300C\u76F8\u90BB\u5757\u300D\u4E00\u6761\u89C4\u5219\u7EDF\u4E00\u627F\u62C5\uFF1A\u4EFB\u4F55\u4E00\u6BB5\u56E0\u6570\u636E\u7F3A\u5931\u800C\u4E0D\u6E32\u67D3\u65F6\uFF0C\u95F4\u8DDD\u90FD\u4E0D\u4F1A\u584C\u9677\u3002 */
+.fnos-showinfo__block + .fnos-showinfo__block{ margin-top:18px !important; }
+/* \u2460 \u8BC4\u5206\u5757\uFF1A34px \u5927\u6570\u5B57\u662F\u53F3\u680F\u552F\u4E00\u7684\u89C6\u89C9\u951A\uFF08\u65E7\u7248 17px \u4E0E 13px \u6B63\u6587\u884C\u51E0\u4E4E\u65E0\u5C42\u7EA7\u5DEE \u2192 \u8BC4\u5206\u88AB\u57CB\u6CA1\uFF09\u3002 */
+.fnos-showinfo__rating{ display:flex !important; align-items:baseline !important; }
+.fnos-showinfo__num{
+  font-size:34px !important; font-weight:700 !important; line-height:1 !important;
+  letter-spacing:-.03em !important; font-variant-numeric:tabular-nums !important;
+  color:var(--semi-color-text-0,#1d1d1f) !important;
+}
+.fnos-showinfo__outof{ margin-left:4px !important; font-size:12px !important; font-weight:500 !important; color:var(--fnos-muted) !important; }
+.fnos-showinfo__rsub{ display:flex !important; align-items:center !important; gap:9px !important; margin-top:7px !important; }
+/* \u534A\u661F\uFF1A\u5E95\u5C42\u7070\u661F + \u9876\u5C42\u91D1\u661F\u6309 inline width \u88C1\u5207\u3002\u7EAF CSS\uFF0C\u65E0 SVG\u3001\u65E0\u73AF\u5F62\u8FDB\u5EA6(\u90A3\u4F1A\u5F15\u5165\u65B0\u7684\u300C\u6846\u300D)\u3002 */
+.fnos-showinfo__stars{ position:relative !important; display:inline-block !important; font-size:12px !important; line-height:1 !important; letter-spacing:1.5px !important; }
+.fnos-showinfo__stars-bg{ color:var(--fnos-hairline) !important; }
+.fnos-showinfo__stars-fg{ position:absolute !important; left:0 !important; top:0 !important; overflow:hidden !important; white-space:nowrap !important; color:#ff9f0a !important; }
+.fnos-showinfo__votes{ font-size:11.5px !important; color:var(--fnos-muted) !important; }
+/* \u2461 meta \u4E32\uFF1A\u65E0 label \u7684\u4E24\u884C\u7070\u5B57\uFF0C\u53D6\u4EE3\u65E7\u7248\u300C\u72B6\u6001/\u89C4\u6A21/\u7C7B\u578B/\u5355\u96C6\u300D\u56DB\u884C label-value\u3002 */
+.fnos-showinfo__meta{ font-size:12.5px !important; line-height:1.7 !important; color:var(--semi-color-text-1,#3c3c43) !important; }
+.fnos-showinfo__meta-sub{ font-size:12px !important; color:var(--fnos-muted) !important; }
+/* \u2462 \u4E8B\u5B9E\u533A\uFF1Alabel \u5217 3.4em(\u65E7\u7248 62px \u592A\u5BBD\uFF0C\u628A value \u63A8\u5F97\u8FC7\u8FDC\uFF0C\u56DB\u4E2A\u4E2D\u6587\u5B57\u5BBD\u521A\u597D)\u4FDD\u8BC1 value \u5DE6\u7F18\u5BF9\u9F50\uFF1B
+     \u7EC4\u5185\u9760 4px padding \u5206\u884C\uFF0C\u65E0\u6A2A\u7EBF\u3002 */
+.fnos-showinfo__row{ display:flex !important; gap:12px !important; align-items:baseline !important; padding:4px 0 !important; }
+.fnos-showinfo__k{ flex:0 0 3.4em !important; font-size:12px !important; color:var(--fnos-muted) !important; }
+.fnos-showinfo__v{
+  flex:1 1 auto !important; min-width:0 !important; font-size:12.5px !important; line-height:1.6 !important;
+  color:var(--semi-color-text-0,#1d1d1f) !important; word-break:break-word !important;
+}
+/* \u2462b \u5206\u8282(lc-988 \u6269\u5B57\u6BB5\u540E\u65B0\u589E)\uFF1A\u4E00\u6761\u53D1\u4E1D\u7EBF + 11px \u5C0F\u6807\u9898\uFF0C\u8282\u5185**\u96F6\u5BB9\u5668**(\u7528\u6237\u660E\u786E\u8981\u6C42
+     \u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\uFF0C\u5185\u90E8\u7684\u5404\u5C0F\u6807\u9898\u6587\u5B57\u90FD\u4E0D\u8981\u6709\u5BB9\u5668\u5305\u88F9\u300D)\u3002
+     \u8282\u95F4\u8DDD\u6CBF\u7528\u65E2\u6709 __block \u76F8\u90BB\u89C4\u5219(18px)\uFF0C__sec \u81EA\u8EAB\u53EA\u8865 padding-top \u8BA9\u7EBF\u4E0D\u8D34\u5B57\u3002
+     \u26A0 \u7C7B\u540D\u4E25\u7981\u542B glassUI \u5B50\u4E32 token(card/panel/search/navbar/z-10/z-20/list-head\u2026)\uFF1A
+       sec / sec-t / tag / ov / stills / still / recs \u5747\u5DF2\u9010\u4E2A\u6838\u5BF9\u8FC7\u6E05\u5355\uFF0C\u5B89\u5168\u3002 */
+.fnos-showinfo__sec{ padding-top:14px !important; border-top:1px solid var(--fnos-hairline-soft) !important; }
+.fnos-showinfo__sec-t{
+  font-size:11px !important; letter-spacing:.06em !important; line-height:1 !important;
+  color:var(--fnos-muted) !important; margin-bottom:8px !important;
+}
+/* \u6807\u8BED\uFF1A\u6BD4\u6B63\u6587\u66F4\u65E9\u7ED9\u51FA\u8C03\u6027\uFF0C\u5F31\u5316\u5230\u7070\u5B57\u4E00\u7EA7\u3002 */
+.fnos-showinfo__tag{ font-size:12.5px !important; line-height:1.6 !important; color:var(--fnos-muted) !important; }
+/* \u5267\u7167\uFF1A3 \u5F20\u7B49\u5BBD 16:9\u3002img \u521D\u59CB opacity 0 + \u65E0 src(\u6E32\u67D3\u9636\u6BB5\u96F6\u8BF7\u6C42)\uFF0C
+   \u53D6\u5230 dataUrl \u540E\u7531 _fillStills \u52A0 is-ready \u6DE1\u5165\uFF1B\u53D6\u4E0D\u5230\u7684\u5355\u5F20\u4F1A\u88AB\u6458\u6389\uFF0C\u4E0D\u7559\u7A7A\u4F4D\u3002
+   aspect-ratio \u800C\u975E height\uFF1A\u5BBD\u5EA6\u662F calc \u51FA\u6765\u7684\u767E\u5206\u6BD4\uFF0C\u5199\u6B7B height \u5728\u7A84\u680F\u4F1A\u53D8\u5F62\u3002 */
+.fnos-showinfo__stills{ display:flex !important; gap:8px !important; }
+.fnos-showinfo__still{
+  width:calc((100% - 16px) / 3) !important; aspect-ratio:16 / 9 !important; object-fit:cover !important;
+  border-radius:8px !important; background:var(--fnos-hairline-soft) !important;
+  opacity:0 !important; transition:opacity .3s ease !important;
+}
+.fnos-showinfo__still.is-ready{ opacity:1 !important; }
+/* \u76F8\u4F3C\u5267\u96C6\uFF1A\u7EAF\u6587\u672C\u94FE\u63A5\u6D41(\xB7 \u5206\u9694)\uFF0C\u4E0D\u662F\u6D77\u62A5\u5899 \u2014\u2014 \u6D77\u62A5\u5899\u4F1A\u5F15\u5165\u4E00\u6392\u65B0\u6846\u3002 */
+.fnos-showinfo__recs{ font-size:12.5px !important; line-height:1.8 !important; }
+.fnos-showinfo__recs a{ color:var(--semi-color-text-0,#1d1d1f) !important; text-decoration:none !important; }
+.fnos-showinfo__recs a:hover{ color:var(--fnos-accent) !important; text-decoration:underline !important; }
+.fnos-showinfo__recs i{ font-style:normal !important; color:var(--semi-color-text-3,#c7c7cc) !important; margin:0 6px !important; }
+/* \u2463 \u5916\u94FE\uFF1A\u7EC4\u95F4\u8DDD\u7EDF\u4E00\u7531 __block \u76F8\u90BB\u89C4\u5219\u7ED9\uFF0C\u8FD9\u91CC\u4E0D\u518D\u81EA\u5E26 margin-top\u3002 */
+.fnos-showinfo__links{ display:flex !important; flex-wrap:wrap !important; gap:4px 12px !important; align-items:center !important; font-size:12.5px !important; }
+.fnos-showinfo__links a{ color:var(--fnos-accent) !important; text-decoration:none !important; font-weight:500 !important; }
+.fnos-showinfo__links a:hover{ text-decoration:underline !important; }
+.fnos-showinfo__links span{ color:var(--semi-color-text-3,#c7c7cc) !important; }
+.fnos-showinfo__loading,.fnos-showinfo__error{ color:var(--fnos-muted) !important; font-size:12.5px !important; padding:8px 0 !important; }
+/* [lc-1039] \u5B63\u9875\u5361\u9AA8\u67B6\u5360\u4F4D\uFF08tmdbCard.ts seasonSkeletonHtml\uFF09\uFF1A\u6570\u636E\u672A\u5230\u65F6\u6309\u6700\u7EC8\u7248\u5F0F\u94FA\u7070\u5757\u2014\u2014
+   \u5267\u7167 3 \u683C(\u540C .fnos-showinfo__still \u7684\u4E09\u7B49\u5206 16:9) + \u5206\u8282(\u53D1\u4E1D\u7EBF+\u5C0F\u6807\u9898+3 \u884C) + \u5916\u94FE\u884C\u3002
+   \u534A\u900F\u660E fill \u968F\u660E\u6697\u4E3B\u9898\uFF1B\u8109\u51B2\u53EA\u52A8 opacity(\u5408\u6210\u5668\u8DEF\u5F84\uFF0C\u96F6\u5E03\u5C40\u6296\u52A8)\uFF0C\u9519\u5CF0 delay \u51FA\u547C\u5438\u611F\uFF1B
+   \u78C1\u76D8\u7F13\u5B58\u547D\u4E2D\u65F6\u9AA8\u67B6\u6BEB\u79D2\u7EA7\u5373\u88AB\u771F\u5B9E\u5185\u5BB9\u6574\u5757\u66FF\u6362\u3002 */
+.fnos-showinfo__skel i{
+  display:block !important;
+  background:var(--semi-color-fill-0,rgba(128,128,128,.16)) !important;
+  border-radius:6px !important;
+  animation:fnos-skel-pulse 1.5s ease-in-out infinite !important;
+}
+.fnos-showinfo__skel-stills{ display:flex !important; gap:8px !important; }
+.fnos-showinfo__skel-stills i{
+  width:calc((100% - 16px) / 3) !important; aspect-ratio:16 / 9 !important;
+  border-radius:8px !important;
+}
+.fnos-showinfo__skel-stills i:nth-child(2){ animation-delay:.22s !important; }
+.fnos-showinfo__skel-stills i:nth-child(3){ animation-delay:.44s !important; }
+.fnos-showinfo__skel-sec{
+  margin-top:18px !important; padding-top:14px !important;
+  border-top:1px solid var(--fnos-hairline-soft) !important;
+}
+.fnos-showinfo__skel-t{ width:52px !important; height:11px !important; margin-bottom:2px !important; animation-delay:.1s !important; }
+.fnos-showinfo__skel-l{ height:12px !important; margin-top:9px !important; }
+.fnos-showinfo__skel-l:nth-of-type(3){ animation-delay:.18s !important; }
+.fnos-showinfo__skel-l:nth-of-type(4){ animation-delay:.36s !important; }
+.fnos-showinfo__skel-links{ display:flex !important; gap:12px !important; margin-top:18px !important; }
+.fnos-showinfo__skel-links i{ width:40px !important; height:12px !important; }
+.fnos-showinfo__skel-links i:nth-child(2){ animation-delay:.15s !important; }
+.fnos-showinfo__skel-links i:nth-child(3){ animation-delay:.3s !important; }
+.fnos-showinfo__skel-links i:nth-child(4){ animation-delay:.45s !important; }
+@keyframes fnos-skel-pulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion:reduce){
+  .fnos-showinfo__skel i{ animation:none !important; opacity:.5 !important; }
+}
+/* \u2464 \u6765\u6E90\u884C\uFF1A\u5168\u5361\u6700\u5F31\u4E00\u7EA7(10.5px)\u3002\u5237\u65B0\u9ED8\u8BA4\u7070\u3001hover \u624D\u67D3 accent \u2014\u2014
+     \u5B83\u662F\u5F00\u53D1\u8005\u89C6\u89D2\u7684\u64CD\u4F5C\uFF0C\u4E0D\u8BE5\u548C TMDB/IMDb \u5916\u94FE\u62A2\u540C\u4E00\u7EA7\u89C6\u89C9\u6743\u91CD\u3002 */
+.fnos-showinfo__foot{
+  margin-top:16px !important;
+  display:flex !important; justify-content:space-between !important; align-items:center !important; gap:10px !important;
+  font-size:10.5px !important; color:var(--fnos-muted) !important;
+}
+.fnos-showinfo__refresh{
+  background:transparent !important; border:none !important; padding:0 2px !important; cursor:pointer !important;
+  color:var(--fnos-muted) !important; font-size:12px !important; line-height:1 !important; font-family:inherit !important;
+  transition:color .18s ease !important;
+}
+.fnos-showinfo__refresh:hover{ color:var(--fnos-accent) !important; }
+
+/* ===== J. \u6E05\u6670\u5EA6\u6807\u8BC6\uFF1A\u539F\u751F\u89D2\u6807(\u8D34\u7F29\u7565\u56FE\u53F3\u4E0B) \u2192 \u96C6\u6807\u9898\u540E\u7684\u5C0F\u56FE\uFF08epResolution.ts \u6CE8\u5165\uFF09=====
+   \u26A0 \u5B9E\u8BC1\u7EA0\u6B63(lc-986, \u7528\u6237\u63D0\u4F9B\u7684\u771F\u5B9E DOM): \u539F\u751F\u6E05\u6670\u5EA6\u6807\u8BC6**\u4E0D\u662F\u6587\u672C**\uFF0C\u662F\u4E00\u5F20 base64 \u4F4D\u56FE\u2014\u2014
+     \u7F29\u7565\u56FE\u5BB9\u5668 > div.absolute.bottom-0(\u5E95\u90E8\u6E10\u53D8\u5C42) > div.absolute.bottom-2.5.right-2.5.flex.gap-1.5
+       > div.flex.h-[22px].items-center > img[src^="data:image/png;base64"][alt=""]
+     \u6240\u4EE5 lc-984 \u7684\u300C\u6587\u672C\u53F6\u5B50 + \u6E05\u6670\u5EA6\u8BCD\u8868\u300D\u6C38\u8FDC\u5931\u914D\uFF0C\u90A3\u7248\u80F6\u56CA\u4E00\u6B21\u90FD\u6CA1\u6CE8\u5165\u6210\u529F\u3002
+   \u73B0\u5728\u6539\u4E3A\u514B\u9686\u8FD9\u5F20\u4F4D\u56FE\uFF1A\u56FE\u91CC\u753B\u7684\u662F\u4EC0\u4E48(1080/4K/HDR\u2026)\u8BFB\u4E0D\u6210\u6587\u5B57\uFF0C\u514B\u9686\u662F\u552F\u4E00\u4FDD\u771F\u505A\u6CD5\u3002
+   \u9690\u85CF\u8D70 class \u800C\u975E\u5220\u8282\u70B9: \u539F\u751F\u89D2\u6807\u53EA\u88AB\u52A0\u6807\u8BB0, DOM \u4F4D\u7F6E/\u5C5E\u6027/src \u5168\u4E0D\u52A8, teardown \u6458\u6389\u5373\u590D\u539F\u3002 */
+body.fnos-beautify .fnos-res-native-hidden{ display:none !important; }
+/* \u6807\u9898\u540E\u7684\u6807\u8BC6\uFF1A\u88F8\u56FE\uFF0C\u4E0D\u5957\u6846\u4E0D\u52A0\u5E95\u8272\u3002\u4F4D\u56FE\u672C\u8EAB\u5DF2\u662F\u4E0D\u900F\u660E\u8272\u5757(palette PNG \u65E0 alpha)\uFF0C
+   \u518D\u5305\u4E00\u5C42 pill \u5C31\u6210\u4E86\u300C\u6846\u91CC\u5957\u6846\u300D\u3002 */
+body.fnos-beautify .fnos-ep-res{
+  display:inline-block !important; margin-left:7px !important;
+  vertical-align:middle !important; line-height:0 !important; white-space:nowrap !important;
+}
+body.fnos-beautify .fnos-ep-res-img{
+  display:block !important; height:15px !important; width:auto !important;  /* \u4FDD\u6301\u4F4D\u56FE\u56FA\u6709\u6BD4\u4F8B */
+  border-radius:3px !important;
+}
+/* \u80F6\u56CA append \u5728\u6807\u9898 p \u672B\u5C3E: \u82E5\u8BE5 p \u5E26 truncate(nowrap+ellipsis) \u6216 line-clamp, \u957F\u96C6\u6807\u9898\u4F1A\u628A\u80F6\u56CA\u88C1\u6CA1\u3002
+   \u7528 :has \u7CBE\u51C6\u53EA\u89E3\u7981\u300C\u771F\u6536\u5230\u4E86\u80F6\u56CA\u7684\u90A3\u4E2A p\u300D, \u4E0D\u5F71\u54CD\u5176\u5B83\u6BB5\u843D\u3002 */
+body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] p:has(> .fnos-ep-res){
+  display:block !important; white-space:normal !important;
+  overflow:visible !important; text-overflow:clip !important;
+  -webkit-line-clamp:unset !important;
+}
+
+/* ===== K. \u9876\u680F\u5DE6\u4E0A\u89D2\u56FE\u6807\u6309\u94AE\u914D\u8272\u8865\u9F50\uFF08home / hamburger\uFF1Blc-989\uFF09=====
+   \u26A0 \u8FD9\u662F**\u98DE\u725B\u539F\u751F\u81EA\u5DF1\u7684 bug**\uFF0C\u6211\u4EEC\u53EA\u662F\u8865\u9F50\u5B83\u5DF2\u7ECF\u7528\u5728\u300C\u8FD4\u56DE\u300D\u6309\u94AE\u4E0A\u7684\u540C\u7B49\u8BED\u4E49\u3002
+   \u5B9E\u6D4B\uFF08\u6D3B\u4F53 NAS /v/tv/season/<id>\uFF0C\u6D45\u8272\u4E3B\u9898 = \u7528\u6237\u9ED8\u8BA4\uFF0CelementsFromPoint \u4E8E\u6309\u94AE\u4E2D\u5FC3 (74,41)\uFF09:
+     \u8BE6\u60C5\u9875\u9876\u680F\u80CC\u666F\u7531\u4E09\u5C42\u53E0\u6210\u3001\u4E14**\u6052\u6697**\uFF08\u4E0E\u4E3B\u9898\u65E0\u5173\uFF09:
+       \u2460 div.z-[2].h-[80px].top-0.w-full  \u2192 linear-gradient(rgba(0,0,0,.5) \u2192 rgba(0,0,0,0))
+       \u2461 div.gradient-for-full            \u2192 linear-gradient(90deg, rgba(25,25,26,.96) 0%, .74 28%, \u2026)
+       \u2462 div.semi-always-dark.h-[470px]   \u2192 background-color: rgb(25,25,26)
+     \u98DE\u725B\u53EA\u7ED9\u300C\u8FD4\u56DE\u300D\u6309\u94AE\u5355\u72EC\u5305\u4E86 .semi-always-dark \u2192 \u6052\u767D rgb(255,255,255)\uFF0C\u5BF9\u6BD4\u5EA6 19.2:1\uFF0C\u6B63\u786E\u3002
+     \u5374**\u6F0F\u4E86\u5B83\u5DE6\u8FB9\u7684 home \u4E0E hamburger**: \u4E24\u8005\u8D70 text-[var(--semi-color-text-1)]\uFF0C\u6D45\u8272\u4E3B\u9898\u4E0B
+     computed color = rgba(0,0,0,.8)\uFF08home \u7684 svg fill \u5B9E\u6D4B rgb(0,0,0)\uFF09\u2192 \u6DF1\u56FE\u6807\u538B\u5728\u6052\u6697\u80CC\u666F\u4E0A\u3002
+   \u91CF\u5316: \u80CC\u666F\u5408\u6210 rgb(18.9)\uFF08\u2460 \u5728 y=41 \u5904 alpha 0.244\uFF09\u2192 \u4FEE\u6B63\u524D\u5BF9\u6BD4\u5EA6 **1.10:1**
+     \uFF08WCAG \u975E\u6587\u672C\u6700\u4F4E\u95E8\u69DB 3:1\uFF0C\u7B49\u4E8E\u770B\u4E0D\u89C1\uFF09\uFF1B\u4FEE\u6B63\u540E **12.03:1**\u3002
+     /v/tv/<id>\uFF08\u975E season\uFF09\u8BE6\u60C5\u9875\u80CC\u666F\u4E3A\u7EAF rgb(25,25,26) \u2192 before 1.16:1 / after 11.53:1\uFF0C\u540C\u4E00\u7ED3\u8BBA\u3002
+     \u65C1\u8BC1: \u53F3\u4E0A\u89D2\u641C\u7D22/\u7528\u6237/\u8BBE\u7F6E\u4E09\u4E2A .semi-button-content \u5728\u6D45\u8272\u4E3B\u9898\u4E0B\u5B9E\u6D4B\u4E5F\u5DF2\u662F rgba(255,255,255,.8)
+     \u2014\u2014\u98DE\u725B\u540C\u6837\u6309\u6052\u6697\u5904\u7406\uFF0C\u53EA\u6709 home/hamburger \u662F\u6F0F\u7F51\u7684\u4E24\u4E2A\u3002
+   \u53D6\u503C: --fnos-topbar-fg = rgba(255,255,255,.8)\uFF0C\u6B63\u662F\u6697\u8272\u4E3B\u9898\u4E0B --semi-color-text-1 \u7684\u539F\u751F\u503C\u3002
+     \u4E0D\u53D1\u660E\u65B0\u7684\u989C\u8272\u5173\u7CFB\uFF0C\u53EA\u662F\u8BA9\u6D45\u8272\u4E3B\u9898\u4E0E\u6697\u8272\u4E3B\u9898\u89C2\u611F\u4E00\u81F4\uFF08\u6700\u5C0F\u5E72\u9884\uFF09\u3002
+   \u26A0 \u5FC5\u987B\u5E26 svg \u540E\u4EE3\u9009\u62E9\u5668: home \u7684 svg \u81EA\u8EAB class \u4E5F\u542B text-[var(--semi-color-text-1)]
+     \uFF08h-[22px] cursor-pointer align-top leading-sm text-[var(--semi-color-text-1)]\uFF09\uFF0C
+     \u53EA\u6539\u5916\u5C42 div / a \u4F1A\u88AB\u5B83\u81EA\u5DF1\u90A3\u4E00\u5C42\u538B\u56DE\u53BB\uFF1B\u5B9E\u6D4B\u4E09\u5C42\u9F50\u4E0A + !important \u624D\u771F\u7684\u751F\u6548\u3002
+   \u26A0 \u53EA\u6539 color \u4E0D\u5199 fill: \u4E09\u4E2A\u56FE\u6807\u7684 svg \u6839\u90FD\u662F fill="currentColor"\uFF0C\u5B50\u5143\u7D20(path/g/rect/defs/clipPath)
+     \u65E0 fill \u5C5E\u6027 \u2192 \u6539 color \u5373\u5168\u94FE\u7EE7\u627F\uFF08\u5B9E\u6D4B\u5185\u90E8 path/g/rect \u5168\u90E8\u8DDF\u968F\u53D8\u767D\uFF09\u3002
+   \u26A0 \u4E0D\u52A8\u300C\u8FD4\u56DE\u300D\u6309\u94AE: \u5B83\u5DF2\u88AB\u98DE\u725B\u7684 .semi-always-dark \u4FDD\u8BC1\u6052\u767D\uFF0C\u672C\u6BB5\u9009\u62E9\u5668\u4E5F\u547D\u4E0D\u4E2D\u5B83\u3002
+   \u26A0 \u5FC5\u987B\u7528 body.fnos-beautify \u95E8\u63A7\uFF08= \u4EC5\u8BE6\u60C5\u9875\uFF09: \u9996\u9875\u9876\u680F\u5B9E\u6D4B**\u6CA1\u6709**\u90A3\u5C42\u9ED1\u6E10\u53D8
+     \uFF08\u80CC\u666F\u662F bg-[var(--semi-color-bg-1)]\uFF0C\u6D45\u8272\u4E3B\u9898\u4E0B\u4E3A\u767D\uFF09\uFF0C\u6DF1\u56FE\u6807\u914D\u767D\u5E95\u662F\u6B63\u786E\u7684\uFF0C\u5168\u5C40\u6539\u4F1A\u6539\u574F\u9996\u9875\u3002
+   \u26A0 \u4E0E glassUI \u65E0\u51B2\u7A81: \u73BB\u7483\u6A21\u5F0F\u5BF9\u9876\u680F\u662F\u6392\u9664/\u900F\u660E\u5316\u89C4\u5219\uFF08[data-fnos-clear=1] / [class*=z-20] / z-10\uFF09\uFF0C
+     \u4E0D\u4F1A\u7ED9\u9876\u680F\u52A0\u6D45\u8272\u78E8\u7802 \u2192 \u6052\u6697\u80CC\u666F\u5728\u73BB\u7483\u5F00\u5173\u4E24\u79CD\u72B6\u6001\u4E0B\u90FD\u6210\u7ACB\u3002
+   \u9009\u62E9\u5668\u7528\u5C5E\u6027\u5B50\u4E32\uFF08class*="h-[80px]"\uFF09\u800C\u975E .h-[80px]: \u907F\u5F00 Tailwind \u4EFB\u610F\u503C\u7684\u65B9\u62EC\u53F7\u8F6C\u4E49\u3002 */
+body.fnos-beautify div[class*="h-[80px]"][class*="top-0"] div[class*="gap-4"][class*="lg:!hidden"],
+body.fnos-beautify div[class*="h-[80px]"][class*="top-0"] div[class*="gap-4"][class*="lg:!hidden"] a,
+body.fnos-beautify div[class*="h-[80px]"][class*="top-0"] div[class*="gap-4"][class*="lg:!hidden"] svg{
+  color:var(--fnos-topbar-fg) !important;
+}
+
+/* ===== L. \u8BE6\u60C5\u9875\u4E0A\u90E8\u906E\u7F69 \u2192 \u5C01\u9762\u53D6\u8272\u7684\u73BB\u7483\uFF08lc-990\uFF09=====
+   \u8BC9\u6C42(\u7528\u6237\u539F\u8BDD)\uFF1A\u300C\u4E8C\u7EA7\u8BE6\u60C5\u9875\u91CC\u4E0A\u90E8\u7684\u906E\u7F69\u592A\u4E11\u4E00\u4E0D\u597D\u770B\u6539\u6210\u5C01\u9762\u53D6\u8272\u7684\u73BB\u7483\u6837\u5F0F\u300D\u3002
+   \u300C\u4E11\u300D\u662F\u91CF\u5F97\u51FA\u6765\u7684 \u2014\u2014 \u539F\u751F\u4E24\u5C42\u906E\u7F69\u8272\u503C\u5168\u662F\u786C\u7F16\u7801\u4E2D\u6027\u8272\uFF0C\u4E14\u5DE6\u53F3\u660E\u6697\u4E25\u91CD\u4E0D\u5747
+   (\u6D3B\u4F53 /v/tv/season/<id>\uFF0C\u6D45\u8272\u4E3B\u9898\uFF0C\u540C\u4E00\u884C y=41 \u4E0A\u7684\u767D\u5B57\u5BF9\u6BD4\u5EA6)\uFF1A
+     \u9876\u680F 80px \u9ED1\u6E10\u53D8 + hero \u7684 .gradient-for-full(\u4E24\u5C42 25,25,26)
+     \u2192 \u5DE6\u4FA7\u56FE\u6807\u533A 12.23(\u5C01\u9762\u8272\u88AB\u5403\u5230\u6B7B\u9ED1)\uFF0C\u53F3\u4FA7\u6309\u94AE\u7EC4\u53EA\u5269 4.50(\u51E0\u4E4E\u6CA1\u538B\u6697)\u3002
+   \u6362\u6210\u5C01\u9762\u540C\u8272\u7CFB\u540E\u540C\u4E00\u6279\u91C7\u6837\u70B9\u6536\u655B\u5230 9.72~11.00\uFF0C\u6807\u9898\u300C\u7B2C 1 \u5B63\u300D8.92\u3002
+   tint \u6765\u6E90\uFF1AheroTint.ts \u4ECE hero \u5267\u7167\u53D6\u4E3B\u8272\u6876\uFF0C\u628A HSL \u4EAE\u5EA6\u538B\u5230 L<=0.20(\u53EA\u538B\u4E0D\u63D0\u3001H/S \u539F\u503C\u4FDD\u7559)\uFF0C
+     \u5199\u6210 body \u4E0A\u7684 --fnos-hero-tint\u3002\u53D6\u8272\u5931\u8D25\u65F6\u8BE5\u53D8\u91CF\u4E0D\u5B58\u5728 \u2192 \u4E0B\u9762\u6BCF\u4E2A var() \u7684\u7B2C\u4E8C\u53C2\u6570
+     \u7CBE\u786E\u56DE\u843D\u5230\u98DE\u725B\u539F\u751F\u7684 25,25,26\uFF0C\u5373\u4F18\u96C5\u964D\u7EA7(\u53D8\u91CF\u5728/\u7F3A\u5931\u4E24\u6001\u5747\u5DF2\u5B9E\u6D4B)\u3002
+
+   \u26A0 \u4E09\u4E2A\u8BBE\u8BA1\u8981\u70B9\uFF0C\u6BCF\u6761\u90FD\u6709\u5B9E\u6D4B\u4F9D\u636E\uFF0C\u6539\u52A8\u524D\u52A1\u5FC5\u8BFB\uFF1A
+   \u2460 tint \u5E95\u8272 / \u78E8\u7802 / \u6E10\u9690 mask **\u4E09\u8005\u5168\u653E ::before**\uFF0C\u4E0D\u653E bar \u672C\u4F53\u3002
+      mask \u4F1A\u88C1\u6389\u5143\u7D20\u81EA\u5DF1\u7684\u6574\u4E2A\u6E32\u67D3\u5B50\u6811 \u2014\u2014 bar \u5185\u53EF\u89C1\u5185\u5BB9\u6700\u4F4E\u5230 y=62(78%)\u3001\u6E10\u9690\u4ECE 58% \u8D77\uFF0C
+      \u82E5\u628A mask \u52A0\u5728 bar \u672C\u4F53\u4E0A\uFF0C\u56FE\u6807\u4E0B\u6CBF\u4F1A\u88AB\u4E00\u8D77\u6DE1\u51FA\u3002\u4F2A\u5143\u7D20\u7684 mask \u53EA\u88C1\u5B83\u81EA\u5DF1\u3002
+      \u53E6 ::before \u662F z-auto\uFF0C\u800C bar \u7684\u5185\u5BB9\u5BB9\u5668\u5E26 z-20 \u2192 \u78E8\u7802\u5728\u5185\u5BB9\u4E4B\u4E0B\uFF0C\u56FE\u6807\u4E0D\u4F1A\u88AB\u6A21\u7CCA\u3002
+   \u2461 \u7528 mask \u6E10\u9690\uFF0C\u800C\u4E0D\u662F\u8BA9 background \u7684 alpha \u6E10\u9690\u5230 0\uFF1A
+      \u56FE\u6807\u533A(y=23..59)\u7684 tint alpha \u56E0\u6B64\u6052\u5B9A\u5728\u9876\u503C\uFF0C\u5BF9\u6BD4\u5EA6\u4ECE\u65E9\u524D\u6807\u5B9A\u7684 4.23 \u63D0\u5347\u5230\u4E24\u4F4D\u6570\u3002
+      \u82E5\u6CBF\u7528 alpha .72\u21920 \u90A3\u79CD\u5F62\u72B6\uFF0C\u56FE\u6807\u4E2D\u5FC3\u53EA\u5269 .351\uFF0C\u4EAE\u5267\u7167\u900F\u4E0A\u6765 \u2192 \u5BF9\u6BD4\u5EA6\u66B4\u8DCC\u5230 1.80~1.92\u3002
+      \u9876\u503C\u53D6 **1** \u800C\u4E0D\u662F .92\uFF0C\u662F lc-992 \u7684\u63A5\u7F1D\u8981\u6C42(\u89C1 M \u6BB5)\uFF1Ay=0..31 \u7684\u6807\u9898\u680F\u94FA\u540C\u8272\u7CFB\u5E95\u8272\u540E\uFF0C
+      \u53EA\u6709\u6761\u9996\u884C(y=32)\u4E5F\u662F\u7EAF tint\uFF0C\u4E24\u884C\u624D\u80FD\u5BF9\u4EFB\u610F x \u6052\u7B49 \u2192 \u63A5\u7F1D 1.0000(\u73B0\u72B6\u767D\u6761\u662F 9.8232)\u3002
+      \u4EFB\u4F55 <1 \u7684\u9876\u503C\u90FD\u4F1A\u8BA9\u63A5\u7F1D\u968F\u5C01\u9762\u660E\u6697\u6F02\u79FB(\u5B9E\u6D4B .98\u21921.0306\u3001.96\u21921.0623)\u3002
+      \u4EE3\u4EF7\u662F\u51C0\u6536\u76CA\uFF1A\u56FE\u6807\u884C y=41 \u767D\u5B57\u5BF9\u6BD4\u5EA6\u4ECE 9.35~10.62(1.14x \u843D\u5DEE)\u6536\u655B\u5230 **11.06~11.32(1.02x)**\uFF0C
+      12 \u79CD\u73AF\u5883(\u660E\u6697 \xD7 \u73BB\u7483\u5F00\u5173 \xD7 \u684C\u9762\u9ED1/\u4E2D\u7070/\u767D)\u5B8C\u5168\u4E00\u81F4\uFF1B\u73BB\u7483\u6761\u5916\u89C2\u6700\u5927\u6539\u53D8\u4EC5 15/255\u3002
+      \u6E10\u9690\u6BB5(y=78..110)\u9010\u884C\u4EAE\u5EA6\u5256\u9762\u7684\u6700\u5927\u9006\u5411\u6B65\u957F 0.0449\uFF0C\u800C\u5E95\u5C42\u5C01\u9762\u81EA\u8EAB\u5728\u540C\u4E00\u6BB5\u5C31\u6709 0.0574
+      \u2192 \u9006\u5411\u8D77\u4F0F\u662F\u5C01\u9762\u5185\u5BB9\u7EE7\u627F\u6765\u7684\uFF0Ctint \u8986\u76D6\u53CD\u800C\u628A\u5B83\u538B\u5E73\u4E86\uFF1B\u9876\u503C .92\u21921 \u5BF9\u5B83\u7684\u5F71\u54CD\u53EA\u6709 0.0001\u3002
+   \u2462 bar \u672C\u4F53\u53EA\u6E05 background-image\uFF0C**\u4E0D\u52A8 background-color**(\u5B83\u672C\u6765\u5C31\u662F rgba(0,0,0,0))\uFF1A
+      embyWall.ts \u7684 [lc-925] \u56FE\u6807\u53CD\u8272\u9760 elementsFromPoint \u9010\u5C42\u8BFB backgroundColor / backgroundImage
+      \u91C7\u6837\u80CC\u666F\u4EAE\u5EA6\uFF0C\u800C\u4F2A\u5143\u7D20\u4E0D\u53C2\u4E0E elementsFromPoint \u2192 \u91C7\u6837\u8DEF\u5F84\u4E0E\u672C\u6BB5\u6539\u52A8\u4E4B\u524D\u5B8C\u5168\u4E00\u81F4\uFF0C
+      \u4ECD\u6052\u547D\u4E2D hero \u7684\u5B9E\u5FC3 rgb(25,25,26) \u800C\u5224\u300C\u6697\u5E95 \u2192 \u56FE\u6807\u5237\u767D\u300D\uFF0C\u4E0E\u8FD9\u91CC\u7684\u6697 tint \u81EA\u6D3D\u3002
+
+   \u26A0 \u9009\u62E9\u5668\u5B89\u5168\u6027\uFF1A\u9996\u9875\u5B9E\u6D4B**\u4E0D\u5B58\u5728** div[class*="h-[80px]"][class*="top-0"]
+     (\u9996\u9875\u9876\u680F\u662F\u53E6\u4E00\u4E2A\u5143\u7D20 relative.z-[2].h-[80px].bg-[var(--semi-color-bg-1)]\uFF0C\u5B9E\u5FC3\u767D\u5E95\u3001\u4E0D\u5E26 top-0)\uFF0C
+     \u4E24\u4E2A\u906E\u7F69\u7C7B .gradient-for-full / .gradient \u5728\u9996\u9875\u6570\u5747\u4E3A 0\u3001\u4E09\u79CD hero \u4E5F\u90FD\u4E0D\u5B58\u5728
+     \u2192 \u518D\u53E0\u52A0 body.fnos-beautify \u95E8\u63A7(\u9996\u9875\u65E0 hero\uFF0C\u8BE5 class \u6C38\u4E0D\u4F1A\u52A0) = \u53CC\u91CD\u5B89\u5168\u3002
+   \u26A0 \u4E0D\u65B0\u589E\u4EFB\u4F55 class \u540D(\u5168\u8D70 ::before + \u65E2\u6709\u5C5E\u6027\u9009\u62E9\u5668) \u2192 \u65E0\u9700\u8FC7 glassUI \u7684\u5B50\u4E32 token \u6E05\u5355\u3002
+   \u26A0 \u523B\u610F\u4E0D\u78B0 hero \u672C\u4F53\u5E95\u8272 bg-[var(--semi-color-bg-1)] = rgb(25,25,26)\uFF1A\u5B83\u88AB\u6574\u5757\u4E0D\u900F\u660E\u5267\u7167
+     100% \u8986\u76D6\uFF0C\u6539\u4E86\u770B\u4E0D\u51FA\u533A\u522B\uFF1B\u800C .semi-always-dark \u5168\u6587\u6863\u6709 5 \u4E2A(\u53E6 4 \u4E2A\u662F 36x36 \u5C0F\u56FE\u6807)\uFF0C
+     \u591A\u4E00\u6761 !important \u53BB\u8986\u76D6 Semi \u5168\u5C40 token \u6709\u8BEF\u4F24\u98CE\u9669\u3002tint \u7F3A\u5931\u65F6 fallback \u6070\u597D\u4E5F\u662F 25,25,26\u3002
+   \u26A0 \u8FD9\u662F\u672C\u6587\u4EF6**\u552F\u4E00**\u4E00\u5904 backdrop-filter(\u7834\u4F8B\u8BF4\u660E\u89C1\u6587\u4EF6\u5934\u7B2C 7 \u6761)\uFF1A\u9762\u79EF\u4EC5 820x80\u3001\u53EA\u5728\u8BE6\u60C5\u9875\u3001
+     \u4E0D\u968F\u6EDA\u52A8\u91CD\u7B97\u3002bar \u7684\u7956\u5148\u94FE 7 \u5C42\u5B9E\u6D4B\u96F6 filter/transform/opacity/mask/will-change/contain/
+     isolation/perspective \u2192 \u4E0D\u7834\u574F backdrop root\uFF0C\u78E8\u7802\u80FD\u771F\u7684\u91C7\u5230 hero \u5267\u7167\u3002 */
+body.fnos-beautify div[class*="h-[80px]"][class*="top-0"]{
+  background-image:none !important;
+}
+body.fnos-beautify div[class*="h-[80px]"][class*="top-0"]::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background-image:linear-gradient(to bottom,
+    rgba(var(--fnos-hero-tint, 25,25,26), 1) 0%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .86) 100%);
+  backdrop-filter:blur(18px) saturate(1.5);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);
+  -webkit-mask-image:linear-gradient(to bottom, #000 0%, #000 58%, transparent 97%);
+  mask-image:linear-gradient(to bottom, #000 0%, #000 58%, transparent 97%);
+}
+/* hero \u906E\u7F69\uFF1A\u4E24\u5C42\u6E10\u53D8\u7684 alpha \u4E0E\u8272\u6807\u4F4D\u7F6E**\u4E00\u5B57\u4E0D\u6539**\uFF0C\u53EA\u628A 25,25,26 \u6362\u6210 tint\u3002
+   \u90A3\u5957 alpha \u5F62\u72B6\u662F\u6709\u529F\u80FD\u76EE\u7684\u7684(\u4FDD\u4F4F x=292 \u8D77\u7684\u767D\u8272\u6807\u9898/\u5B63/\u96C6/\u5E74\u4EFD)\uFF0C\u52A8\u5B83\u5C31\u52A8\u53EF\u8BFB\u6027\u3002
+   \u8FD9\u91CC\u4E0D\u52A0\u78E8\u7802\uFF1A\u7528\u6237\u8981\u7684\u662F\u5C01\u9762\u5267\u7167\u4FDD\u6301\u6E05\u6670\uFF0C\u78E8\u7802\u53EA\u5728\u9876\u680F\u90A3\u4E00\u6761(Apple / Netflix \u7684\u9876\u680F\u505A\u6CD5)\u3002 */
+body.fnos-beautify ${HERO} .gradient-for-full{
+  background-image:
+    linear-gradient(90deg,
+      rgba(var(--fnos-hero-tint, 25,25,26), .96) 0%,
+      rgba(var(--fnos-hero-tint, 25,25,26), .74) 28%,
+      rgba(var(--fnos-hero-tint, 25,25,26), .38) 58%,
+      rgba(var(--fnos-hero-tint, 25,25,26), .08) 100%),
+    linear-gradient(0deg,
+      rgba(var(--fnos-hero-tint, 25,25,26), 1) 0%,
+      rgba(var(--fnos-hero-tint, 25,25,26), .94) 22%,
+      rgba(var(--fnos-hero-tint, 25,25,26), .76) 54%,
+      rgba(var(--fnos-hero-tint, 25,25,26), .18) 100%) !important;
+}
+/* Series \u4E00\u7EA7\u9875\u7684\u906E\u7F69\u662F**\u53E6\u4E00\u4E2A\u7C7B\u540D**\uFF1A.gradient\uFF08\u7EC4\u4EF6 Zse \u6E32\u67D3\u7684
+   div.gradient.absolute.bottom-0.left-0.h-[45%].w-full\uFF09\u3002\u4E09\u70B9\u90FD\u4E0E\u4E0A\u9762\u90A3\u6761\u4E0D\u540C \u2014\u2014
+   \u7C7B\u540D\u4E0D\u540C\u3001\u53EA\u6709\u4E00\u5C42\u6E10\u53D8\uFF08\u4E0D\u662F\u4E24\u5C42\uFF09\u3001\u51E0\u4F55\u662F\u8D34\u5E95 45% \u9AD8\uFF08\u4E0D\u662F size-full \u6574\u5757 hero\uFF09
+   \u2192 \u5FC5\u987B\u5355\u72EC\u4E00\u6761\u89C4\u5219\uFF0C\u4E0A\u9762\u90A3\u6761\u5BF9\u5B83\u96F6\u547D\u4E2D\u3002
+   \u8272\u6807\u4F4D\u7F6E\u4E0E alpha \u5F62\u72B6\u7167\u6284\u98DE\u725B\u539F\u751F CSS \u539F\u6587\u4E00\u5B57\u4E0D\u6539\uFF1A
+     .gradient{background:linear-gradient(0deg, rgba(var(--semi-grey-1),1) 0%, 1 18%, .92 42%, .64 72%, 0 100%)}
+   \u53EA\u628A var(--semi-grey-1) \u6362\u6210 tint\u3002--semi-grey-1 \u5728 hero \u5B50\u6811\u91CC\u6052\u89E3\u6790\u4E3A 25,25,26
+   \uFF08.semi-always-dark \u5F3A\u5236\u6697\u8272 token\uFF0C\u6D45\u8272\u4E3B\u9898\u4E0B\u4E5F\u662F\uFF0Clc-990 \u6D3B\u4F53\u5B9E\u6D4B\u5DF2\u8BC1\uFF09\u2192 fallback \u503C\u4E00\u81F4\u3002
+   \u6807\u9898\u843D\u70B9\u5DF2\u6838\u7B97\uFF1A\u6807\u9898\u5757\u5728 bottom-[30px]\uFF08logo h-84 + gap-30 + h2 text-60\uFF09\uFF0C
+   \u6362\u7B97\u5230\u8FD9\u6761 252px \u9AD8\u7684\u6E10\u53D8\u91CC\uFF0Ch2 \u5904\u4E8E alpha .92~1 \u7684\u533A\u6BB5\uFF1Btint \u7684 HSL \u4EAE\u5EA6\u9501\u5728 L<=0.20
+   \u2192 \u767D\u6807\u9898\u5BF9\u6BD4\u5EA6 >=8.9\uFF0C\u4E0E lc-990 \u5BF9 Season \u9875\u6807\u5B9A\u7684 8.92 \u540C\u6863\u3002
+   \u26A0 \u7C7B\u540D\u9009\u62E9\u5668 .gradient \u5FC5\u987B\u7559\u5728 ${HERO} \u540E\u4EE3\u4F4D\u7F6E\uFF1A\u5B83\u592A\u901A\u7528\uFF0C\u8131\u79BB hero \u4F5C\u7528\u57DF\u4F1A\u8BEF\u4F24\u522B\u5904\u3002
+   \u26A0 \u7528 background-image \u8986\u76D6\u539F\u751F\u7684 background \u7B80\u5199\uFF08!important \u53EA\u538B\u7B80\u5199\u91CC\u7684 image \u5206\u91CF\uFF09\uFF0C
+     \u4E0E\u4E0A\u9762\u90A3\u6761 .gradient-for-full \u7684\u5199\u6CD5\u4E00\u81F4\uFF0C\u90A3\u6761\u5DF2\u6D3B\u4F53\u5B9E\u6D4B\u751F\u6548\u3002 */
+body.fnos-beautify ${HERO} .gradient{
+  background-image:linear-gradient(0deg,
+    rgba(var(--fnos-hero-tint, 25,25,26), 1) 0%,
+    rgba(var(--fnos-hero-tint, 25,25,26), 1) 18%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .92) 42%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .64) 72%,
+    rgba(var(--fnos-hero-tint, 25,25,26), 0) 100%) !important;
+}
+
+/* ===== M. \u7A97\u53E3\u6807\u9898\u680F(32px \u5B89\u5168\u533A)\u8DDF\u968F\u5C01\u9762\u53D6\u8272\uFF08lc-992\uFF09=====
+   \u8BC9\u6C42(\u7528\u6237\u539F\u8BDD)\uFF1A\u300C\u6574\u4E2A\u8F6F\u4EF6\u9876\u90E8\u7684\u63A7\u4EF6\u6837\u5F0F\u8DDF\u968F\u53D6\u8272\uFF0C\u4E0D\u8981\u4E00\u76F4\u4E3A\u767D\u8272\u300D\uFF0C\u5E76\u9644\u622A\u56FE\u6307\u660E\u5BF9\u8C61\u662F
+   Electron \u53F3\u4E0A\u89D2 min/max/close \u63A7\u5236\u680F(titlebar.ts \u6CE8\u5165\u7684 #custom-titlebar\uFF0Cy=0..31)\u3002
+
+   \u300C\u4E00\u76F4\u4E3A\u767D\u8272\u300D\u662F\u91CF\u5F97\u51FA\u6765\u7684\uFF0C\u800C\u4E14\u6BD4\u7528\u6237\u63CF\u8FF0\u7684\u66F4\u4E25\u91CD\uFF1A
+   \xB7 titlebar.ts \u65E7\u7248\u628A\u6761\u7684 background **\u65E0\u6761\u4EF6**\u5199\u6B7B transparent(\u6C89\u6D78/\u975E\u6C89\u6D78\u4E24\u6001\u90FD\u4E00\u6837)\uFF0C
+     \u4E8E\u662F\u8FD9 32px \u900F\u51FA\u6765\u7684\u662F\u4E3B\u8FDB\u7A0B ACRYLIC_CSS \u786C\u7F16\u7801\u7684\u8FD1\u767D\u4E9A\u514B\u529B rgba(250,244,250,.68)
+     + blur(30px)(mainwin.ts:134\uFF0C**\u4E0D\u5206\u4E3B\u9898**)\uFF0C\u518D\u53E0 G \u6BB5 __scrim \u7684 --fnos-scrim-top
+     (\u6D45\u8272 rgba(250,250,252,.62)) \u2014\u2014 \u4E24\u5C42\u90FD\u662F\u767D\u7684\u3002B \u6BB5\u53EA\u6E05\u98DE\u725B\u81EA\u5DF1\u7684 bg-1\uFF0C\u4ECE\u6765\u6CA1\u78B0\u8FC7\u8FD9\u5C42\u3002
+   \xB7 \u800C\u65E7\u7248 setImmersive \u53C8\u628A\u56FE\u6807\u5199\u6B7B #ffffff \u2192 \u767D\u56FE\u6807\u538B\u5728\u8FD1\u767D\u4E9A\u514B\u529B\u4E0A\u5B9E\u6D4B\u5BF9\u6BD4\u5EA6 **1.02**\uFF0C
+     \u5373\u4E09\u4E2A\u7A97\u53E3\u63A7\u4EF6\u5728\u8BE6\u60C5\u9875\u5B9E\u9645\u4E0A\u662F\u770B\u4E0D\u89C1\u7684\u3002
+   \xB7 \u53E6\u6709\u4E00\u5904\u771F bug\uFF1Atitlebar.ts \u79C1\u6709\u7684 isDetailPage() \u663E\u5F0F\u6392\u9664 /season/\uFF0C\u800C detail/glass.ts
+     \u7684\u540C\u540D\u51FD\u6570\u5305\u542B\u5B83 \u2192 season \u9875(\u672C\u6BB5\u4E3B\u6218\u573A)\u7F8E\u5316\u5DF2\u5957\u7528\u3001L \u6BB5 tint \u73BB\u7483\u6761\u4ECE y=32 \u94FA\u8D77\uFF0C
+     \u6807\u9898\u680F\u5374\u8D70\u975E\u6C89\u6D78\u5206\u652F\uFF0C\u767D\u6761\u6B63\u597D\u538B\u5728\u6DF1\u8272\u73BB\u7483\u6B63\u4E0A\u65B9\uFF0C\u5B9E\u6D4B\u63A5\u7F1D **9.8232**\u3002
+
+   \u4FEE\u6CD5(\u65B9\u6848 C\uFF1B12 \u79CD\u73AF\u5883 \xD7 6 \u4E2A\u5019\u9009\u626B\u53C2\u540E\u9009\u5B9A)\uFF1A\u6807\u9898\u680F\u94FA**\u7EAF tint**(alpha 1)\uFF0C
+   L \u6BB5\u6761\u9996\u884C alpha \u540C\u6B65\u62AC\u5230 1 \u2192 y=31 \u4E0E y=32 \u5BF9\u4EFB\u610F x \u6052\u7B49\uFF0C\u63A5\u7F1D **1.0000**\u3002
+   \u8FD9\u662F\u552F\u4E00\u7CBE\u786E\u89E3\uFF1A\u8981\u8BA9\u4E24\u884C\u6052\u7B49\uFF0C\u5C31\u5FC5\u987B\u8BA9\u4E24\u4FA7\u90FD\u4E0D\u4F9D\u8D56\u80CC\u540E\u7684\u50CF\u7D20\uFF1B\u4EFB\u4F55\u4E00\u4FA7 <1 \u90FD\u4F1A\u968F\u5C01\u9762
+   \u660E\u6697\u6F02\u79FB(\u5B9E\u6D4B .98 \u2192 1.0306\u3001.96 \u2192 1.0623\uFF0C\u5747\u8D85 1.03 \u7684\u5927\u5E73\u5766\u8272\u5757 Weber \u9608)\u3002
+   \u767D\u56FE\u6807\u5BF9\u6BD4\u5EA6 **11.06~11.32**(1.02x \u843D\u5DEE\uFF0C\u5168\u90E8\u9AD8\u4E8E AAA 7)\u3002
+
+   \u26A0 \u4E09\u4E2A\u5B9E\u73B0\u8981\u70B9\uFF0C\u6539\u52A8\u524D\u52A1\u5FC5\u8BFB\uFF1A
+   \u2460 \u5E95\u8272\u753B\u5728 ::before\uFF0C\u4E0D\u753B\u5728\u6761\u672C\u4F53\uFF1AglassUI.ts \u7684
+      html[data-fntv-glass] .fnos-tv-page body > div{background:transparent!important}
+      \u76F4\u63A5\u547D\u4E2D #custom-titlebar(\u5B83\u5C31\u662F body \u7684\u76F4\u63A5\u5B50 div)\uFF0C\u73BB\u7483\u6A21\u5F0F\u4E0B\u4F1A\u628A\u672C\u4F53\u5237\u6210\u900F\u660E\u3002
+      \u4F2A\u5143\u7D20\u4E0D\u88AB\u90A3\u6761\u89C4\u5219\u5339\u914D \u2014\u2014 \u4E0E glassUI.ts:142 \u81EA\u5DF1\u8BB0\u7684 lc-526~530 \u6559\u8BAD\u4E00\u81F4\uFF1A
+      \u8BA9\u9009\u62E9\u5668\u6839\u672C\u4E0D\u5339\u914D\uFF0C\u800C\u4E0D\u662F\u5199\u66F4\u9AD8\u7279\u5F02\u6027\u7684 !important \u53BB\u5BF9\u6297\u3002
+   \u2461 \u9009\u62E9\u5668\u951A data-fntv-tb(titlebar.ts \u6253\u7684\u6807\u8BB0)\u800C\u4E0D\u662F\u951A id\uFF1A\u539F\u751F\u9875\u5206\u652F\u590D\u7528\u540C\u4E00\u4E2A
+      #custom-titlebar\uFF0C\u5F62\u6001\u5374\u662F\u53F3\u4E0A\u89D2\u6D6E\u52A8\u5706\u5F62\u6309\u94AE\u7EC4(\u81EA\u5E26\u6DF1\u8272\u78E8\u7802\u5E95)\u3002injectTitleBar \u53EA\u5728
+      OnReady \u8DD1\u4E00\u6B21\u4E14\u88AB getElementById \u6321\u4F4F\uFF0C\u6240\u4EE5\u300C\u5F00\u673A\u505C\u5728\u767B\u5F55\u9875 \u2192 \u767B\u5F55\u540E\u8FDB TV \u9875\u300D\u8FD9\u6761\u8DEF\u5F84\u4E0A
+      \u6761\u6839\u672C\u4E0D\u4F1A\u518D\u5EFA\uFF0C\u53EA\u8BA4 id \u5C31\u4F1A\u628A\u6D6E\u52A8\u6309\u94AE\u7EC4\u5F53\u6761\u6765\u5237\u3002
+   \u2462 **\u523B\u610F\u4E0D\u52A0 backdrop-filter**\uFF1A\u5E95\u8272\u5DF2\u662F alpha 1 \u7684\u7EAF tint\uFF0C\u6A21\u7CCA\u8D21\u732E\u6052\u4E3A\u96F6\uFF0C\u52A0\u4E86\u53EA\u662F\u767D\u70E7 GPU\u3002
+      \u5168\u6587\u6863 backdrop-filter \u4ECD\u6070\u597D 1 \u5C42(L \u6BB5\u90A3\u6761)\uFF0C\u5B88\u4F4F\u6587\u4EF6\u5934\u7B2C 7 \u6761\u7684\u4F4E GPU \u7EA6\u675F\u3002
+
+   \u56FE\u6807\u8272\u4E0E hover \u4E0D\u5728\u8FD9\u91CC\u5199\u6B7B\u989C\u8272\uFF0C\u800C\u662F\u91CD\u5B9A\u4E49 theme.ts \u90A3\u6279 --fnos-titlebar-* \u53D8\u91CF\uFF1A
+   \u53D8\u91CF\u58F0\u660E\u5728 body \u4E0A\u3001\u6309\u7EE7\u627F\u5C31\u8FD1\u751F\u6548\uFF0C\u538B\u8FC7 theme.ts \u58F0\u660E\u5728 :root / html.dark \u4E0A\u7684\u540C\u540D\u53D8\u91CF\uFF0C
+   titlebar.ts \u6CE8\u5165\u7684\u6837\u5F0F\u8868\u6D88\u8D39\u540C\u540D\u53D8\u91CF\u5373\u81EA\u52A8\u8DDF\u968F \u2192 \u96F6\u7279\u5F02\u6027\u5BF9\u6297\u3001\u660E\u6697\u53CC\u4E3B\u9898\u540C\u4E00\u6761\u89C4\u5219\u3002
+   tint \u6052\u4E3A\u6697\u8272(heroTint.ts \u628A HSL \u4EAE\u5EA6\u4E0A\u9650\u9501\u5728 L<=0.20)\uFF0C\u6545\u56FE\u6807\u6052\u767D\u3001hover \u6052\u767D\u7CFB\uFF0C\u4E0D\u5206\u4E3B\u9898\u3002
+   \u53D6\u8272\u5931\u8D25\u65F6 --fnos-hero-tint \u4E0D\u5B58\u5728 \u2192 \u7CBE\u786E\u56DE\u843D 25,25,26\uFF0C\u4E0E L \u6BB5\u7684\u964D\u7EA7\u8DEF\u5F84\u5B8C\u5168\u4E00\u81F4\u3002 */
+body.fnos-beautify{
+  --fnos-titlebar-icon:#fff;
+  --fnos-titlebar-hover-minmax:rgba(255,255,255,.14);
+  --fnos-titlebar-hover-close-bg:rgba(232,17,35,.55);
+  --fnos-titlebar-hover-close-icon:#fff;
+}
+body.fnos-beautify #custom-titlebar[data-fntv-tb]::before{
+  /* [lc-1027] **\u76F4\u89D2** + \u5916\u6269 2px\uFF1A\u767D\u5F27\u6839\u56E0 = \u672C\u6761\u81EA\u5E26\u7684 16px \u5706\u89D2\u4E0E\u7A97\u53E3\u5706\u89D2\u88C1\u526A\u540C\u5FC3
+     \u91CD\u53E0\u3002\u6D3B\u4F53\u5B9E\u8BC1\uFF08\u7EA2\u6761\u67D3\u8272\u5B9E\u9A8C\uFF09\uFF1Amainwin \u2460 \u7684 html overflow:hidden+border-radius:
+     16px \u8FDE **fixed \u540E\u4EE3**\u4E00\u8D77\u6309 r16 \u5706\u89D2\u88C1\uFF08\u7ED9\u672C\u6761 radius 18 \u4E5F\u88AB\u88C1\u56DE 16 \u5F27\u7EBF\uFF09\uFF0C
+     \u4E8E\u662F\u5F27\u7EBF\u5904\u6709\u4E24\u6761 AA \u6E10\u53D8\u5E26\u53E0\u52A0\u2014\u2014\u672C\u6761\u6E10\u5F31\u5904\u900F\u51FA\u5176\u4E0B\u7C89\u767D\u4E9A\u514B\u529B/L \u6BB5\u91C7\u6837\u7684
+     \u6D45\u8272 \u2192 \u7528\u6237\u62A5\u969C\u7684\u300C\u53F3\u4E0A\u89D2\u5706\u89D2\u767D\u7EBF\u300D\u3002
+     \u672C\u6761\u6539\u76F4\u89D2\u540E\u8986\u76D6\u5728\u7A97\u53E3\u5185\u5904\u5904=1\uFF0C\u5F27\u7EBF\u4E0A\u53EA\u5269 html \u88C1\u526A\u8FD9\u4E00\u6B21\u53CD\u8D70\u6837\uFF08\u6DF1 tint \u5BF9
+     \u900F\u660E\u684C\u9762\uFF09\u2192 \u65E0\u7F1D\u3002\u5916\u6269 2px \u9632\u53F3/\u4E0A\u8FB9\u7F18\u4E9A\u50CF\u7D20\u7F1D\u9699\uFF1B\u5E95\u8FB9\u591A\u51FA\u7684 2px \u843D\u5728 L \u6761
+     \u540C\u8272 tint \u533A\uFF08M/L \u63A5\u7F1D\u672C\u5C31\u8981\u6C42\u6052\u7B49\uFF09\uFF0C\u4E0D\u53EF\u89C1\u3002
+     \u26A0 \u524D\u7F6E\u4FEE\u590D\uFF08mainwin \u2461\uFF09\uFF1Abody \u539F\u6302\u7684 backdrop-filter \u2260 none \u4F1A\u628A body \u53D8\u6210
+       fixed \u540E\u4EE3\u7684\u5305\u542B\u5757\uFF0Cbody \u7684\u5706\u89D2 overflow \u540C\u6837\u88C1\u672C\u6761\u2014\u2014\u5DF2\u79FB\u9664\uFF08\u8BE5 blur \u5728
+       \u900F\u660E\u7A97\u53E3\u91CC\u672C\u5C31\u662F\u7A7A\u8F6C\uFF1Abody \u80CC\u540E\u6CA1\u6709\u4EFB\u4F55\u5DF2\u753B\u5185\u5BB9\uFF09\u3002 */
+  content:''; position:absolute; inset:-2px; pointer-events:none;
+  background:rgba(var(--fnos-hero-tint, 25,25,26), 1);
+}
+
+/* ===== N. Series \u4E00\u7EA7\u9875\uFF1A\u6EE1\u5C4F\u6D77\u62A5 + \u5DE6\u4E0B\u89D2\u67D4\u5149\u73BB\u7483\u805A\u7C07\uFF08lc-1010\uFF0C\u7528\u6237\u6307\u5B9A\u65B9\u5411\uFF09=====
+   \u8BC9\u6C42(\u7528\u6237\u539F\u8BDD)\uFF1A\u300C\u6574\u4E2A\u6A2A\u5C4F\u6D77\u62A5\u5360\u6EE1\u5168\u5C4F\uFF0C\u5267\u96C6\u4FE1\u606F\u9009\u62E9\u5B63\u6570\u7B49\u4E1C\u897F\u90FD\u653E\u5230\u5DE6\u4E0B\u89D2\u4F60\u6392\u5217\u4E00\u4E0B\uFF0C
+   \u6574\u4F53\u6DFB\u52A0\u4E0A\u9AD8\u7EA7\u6750\u8D28\uFF0C\u67D4\u5149\u73BB\u7483\u6837\u5F0F\u3002\u98CE\u683C\u5C3D\u91CF\u8D8B\u5411\u4E8E\u82F9\u679C\u8BBE\u8BA1\u7406\u5FF5\u300D\uFF0C\u540E\u8FFD\u52A0\uFF1A
+   \u300C\u73BB\u7483\u8D28\u611F\u4F46\u662F\u4E0D\u8981\u6709\u7EBF\u6761\u611F\uFF0C\u5DE6\u4E0B\u89D2\u5404\u5BB9\u5668\u4E0D\u8981\u6709\u5B9E\u5FC3\u989C\u8272\uFF0C\u8981\u534A\u900F\u7684\u73BB\u7483\u6548\u679C\u300D\uFF0C\u518D\u8FFD\u52A0\uFF1A
+   \u300C\u5DE6\u4E0B\u89D2\u5185\u5BB9\u533A\u5E95\u8272\u8FD8\u662F\u5B9E\u5FC3\u7684\uFF0C\u8981\u534A\u900F\u6548\u679C\u53EF\u4EE5\u770B\u5230\u6700\u5E95\u4E0B\u7684\u6A2A\u5C4F\u6D77\u62A5\u56FE\uFF1B\u9876\u90E8\u6709\u4FA7\u8FB9\u680F\u6309\u94AE\u7684
+   \u4E00\u6A2A\u5185\u5BB9\u680F\u6709\u6846\u7EBF\u6846\u7684\u611F\u89C9\uFF0C\u505A\u6210\u5168\u900F\u7684\u300D\u3002
+
+   \u5E03\u5C40\u539F\u7406\uFF08\u4E3A\u4EC0\u4E48\u5FC5\u987B JS \u914D\u5408\u4E00\u4E2A\u53D8\u91CF\uFF09\uFF1A
+   \u7528\u6237\u8981\u7684\u662F\u300C\u6D77\u62A5\u6EE1\u5C4F + \u4FE1\u606F\u60AC\u6D6E\u5176\u4E0A\u300D\uFF0C\u5373\u805A\u7C07\u5FC5\u987B**\u8131\u79BB\u6587\u6863\u6D41**\u60AC\u6D6E\u5728 hero \u4E0A\uFF0C
+   \u800C\u805A\u7C07\u81EA\u4E0B\u800C\u4E0A\u662F \u9762\u677F(\u9AD8\u5EA6\u968F\u5185\u5BB9) \u2192 \u6309\u94AE\u884C \u2192 logo \u2014\u2014 \u540E\u4E24\u8005\u8981\u8D34\u7740\u9762\u677F\u9876\u6CBF\u6392\uFF0C
+   \u7EAF CSS \u65E0\u6CD5\u8BA9\u300C\u4E0A\u65B9\u5143\u7D20\u300D\u8D34\u4F4F\u300C\u4E0B\u65B9\u672A\u77E5\u9AD8\u5EA6\u5143\u7D20\u300D\u7684\u9876\u3002\u6545 tmdbCard.ts \u5728\u7CFB\u5217\u9875 settle \u65F6
+   \u5B9E\u6D4B\u9762\u677F\u9AD8\u5EA6\u5199 body \u7EA7 --fnos-cluster-h\uFF08\u9762\u677F\u9AD8 + bottom \u504F\u79FB\uFF0CgetComputedStyle \u8BFB\uFF0C
+   \u4E0D\u91CD\u590D\u5E38\u91CF\uFF09\uFF0C\u6309\u94AE\u884C/logo \u7684 bottom \u90FD\u7528 var() \u6302\u5728\u5B83\u4E0A\u9762\uFF1B\u7B80\u4ECB\u56DE\u586B\u3001TMDB \u5361\u6302\u8F7D\u3001
+   \u7A97\u53E3 resize \u65F6\u91CD\u6D4B\u3002\u53D8\u91CF\u7F3A\u7701\u56DE\u843D 360px\uFF08\u9762\u677F\u5E38\u89C1\u9AD8\u5EA6\uFF09\uFF0CJS \u672A\u8DD1\u65F6\u5E03\u5C40\u4ECD\u6210\u7ACB\u3002
+
+   \u60AC\u6D6E\u5B9E\u73B0\uFF1Acol \u52A0 position:relative + min-height:100vh-32px\uFF1B\u6309\u94AE\u884C absolute\uFF08\u951A wrapper\uFF0C
+   wrapper \u56E0\u6309\u94AE\u884C\u8131\u6D41\u800C\u6070\u7B49\u4E8E hero \u9AD8\u5EA6 = \u6EE1\u5C4F\uFF09\uFF1B\u9762\u677F absolute\uFF08\u951A col\uFF0Cbottom:18px\uFF09\u3002
+   \u4E09\u8005\u5168\u90E8\u8131\u6D41/\u60AC\u6D6E \u2192 \u9875\u9762\u5185\u5BB9\u53EA\u5269\u6EE1\u5C4F hero \u2192 \u6070\u597D\u4E00\u5C4F\u3001\u65E0\u6EDA\u52A8\u6761\u3002
+   \u26A0 \u523B\u610F\u7528 absolute \u800C\u975E fixed\uFF1ApageAnim \u7684\u9875\u9762\u8FC7\u6E21\u4F1A\u5BF9\u89C6\u56FE\u7956\u5148\u52A0 transform\uFF0C
+   fixed \u7956\u5148\u5E26 transform \u65F6\u4F1A\u9000\u5316\u4E3A\u76F8\u5BF9\u8BE5\u7956\u5148\u5B9A\u4F4D\uFF08\u4E14\u89C6\u53E3\u8BED\u4E49\u5931\u6548\uFF09\uFF0Cabsolute \u951A\u5B9A col \u4E0D\u53D7\u5F71\u54CD\u3002
+
+   \u67D4\u5149\u73BB\u7483\uFF08\u7528\u6237\u70B9\u540D\uFF1A\u65E0\u7EBF\u6761\u611F\u3001\u65E0\u5B9E\u5FC3\u3001\u534A\u900F\uFF09\uFF1A
+   \xB7 \u6750\u8D28 = \u767D\u8272\u9AD8\u5149\u6E10\u53D8(13%\u21921.5% \u5BF9\u89D2) + tint \u534A\u900F\u5E95(.32) + blur(40px) saturate(160%)\uFF0C
+     tint \u7528 --fnos-hero-tint\uFF08\u5C01\u9762\u53D6\u8272\uFF0CheroTint.ts\uFF09\u2192 \u73BB\u7483\u6C38\u8FDC\u548C\u6D77\u62A5\u540C\u8272\u7CFB\uFF08Apple vibrancy \u601D\u8DEF\uFF09\u3002
+   \xB7 \u65E0\u8FB9\u6846\uFF1Apanel/circle/\u5B63\u5361\u5168\u90E8 border:none\uFF1B\u5361\u5185 I \u6BB5\u5206\u8282\u53D1\u4E1D\u7EBF\u5728\u672C\u9875\u53BB\u9664\uFF08N8\uFF09\uFF1B
+     inset \u9AD8\u5149\u4E5F\u7701\u7565\uFF081px \u5185\u63CF\u8FB9\u5C31\u662F\u300C\u7EBF\u6761\u611F\u300D\uFF09\u3002
+   \xB7 \u9762\u677F\u4F5C\u7528\u57DF\u5185\u628A Semi \u6587\u672C\u53D8\u91CF\u91CD\u5B9A\u4E49\u4E3A\u6D45\u8272\uFF08\u6750\u8D28\u6052\u6697\uFF0CheroTint \u9501 L<=0.20\uFF09\u2192
+     I \u6BB5\u5361\u7247\u6837\u5F0F\u96F6\u6539\u52A8\u81EA\u52A8\u83B7\u5F97\u53EF\u8BFB\u7684\u6D45\u8272\u6587\u5B57\uFF0C\u660E\u6697\u4E3B\u9898\u540C\u4E00\u6761\u89C4\u5219\u3002
+
+   \u4E00\u5C4F\u8BED\u4E49\uFF1A\u539F\u751F\u9875\u6B64\u65F6\u4E5F\u786E\u5B9E\u53EA\u6709 hero+\u9762\u677F\u4E24\u5C42\u5185\u5BB9\uFF08\u5916\u94FE\u884C\u9690\u85CF\uFF0C\u89C1 N7\uFF09\uFF0C\u6EE1\u5C4F\u540E\u65E0\u5185\u5BB9\u88AB\u88C1\u3002 */
+/* N1. col \u6EE1\u5C4F\u5BB9\u5668 */
+body.fnos-series-panel div[class*="mb-[46px]"][class*="flex flex-col gap-3"]:has(> div > .trim-mc__details--key-version){
+  position:relative !important;
+  min-height:calc(100vh - 32px) !important;
+  margin-bottom:0 !important;
+}
+/* N2. hero \u6EE1\u5C4F\uFF08\u8986\u76D6 .trim-mc__details--key-version \u7C7B\u81EA\u5E26\u7684 560/576/470/48vh/700 \u5206\u6863\uFF09 */
+body.fnos-series-panel .trim-mc__details--key-version{
+  height:calc(100vh - 32px) !important;
+  min-height:0 !important; max-height:none !important;
+}
+/* \u5E95\u90E8\u6E10\u53D8\u906E\u7F69\u91CD\u505A\uFF08\u7528\u6237\u7B2C\u4E8C\u8F6E\u53CD\u9988\uFF1A\u300C\u534A\u900F\u6548\u679C\u53EF\u4EE5\u770B\u5230\u6700\u5E95\u4E0B\u7684\u6A2A\u5C4F\u6D77\u62A5\u56FE\u300D+\u300C\u9876\u680F\u5168\u900F\u300D\uFF09\uFF1A
+   \u539F\u751F .gradient \u662F\u6574\u5E45\u8D34\u5E95\u6A2A\u5E26\uFF08alpha 1\u21920\uFF0CL \u6BB5\u7167\u6284\uFF09\uFF0C\u73BB\u7483\u540E\u9762\u5168\u662F\u88AB\u538B\u9ED1\u7684\u56FE \u2192 \u73BB\u7483\u53D1\u95F7\u50CF\u5B9E\u5FC3\u3002
+   \u6539\u4E3A 25deg \u5BF9\u89D2\u6E10\u9690\uFF1A\u53EA\u62A4\u5DE6\u4E0B\u89D2\u805A\u7C07\u6587\u5B57\u533A\uFF0C\u53F3\u4E0B/\u4E2D\u90E8\u7684\u6D77\u62A5\u5B8C\u5168\u900F\u51FA\u3002
+   \u26A0 \u7C7B\u540D\u5199\u4E24\u904D\uFF1AL \u6BB5\u540C\u9009\u62E9\u5668(0,4,0)\u5728\u672C\u6587\u4EF6\u66F4\u65E9\u5904\uFF0C\u8FD9\u91CC\u5FC5\u987B\u6253\u5E73\u540E\u9760\u6E90\u5E8F\u53D6\u80DC\u3002 */
+body.fnos-series-panel .trim-mc__details--key-version.trim-mc__details--key-version .gradient{
+  height:58% !important;
+  background-image:linear-gradient(25deg,
+    rgba(var(--fnos-hero-tint, 25,25,26), .62) 0%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .34) 30%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .10) 55%,
+    rgba(var(--fnos-hero-tint, 25,25,26), 0) 75%) !important;
+}
+/* \u906E\u7F69\u53D8\u8F7B\u540E\uFF0C\u60AC\u6D6E\u6587\u5B57\u9760\u6295\u5F71\u4FDD\u53EF\u8BFB\uFF08\u4E0D\u5F15\u5165\u65B0\u7684\u5E95\u8272/\u6846\uFF09\u3002
+   \u53CC\u5C42\u6295\u5F71\uFF1A\u5C0F\u534A\u5F84\u538B\u4EAE\u8FB9\u3001\u5927\u534A\u5F84\u515C\u4EAE\u533A\uFF08genre \u884C\u5728\u4EAE\u90E8\u6D77\u62A5\u4E0A\u5355\u5C42\u4E0D\u591F\uFF09\u3002 */
+body.fnos-series-panel ${SERIES_BTNROW} span{
+  text-shadow:0 1px 2px rgba(0,0,0,.6), 0 2px 18px rgba(0,0,0,.5) !important;
+}
+body.fnos-series-panel .trim-mc__details--key-version > [class*="inset-x-[46px]"] img{
+  filter:drop-shadow(0 2px 14px rgba(0,0,0,.45));
+}
+/* N2b. \u9876\u680F\u5168\u900F\uFF08\u7528\u6237\u7B2C\u4E8C\u8F6E\u53CD\u9988\uFF1A\u300C\u9876\u90E8\u6709\u4FA7\u8FB9\u680F\u6309\u94AE\u7684\u4E00\u6A2A\u5185\u5BB9\u680F\u6709\u6846\u7EBF\u6846\u7684\u611F\u89C9\u300D\uFF09\u3002
+   L \u6BB5\u7ED9\u9876\u680F ::before \u94FA\u4E86\u53D6\u8272\u73BB\u7483\u6761+\u6E10\u9690 mask\uFF0C\u5728\u6EE1\u5C4F\u6D77\u62A5\u4E0A\u8BFB\u4F5C\u4E00\u6761\u5E26\u4E0B\u8FB9\u7F18\u7684\u6697\u5E26\uFF1B
+   \u672C\u9875\u73BB\u7483\u9762\u677F\u5DF2\u627F\u8F7D\u5BF9\u6BD4\u5EA6\uFF0C\u9876\u680F\u6539\u4E3A\u5B8C\u5168\u900F\u660E\uFF0C\u56FE\u6807\u4FDD\u6301 K \u6BB5\u767D\u8272 + drop-shadow \u4FDD\u53EF\u8BFB\u3002 */
+body.fnos-series-panel div[class*="h-[80px]"][class*="top-0"]::before{
+  content:none !important;
+}
+body.fnos-series-panel div[class*="h-[80px]"][class*="top-0"] svg{
+  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
+}
+/* N2c [lc-1024] \u6807\u9898\u680F(\u6700\u9876 32px \u7A97\u53E3\u63A7\u5236\u6761)\u968F\u9876\u680F\u4E00\u5E76\u5168\u900F + \u6D77\u62A5\u9876\u6EE1\u7A97\u53E3\u3002
+   \u7528\u6237\u62A5\u969C\uFF1A\u300C\u6253\u5F00\u4E00\u7EA7\u8BE6\u60C5\u9875\u65F6\uFF0C\u6700\u9876\u4E0A\u7684\u63A7\u5236\u680F\u4E00\u6A2A\u6761\u989C\u8272\u4E0D\u5BF9\u5F88\u7A81\u5140\u300D\u3002
+   \u6839\u56E0\uFF1AM \u6BB5\u7ED9\u8BE6\u60C5\u9875\u6807\u9898\u680F\u94FA\u7684\u5B9E\u8272 tint \u6761\u662F\u4E3A\u4E8C\u7EA7\u9875\u8BBE\u8BA1\u7684 \u2014\u2014 \u5F7C\u5904 L \u6BB5\u9876\u680F\u73BB\u7483\u6761
+   \u9996\u884C alpha \u6070\u4E3A 1\uFF0Cy=31/32 \u4E24\u884C\u5BF9\u4EFB\u610F x \u6052\u7B49(\u63A5\u7F1D 1.0000)\uFF1B\u672C\u9875\u9876\u680F\u5DF2\u88AB N2b \u5168\u900F\uFF0C
+   M \u6761\u5B64\u60AC\u5728\u6EE1\u5C4F\u6D77\u62A5\u4E0A\u65B9\uFF0C\u6761\u8272(\u5C01\u9762\u53D6\u8272\u7684\u6697\u8272\u8C03)\u4E0E\u6D77\u62A5\u9876\u90E8\u50CF\u7D20\u65E0\u5173 \u2192 \u8BFB\u4F5C\u4E00\u6761\u5F02\u7269\u3002
+   \u82E5\u53EA\u6458\u6761\u4E0D\u8865\u56FE\uFF0Cy=0..31 \u9732\u7684\u662F body \u8FD1\u767D\u4E9A\u514B\u529B(\u975E\u73BB\u7483\u6001)/\u684C\u9762\xB7\u73AF\u5883\u5149\u5E95(\u73BB\u7483\u6001)\uFF0C
+   \u4F9D\u65E7\u662F\u4E00\u6761\u6A2A\u5E26\u3002\u2234 \u6458\u6761 + \u6D77\u62A5\u4E0A\u63D0 32px \u5403\u6EE1\u5B89\u5168\u533A(height 100vh + margin-top:-32px)\uFF0C
+   \u6761\u533A\u80CC\u540E\u5C31\u662F\u6D77\u62A5\u5EF6\u7EED\uFF0C\u6574\u7A97\u4E00\u5F20\u56FE\u771F\u6B63\u6EE1\u5C4F\uFF1B\u7A97\u53E3\u63A7\u5236\u952E\u6CBF\u7528 M \u6BB5\u767D\u8272\u56FE\u6807 +
+   N2b \u540C\u6B3E drop-shadow \u4FDD\u53EF\u8BFB(\u4E0E\u9876\u680F\u56FE\u6807\u540C\u5F85\u9047)\u3002
+   \u51E0\u4F55\u96F6\u4F4D\u79FB\u6838\u7B97\uFF1Abtn row/panel \u5168\u90E8 bottom \u951A\u5B9A wrapper/col \u5E95(y=100vh)\uFF0Chero \u8D1F margin
+   \u53EA\u8BA9\u5176\u53EF\u89C1\u9876\u8FB9\u4E0A\u79FB(wrapper \u9AD8 = hero margin box 100vh-32 \u4E0D\u53D8\uFF0Chero \u89C6\u89C9\u6EA2\u51FA wrapper \u9876
+   32px\uFF0Ccol/wrapper \u5747 overflow \u53EF\u89C1)\uFF0C\u60AC\u6D6E\u805A\u7C07\u4F4D\u7F6E\u4E00\u4E2A\u50CF\u7D20\u90FD\u4E0D\u52A8\u3002 */
+/* [lc-1030] \u6458\u6761\u9650\u5B9A**\u975E\u73BB\u7483\u6A21\u5F0F**\uFF1A\u73BB\u7483\u6A21\u5F0F\u4E0B\u4FDD\u7559 M \u6BB5\u81EA\u52A8\u53D6\u8272\u6761\u5E76\u78E8\u7802\u5316\uFF08P1\uFF0C\u7528\u6237\u8981\u6C42
+   \u300C\u6539\u6210\u81EA\u52A8\u53D6\u8272\u4FDD\u8BC1\u534F\u8C03\u6027\u300D\u2014\u2014\u88F8\u6D77\u62A5+\u767D\u7A97\u63A7\u952E\u5728\u6D45\u8272\u6D77\u62A5\u4E0A\u4E0D\u534F\u8C03\uFF09\uFF0C\u89C1\u6587\u4EF6\u672B P \u6BB5\u3002 */
+html:not([data-fntv-glass]) body.fnos-series-panel #custom-titlebar[data-fntv-tb]::before{
+  content:none !important;
+}
+body.fnos-series-panel .trim-mc__details--key-version{
+  height:100vh !important;
+  margin-top:-32px !important;
+}
+body.fnos-series-panel #custom-titlebar[data-fntv-tb] button svg{
+  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
+}
+/* N3. logo \u4E0A\u79FB\u5230\u6309\u94AE\u884C\u4E0A\u65B9\uFF0818 \u9762\u677F\u5E95\u8DDD + 12 \u95F4\u9699 + 54 \u6309\u94AE\u884C + 16 \u95F4\u9699 = \u6302\u5728 var \u4E0A\u65B9 100px\uFF09 */
+body.fnos-series-panel .trim-mc__details--key-version > [class*="inset-x-[46px]"][class*="bottom-[30px]"]{
+  bottom:calc(var(--fnos-cluster-h, 360px) + 100px) !important;
+}
+/* N4. \u6309\u94AE\u884C\u60AC\u6D6E\uFF08wrapper \u8131\u6D41\u540E\u9AD8\u5EA6=hero\uFF0Cbottom:0 \u5373\u89C6\u53E3\u5E95\uFF09 */
+body.fnos-series-panel ${SERIES_BTNROW}{
+  position:absolute !important;
+  bottom:calc(var(--fnos-cluster-h, 360px) + 30px) !important;
+  left:26px !important;
+  width:min(1020px, calc(100vw - 52px)) !important;
+  padding:0 20px !important; margin:0 !important;
+  box-sizing:border-box !important; z-index:3 !important;
+}
+/* \u6309\u94AE\u884C\u6052\u6697\u80CC\u666F\uFF08\u6D77\u62A5\u5E95\u90E8\u6E10\u53D8\uFF09\u2192 \u6587\u5B57/\u56FE\u6807\u7EDF\u4E00\u6D45\u8272\uFF08svg fill=currentColor \u5168\u94FE\u7EE7\u627F\uFF09 */
+body.fnos-series-panel ${SERIES_BTNROW} span{ color:rgba(255,255,255,.78) !important; }
+body.fnos-series-panel ${SERIES_BTNROW} svg{ color:rgba(255,255,255,.92) !important; }
+/* \u5706\u5F62\u6309\u94AE\uFF08\u6536\u85CF/\u5DF2\u770B/\u66F4\u591A\uFF09\uFF1A\u534A\u900F\u73BB\u7483\u3001\u65E0\u8FB9\u6846\uFF08\u539F\u751F border+fill-0 \u5B9E\u5FC3\u5E95\u4E00\u5E76\u53BB\u6389\uFF09 */
+body.fnos-series-panel ${SERIES_BTNROW} div[class*="size-[54px]"]{
+  background:rgba(255,255,255,.10) !important;
+  backdrop-filter:blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(150%) !important;
+  border:none !important;
+}
+body.fnos-series-panel ${SERIES_BTNROW} div[class*="size-[54px]"]:hover{
+  background:rgba(255,255,255,.18) !important;
+}
+/* N5. \u4FE1\u606F\u9762\u677F\uFF1A\u534A\u900F\u67D4\u5149\u73BB\u7483\uFF0C\u65E0\u8FB9\u6846\u3002
+   [lc-1010] \u4E8C\u8F6E\u964D\u5E95\u8272\uFF1Atint .32\u2192.16\u3001blur 40\u219230\u3002
+   [lc-1021] \u7528\u6237\u7B2C\u4E09\u8F6E\u53CD\u9988\u300C\u6574\u4E2A\u5DE6\u4E0B\u9762\u677F\u900F\u660E\u518D\u900F\u4E00\u70B9\u300D\uFF1Atint .16\u2192.09\u3001\u767D\u8272\u9AD8\u5149\u68AF\u5EA6\u518D\u964D\u3001
+   blur 30\u219226\u3001brightness .78\u2192.86\uFF08\u538B\u6697\u51CF\u8F7B=\u66F4\u900F\uFF0C\u53EF\u8BFB\u6027\u4ECD\u7531 blur+saturate+\u6D45\u8272\u6587\u5B57\u6295\u5F71\u627F\u62C5\uFF09\u3002
+   \u65E0\u5361\u65F6 600px\uFF08\u6B63\u597D\u5305\u4F4F\u5DE6\u5217\uFF09\uFF0C\u6709\u5361\u65F6 1020px\uFF08:has \u95E8\u63A7\uFF0C\u5361\u6302\u8F7D/\u64A4\u9664\u81EA\u52A8\u5207\u6362\uFF09\u3002 */
+body.fnos-series-panel ${SERIES_PANEL}{
+  position:absolute !important;
+  bottom:18px !important; left:26px !important;
+  width:min(600px, calc(100vw - 52px)) !important;
+  max-height:calc(100vh - 32px - 210px) !important;
+  padding:18px 20px !important;
+  display:block !important;
+  background:linear-gradient(160deg,
+    rgba(255,255,255,.05) 0%,
+    rgba(255,255,255,.014) 45%,
+    rgba(255,255,255,.005) 100%),
+    rgba(var(--fnos-hero-tint, 25,25,26), .09) !important;
+  /* brightness \u538B\u6697\u73BB\u7483\u540E\u7684\u753B\u9762\u800C\u4E0D\u662F\u53E0\u4E0D\u900F\u660E\u8272\uFF08Apple dark vibrancy \u624B\u6CD5\uFF09\u2014\u2014
+     \u6D77\u62A5\u7ED3\u6784\u900F\u73BB\u7483\u53EF\u89C1\uFF0C\u767D\u5B57\u5728\u4EAE\u90E8\u6D77\u62A5\u4E0A\u4ECD\u6709\u5BF9\u6BD4\uFF08\u7528\u6237\u8981\u6C42\u534A\u900F\u89C1\u5E95\uFF0C\u7981\u518D\u52A0 tint\uFF09 */
+  backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
+  -webkit-backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
+  border:none !important;
+  box-shadow:0 18px 54px rgba(0,0,0,.32) !important;
+  border-radius:22px !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  z-index:2 !important;
+  animation:fnos-series-panel-in .5s cubic-bezier(.22,.61,.36,1) both;
+}
+body.fnos-series-panel ${SERIES_PANEL}:has(> .fnos-beautify-card){
+  width:min(1020px, calc(100vw - 52px)) !important;
+}
+@keyframes fnos-series-panel-in{
+  from{ opacity:0; transform:translateY(14px); }
+  to{ opacity:1; transform:none; }
+}
+/* \u9762\u677F\u5185\u6052\u6697\u6750\u8D28 \u2192 Semi \u6587\u672C\u53D8\u91CF\u91CD\u5B9A\u4E49\u4E3A\u6D45\u8272\uFF08I \u6BB5\u5361\u6837\u5F0F\u96F6\u6539\u52A8\u81EA\u52A8\u8DDF\u968F\uFF09 */
+body.fnos-series-panel ${SERIES_PANEL}{
+  --semi-color-text-0:rgba(255,255,255,.94);
+  --semi-color-text-1:rgba(255,255,255,.72);
+  --semi-color-text-2:rgba(255,255,255,.58);
+  --semi-color-text-3:rgba(255,255,255,.42);
+}
+/* N6. \u7B80\u4ECB\uFF1A\u5168\u6587\u5C55\u793A\uFF08tmdbCard.ts \u4ECE React fiber props.intro \u56DE\u586B\uFF0C\u539F\u751F\u88AB\u622A\u6210 1 \u884C\u4E14\u300C\u66F4\u591A\u300D\u70B9\u51FB\u65E0\u6548\uFF09\u3002
+   \u56DE\u586B\u6210\u529F\u540E\u6253 .fnos-intro-full \u6807\u8BB0\u9690\u85CF\u300C\u66F4\u591A\u300D\uFF08\u5168\u6587\u5DF2\u793A\uFF0C\u6309\u94AE\u65E0\u529F\u80FD\u4E14 native \u70B9\u51FB\u4E0D\u5C55\u5F00\uFF09\u3002
+   \u26A0 \u4E0D\u80FD innerHTML \u6574\u4F53\u66FF\u6362\uFF1A\u90A3\u662F React \u7BA1\u7406\u7684\u5B50\u6811\uFF0C\u66FF\u6362\u540E React \u5378\u8F7D\u65F6 removeChild \u4F1A\u70B8\uFF1B
+   \u53EA\u6539\u6587\u672C\u8282\u70B9 data\uFF08\u622A\u65AD\u5E93\u540C\u6B3E\u624B\u6CD5\uFF09\uFF0C\u5E93\u5728 resize \u65F6\u4F1A\u6309\u5B83\u95ED\u5305\u91CC\u7684\u5168\u6587\u91CD\u65B0\u622A\u65AD \u2192
+   tmdbCard.ts \u7684 resize \u76D1\u542C\u91CC\u91CD\u8DD1\u56DE\u586B\uFF08220ms \u53BB\u6296\uFF0C\u665A\u4E8E\u5E93\u7684\u540C\u6B65 handler\uFF0C\u6700\u7EC8\u6001\u5FC5\u662F\u6211\u4EEC\uFF09\u3002 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="text-justify"]{
+  margin:0 !important; width:100% !important;
+  font-size:14px !important; line-height:1.7 !important;
+  color:rgba(255,255,255,.88) !important;
+  text-shadow:0 1px 8px rgba(0,0,0,.38) !important;
+}
+body.fnos-series-panel ${SERIES_PANEL}:has(> .fnos-beautify-card) > div[class*="text-justify"]{
+  width:calc(57% - 15px) !important;
+}
+body.fnos-series-panel .fnos-intro-full [class*="ml-1"][class*="cursor-pointer"]{
+  display:none !important;
+}
+/* N7. \u5B63\u9009\u62E9\uFF1AApple TV \u5F0F\u6A2A\u6ED1\u884C\u3002[lc-1021] \u7528\u6237\u5B9A\u7A3F\uFF1A\u6D77\u62A5\u4FDD\u6301**\u539F\u751F\u7AD6\u7248 2:3**\uFF08\u64A4\u9500 lc-1010 \u7684
+   16:9 \u6A2A\u7248\u5F3A\u8F6C\u2014\u2014\u5B9E\u673A\u53D1\u73B0\u5F3A\u8F6C\u540E\u5B63\u884C\u53F3\u4FA7\u51FA\u73B0\u9ED1\u5757\uFF0C\u4E14\u6A2A\u7248\u4E22\u6389\u4E86\u6D77\u62A5\u539F\u753B\u7684\u7AD6\u7248\u6784\u56FE\uFF09\uFF1B
+   \u591A\u5B63\u5E03\u5C40 = \u5361\u5BBD 25%-11px\uFF08600/1020 \u4E24\u79CD\u9762\u677F\u5BBD\u4E0B\u90FD\u6070\u597D 4 \u5F20\u6574\u5361\u4E00\u5C4F\uFF0C\u4E0D\u51FA\u73B0\u88C1\u8FB9\u788E\u7247\uFF09\uFF0C
+   \u8D85\u51FA\u6A2A\u5411\u6ED1\u52A8\uFF08\u6EDA\u52A8\u6761\u9690\u85CF\uFF09\u3002
+   \u5B63\u5361 = .card-root\uFF1Amainwin.ts \u2469 \u4F1A\u7ED9\u5B83\u73BB\u7483\u5361\u5B9E\u5FC3\u5E95+\u8FB9\u6846 \u2192 \u5728\u9762\u677F\u5185\u5168\u90E8\u53BB\u6846\u53BB\u5B9E\u5FC3\uFF08\u7528\u6237\u70B9\u540D\uFF09\u3002
+   \u26A0 \u9ED1\u8FB9\u771F\u51F6\uFF08lc-1021 \u6D3B\u4F53 CDP \u5B9E\u8BC1\uFF0CNAS CSS \u539F\u6587\uFF09\uFF1A
+     .card-root{width:var(--card-width)}
+     .card-root .poster-box{--poster-box-width:var(--card-width);
+       aspect-ratio:var(--poster-aspect-ratio,2/3); width:var(--poster-box-width);
+       border:1px solid var(--semi-color-card-border); border-radius:8px; overflow:hidden}
+   \u6D77\u62A5\u5BBD\u5EA6\u662F**\u53D8\u91CF\u9489\u6B7B**\u7684\uFF08\u4E0D\u8DDF\u968F\u5361\u7247\u5B9E\u9645\u5BBD\u5EA6\uFF09\uFF1Alc-1010 \u628A\u5361\u5F3A\u6491 238px \u65F6\u6D77\u62A5\u505C\u5728 ~162px
+   \u2192 \u53F3\u4FA7 76px \u7A7A\u5E26\u9732\u51FA\u6DF1\u8272\u6E10\u53D8/\u5E95\u56FE = \u7528\u6237\u622A\u56FE\u7684\u9ED1\u8FB9\uFF1B\u53CD\u8FC7\u6765\u5361\u6536\u7A84\u540E\u6D77\u62A5\u4F1A\u6EA2\u51FA\u538B\u5230\u90BB\u5361\u3002
+   \u2234 \u5FC5\u987B\u628A poster-box \u5BBD\u5EA6\u6539\u56DE 100% \u8DDF\u968F\u5361\u7247\uFF0C\u539F\u751F 1px \u63CF\u8FB9\u4E0E\u300C\u65E0\u7EBF\u6761\u300D\u73BB\u7483\u4E00\u5E76\u53BB\u6846\u3002 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"]{
+  margin:14px 0 0 !important; width:100% !important;
+  display:flex !important; flex-wrap:nowrap !important;
+  overflow-x:auto !important; overflow-y:hidden !important;
+  gap:14px !important; padding:2px !important;
+  scrollbar-width:none !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"]::-webkit-scrollbar{ display:none !important; }
+body.fnos-series-panel ${SERIES_PANEL}:has(> .fnos-beautify-card) > div[class*="flex-wrap"]{
+  width:calc(57% - 15px) !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] > [data-id="details"]{
+  width:calc(25% - 11px) !important; flex:0 0 auto !important;
+  background:transparent !important; border:none !important; box-shadow:none !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+}
+/* \u6D77\u62A5\u7AD6\u7248 2:3\uFF08\u539F\u751F\u6BD4\u4F8B\uFF09+ \u5BBD\u5EA6\u8DDF\u968F\u5361\u7247\uFF08\u6390\u6389\u9ED1\u8FB9\u6839\u6E90\uFF0C\u89C1 N7 \u5934\u6CE8\uFF09+ \u53BB\u539F\u751F 1px \u63CF\u8FB9\uFF1A
+   \u5BB9\u5668\u7ED9\u6BD4\u4F8B\u4E0E\u5BBD\u5EA6\u3001\u5185\u90E8 absolute \u586B\u6EE1\u94FE\u4E0D\u52A8\uFF08\u540C lc-986 \u7ED3\u8BBA\uFF09 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] .poster-box{
+  width:100% !important;
+  aspect-ratio:2 / 3 !important;
+  border:none !important;
+}
+/* [lc-1021] \u5B63\u5361\u5185\u5C42\u9632\u9ED1\u5757\u4FDD\u9669\uFF1A\u539F\u751F\u6D77\u62A5\u5BB9\u5668/\u5360\u4F4D\u5C42\u7684\u6DF1\u8272\u5E95\uFF08--semi-color-bg-placeholder\uFF09
+   \u5728\u73BB\u7483\u4E0A\u4E00\u5F8B\u900F\u660E\u5316/\u5F31\u5316 \u2014\u2014 \u56FE\u7247\u52A0\u8F7D\u671F\u95F4\u73BB\u7483\u4E0A\u4E0D\u518D\u95EA\u6DF1\u8272\u5757 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] .poster-box,
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] > div:first-child{
+  background:transparent !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] [class*="bg-[var(--semi-color-bg-placeholder)]"]{
+  background:rgba(255,255,255,.06) !important;
+}
+/* \u5E95\u90E8\u6E10\u53D8\u5C42\uFF1A\u7AD6\u7248 198px \u9AD8\u7ED9 64px\uFF08\u539F 76px \u4E3A 2:3 \u8BBE\u8BA1\uFF0C\u4EC5\u5FAE\u8C03\uFF09 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] > div:first-child [class*="bg-gradient-to-t"]{
+  height:64px !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] p{
+  text-align:left !important; margin:6px 0 0 1px !important;
+  font-size:12px !important;
+  color:rgba(255,255,255,.9) !important;
+}
+/* \u6807\u9898/\u526F\u9898\u6587\u672C\u5757\u662F a.flex.flex-col.items-center \u2192 flex \u5C45\u4E2D\u538B\u8FC7 text-align\uFF0C\u6539\u5BB9\u5668\u5BF9\u9F50 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] > a[class*="items-center"]{
+  align-items:flex-start !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] p + p{
+  margin:2px 0 0 1px !important;
+  font-size:11px !important;
+  color:rgba(255,255,255,.55) !important;
+}
+/* J \u6BB5\u4F1A\u7ED9\u5B63\u5361\u6807\u9898\u8FFD\u52A0\u6E05\u6670\u5EA6\u80F6\u56CA\uFF08\u5B63\u5361\u540C\u6837\u5E26 data-id=details + \u89D2\u6807\u4F4D\u56FE\uFF0C\u590D\u7528\u96C6\u5361\u903B\u8F91\uFF09\uFF1A
+   \u539F\u751F\u6807\u9898 p \u82E5\u5E26 truncate \u4F1A\u628A\u80F6\u56CA\u88C1\u6CA1 \u2192 \u540C J \u6BB5\u7684\u89E3\u7981\u89C4\u5219\uFF0C\u6B64\u5904\u6309\u9762\u677F\u4F5C\u7528\u57DF\u91CD\u5199 */
+body.fnos-series-panel ${SERIES_PANEL} [data-id="details"] p:has(> .fnos-ep-res){
+  white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+}
+/* N8. \u539F\u751F\u5916\u94FE\u884C\uFF08\u94FE\u63A5\uFF1AIMDB\u94FE\u63A5\uFF09\u9690\u85CF \u2014\u2014 \u4E0E\u5B63\u9875 A \u6BB5\u540C\u4E00\u51B3\u7B56\uFF08lc-988 \u7528\u6237\u660E\u786E\u8981\u6C42\u53BB\u6389\uFF09\uFF0C
+   \u5361\u5185 N8b \u5916\u94FE\u533A\u5DF2\u8986\u76D6\uFF1B\u53CC\u6761\u4EF6\u540C A \u6BB5\uFF08\u6709\u5916\u94FE \u4E14 \u65E0\u4EBA\u7269\u94FE\u63A5\uFF09\u3002 */
+body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex flex-col gap-4"]:has(a[href*="imdb.com"], a[href*="themoviedb.org"]):not(:has(a[href*="/v/person/"])){
+  display:none !important;
+}
+/* N8b. TMDB \u5361\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5230\u53F3\u5217\uFF08\u9762\u677F\u9AD8\u5EA6\u53EA\u7531\u5DE6\u5217\u7B80\u4ECB+\u5B63\u9009\u9A71\u52A8\uFF0C\u5361\u8D85\u9AD8\u65F6\u5185\u90E8\u6EDA\u52A8\uFF0C
+   \u4E0D\u4F1A\u50CF grid \u6D41\u5185\u5B50\u9879\u90A3\u6837\u628A\u6574\u9762\u677F\u6491\u5230 max-height\uFF09\u3002\u5361\u81EA\u8EAB\u65E0\u6846\u65E0\u5E95 \u2014\u2014 \u73BB\u7483\u5C31\u662F\u5BB9\u5668\uFF08\u7528\u6237\u70B9\u540D\uFF09\u3002
+   \u5206\u8282\u53D1\u4E1D\u7EBF\u5728\u672C\u9875\u53BB\u9664\uFF1A\u73BB\u7483\u4E0A\u4E0D\u518D\u53E0\u7EBF\u6761\u3002
+   \u26A0 [lc-1037] \u4E91\u6BCD\u5F00\u542F\u65F6\u672C\u6761 transparent \u4ECD\u80FD\u751F\u6548\u7684\u524D\u63D0\uFF1AtmdbCard \u5728\u4E00\u7EA7\u9875\u7ED9\u5361\u6253\u4E86
+   data-fntv-glass-exclude\u2014\u2014\u5426\u5219 glassUI \u2461 [class*="card"] \u78E8\u7802\u5E95 (0,6,1) \u538B\u8FC7\u672C\u6761 (0,3,2)\uFF0C
+   \u5361\u88AB\u6253\u56DE\u78E8\u7802\u767D\uFF08\u7528\u6237\u62A5\u969C\u300C\u767D\u70B9\u663E\u793A\u4E0D\u7A33\u5B9A\u300D\u7684\u6839\u56E0\uFF09\u3002\u5220\u90A3\u884C attr \u672C\u6761\u5728\u4E91\u6BCD\u4E0B\u5373\u5931\u6548\u3002 */
+body.fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card{
+  position:absolute !important;
+  top:16px !important; bottom:16px !important;
+  left:calc(57% + 6px) !important; right:16px !important;
+  width:auto !important;
+  margin:0 !important; padding:2px 10px 2px 4px !important;
+  background:transparent !important; border:none !important; box-shadow:none !important;
+  overflow-y:auto !important; overflow-x:hidden !important;
+  scrollbar-width:thin !important;
+  scrollbar-color:rgba(255,255,255,.16) transparent !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card::-webkit-scrollbar{ width:4px !important; }
+body.fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,.16) !important; border-radius:2px !important;
+}
+body.fnos-series-panel ${SERIES_PANEL} .fnos-showinfo__sec{
+  border-top:none !important; padding-top:12px !important;
+}
+
+/* ===== O. Movie \u4E00\u7EA7\u9875\uFF1A\u6EE1\u5C4F\u6D77\u62A5 + \u5DE6\u4E0B\u67D4\u5149\u73BB\u7483\u805A\u7C07 + TMDB \u7535\u5F71\u5361\uFF08lc-1028\uFF09=====
+   \u8BC9\u6C42\uFF08\u7528\u6237\uFF09\uFF1A\u300C\u5267\u96C6\u7684\u4E00\u7EA7\u548C\u4E8C\u7EA7\u8BE6\u60C5\u9875\u90FD\u4F18\u5316\u597D\u4E86\uFF0C\u4F46\u662F\u7535\u5F71\u7684\u8BE6\u60C5\u9875\u6CA1\u6709\u4F18\u5316\uFF0C\u7535\u5F71\u53EA\u8981\u4E00\u4E2A
+   \u8BE6\u60C5\u9875\u300D\u3002\u63A2\u67E5\u7ED3\u8BBA\uFF08dest/_verify/lc1028-explore/ \u6D3B\u4F53\u5B9E\u91C7\uFF09\uFF1A\u7535\u5F71\u9875\u4E0E Series \u4E00\u7EA7\u9875\u540C\u65CF\u540C\u6784
+   \uFF08\u540C col/wrapper/hero \u7C7B\u540D/.gradient/logo \u951A\u70B9/mt-4 \u6309\u94AE\u884C\uFF09\uFF0C\u5DEE\u5F02\u4EC5\u5728 col.children[1..3]
+   = \u7B80\u4ECB(px-[46px]) / \u6F14\u804C\u4EBA\u5458(mb-10) / \u6587\u4EF6\u4FE1\u606F+IMDB(px-[46px] gap-4)\u3002
+   \u672C\u6BB5\u955C\u50CF N \u6BB5\u7684\u8BBE\u8BA1\u8BED\u8A00\uFF08\u7528\u6237\u5DF2\u5B9A\u7A3F\uFF09\uFF0C\u5DEE\u5F02\u70B9\uFF1A
+   \xB7 \u9762\u677F = \u7B80\u4ECB\u5BB9\u5668\uFF08O5\uFF09\uFF0C\u805A\u7C07\u91CC\u6CA1\u6709\u5B63\u9009 \u2192 \u9762\u677F\u9AD8\u5EA6\u53EA\u5269\u7B80\u4ECB\u9A71\u52A8\uFF08--fnos-cluster-h \u540C\u540D\u590D\u7528\uFF09\uFF1B
+   \xB7 \u6309\u94AE\u884C\u542B\u8FDB\u5EA6\u6761 + \u53CC\u884C meta\uFF08\u5E74\u4EFD/\u7247\u957F/\u7C7B\u578B/\u5730\u533A/\u5FBD\u7AE0/\u6765\u6E90 + \u5B57\u5E55/\u97F3\u8F68\u9009\u62E9\u5668\uFF09\uFF0C\u9AD8\u4E8E Series
+     \u7684\u5355\u884C\u6309\u94AE \u2192 logo \u4E0A\u79FB\u91CF +20px\uFF08O3 \u7528 +120px\uFF09\uFF1B
+   \xB7 fiber \u5168\u6587\u5B57\u6BB5\u662F overview \u4E0D\u662F intro\uFF08tmdbCard._fillSeriesIntro \u53CC\u952E\u515C\u5E95\uFF09\uFF1B
+   \xB7 \u6F14\u804C\u4EBA\u5458/\u6587\u4EF6\u4FE1\u606F/\u89C6\u9891\u4FE1\u606F\u4FDD\u7559\u5728\u9996\u5C4F\u6298\u53E0\u7EBF\u4EE5\u4E0B\u81EA\u7136\u6EDA\u52A8\uFF08\u7535\u5F71\u72EC\u6709\u6570\u636E\uFF0C\u4E0D\u9690\u85CF\uFF09\uFF1B
+   \xB7 K/L/M/\u80CC\u666F\u900F\u660E\u5316\u56E0 hero/\u9876\u680F\u7C7B\u540D\u540C\u65CF\u65E9\u5DF2\u8986\u76D6\u672C\u9875\uFF0C\u672C\u6BB5\u53EA\u8865\u5E03\u5C40\u4E0E\u805A\u7C07\u3002
+   \u95E8\u63A7 = body.fnos-movie-panel\uFF08tmdbCard._armSeriesPanel \u6309\u8DEF\u7531\u6253\uFF0CMovie \u9875\u4E0D\u518D\u5403 N \u6BB5\uFF09\u3002 */
+/* O1. col \u6EE1\u5C4F\u5BB9\u5668\uFF08\u540C N1\uFF09 */
+body.fnos-movie-panel ${MOVIE_COL}{
+  position:relative !important;
+  min-height:calc(100vh - 32px) !important;
+  margin-bottom:0 !important;
+}
+/* O2. hero \u6EE1\u5C4F + \u4E0A\u63D0\u5403\u6389 32px \u6807\u9898\u680F\uFF08\u76F4\u63A5\u91C7\u7528 N2+lc-1024 \u7684\u6700\u7EC8\u5F62\u6001\uFF0C\u7528\u6237\u5DF2\u9A8C\u6536\uFF09 */
+body.fnos-movie-panel .trim-mc__details--key-version{
+  height:100vh !important;
+  min-height:0 !important; max-height:none !important;
+  margin-top:-32px !important;
+}
+/* \u5E95\u90E8\u6E10\u53D8\u906E\u7F69\u91CD\u505A\uFF08\u540C N2\uFF1A25deg \u5BF9\u89D2\u6E10\u9690\uFF0C\u53EA\u62A4\u5DE6\u4E0B\u805A\u7C07\u6587\u5B57\u533A\uFF1B\u53CC\u7C7B\u540D\u6253\u5E73 L \u6BB5\u540C\u9009\u62E9\u5668\uFF09 */
+body.fnos-movie-panel .trim-mc__details--key-version.trim-mc__details--key-version .gradient{
+  height:58% !important;
+  background-image:linear-gradient(25deg,
+    rgba(var(--fnos-hero-tint, 25,25,26), .62) 0%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .34) 30%,
+    rgba(var(--fnos-hero-tint, 25,25,26), .10) 55%,
+    rgba(var(--fnos-hero-tint, 25,25,26), 0) 75%) !important;
+}
+/* O2b. \u9876\u680F\u5168\u900F\uFF08\u540C N2b\uFF1AL \u6BB5\u73BB\u7483\u6761\u5728\u6EE1\u5C4F\u6D77\u62A5\u4E0A\u8BFB\u4F5C\u6697\u5E26\uFF1B\u56FE\u6807 K \u6BB5\u767D\u8272 + drop-shadow\uFF09 */
+body.fnos-movie-panel div[class*="h-[80px]"][class*="top-0"]::before{
+  content:none !important;
+}
+body.fnos-movie-panel div[class*="h-[80px]"][class*="top-0"] svg{
+  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
+}
+/* O2c. \u6807\u9898\u680F\u6458\u6761\u9650\u5B9A**\u975E\u73BB\u7483\u6A21\u5F0F**\uFF08\u540C N2c [lc-1030]\uFF1B\u73BB\u7483\u6A21\u5F0F\u8D70 P1 \u78E8\u7802\u53D6\u8272\u6761\uFF09 */
+html:not([data-fntv-glass]) body.fnos-movie-panel #custom-titlebar[data-fntv-tb]::before{
+  content:none !important;
+}
+body.fnos-movie-panel #custom-titlebar[data-fntv-tb] button svg{
+  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
+}
+/* O3. logo \u4E0A\u79FB\uFF08\u540C N3\uFF1B+120px\uFF1A\u7535\u5F71\u6309\u94AE\u884C\u542B\u8FDB\u5EA6\u6761+\u53CC\u884C meta\uFF0C\u6BD4 Series \u5355\u884C\u9AD8 ~20px\uFF09 */
+body.fnos-movie-panel .trim-mc__details--key-version > [class*="inset-x-[46px]"][class*="bottom-[30px]"]{
+  bottom:calc(var(--fnos-cluster-h, 360px) + 120px) !important;
+}
+/* O4. \u6309\u94AE\u884C\u60AC\u6D6E\uFF08\u540C N4\uFF1BMOVIE_BTNROW \u4E0E SERIES_BTNROW \u540C\u6784\uFF0C\u8FDB\u5EA6\u6761/meta \u884C\u968F\u884C\u4E00\u8D77\u60AC\u6D6E\uFF09*/
+body.fnos-movie-panel ${MOVIE_BTNROW}{
+  position:absolute !important;
+  bottom:calc(var(--fnos-cluster-h, 360px) + 16px) !important;
+  left:26px !important;
+  width:min(1020px, calc(100vw - 52px)) !important;
+  padding:0 20px !important; margin:0 !important;
+  box-sizing:border-box !important; z-index:3 !important;
+}
+/* \u6309\u94AE/\u6587\u5B57/\u56FE\u6807\u6D45\u8272\u5316\uFF08\u7535\u5F71\u9875 meta \u8D70 div \u800C\u975E span\uFF0C\u9700\u8865 div/divider \u4E24\u7C7B\uFF09 */
+body.fnos-movie-panel ${MOVIE_BTNROW} span{
+  color:rgba(255,255,255,.78) !important;
+  text-shadow:0 1px 2px rgba(0,0,0,.6), 0 2px 18px rgba(0,0,0,.5) !important;
+}
+body.fnos-movie-panel ${MOVIE_BTNROW} svg{ color:rgba(255,255,255,.92) !important; }
+body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="text-[var(--semi-color-text"]{ color:rgba(255,255,255,.78) !important; }
+body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="text-[var(--semi-color-divider"]{ color:rgba(255,255,255,.35) !important; }
+body.fnos-movie-panel ${MOVIE_BTNROW} img{ filter:drop-shadow(0 1px 4px rgba(0,0,0,.45)); }
+/* \u5706\u5F62\u6309\u94AE\uFF08\u6536\u85CF/\u5DF2\u770B/\u66F4\u591A\uFF09\uFF1A\u534A\u900F\u73BB\u7483\u3001\u65E0\u8FB9\u6846\uFF08\u539F\u751F border+fill-0 \u5B9E\u5FC3\u5E95\u4E00\u5E76\u53BB\u6389\uFF09 */
+body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="size-[54px]"]{
+  background:rgba(255,255,255,.10) !important;
+  backdrop-filter:blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(150%) !important;
+  border:none !important;
+}
+body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="size-[54px]"]:hover{
+  background:rgba(255,255,255,.18) !important;
+}
+/* O5. \u7B80\u4ECB\u9762\u677F\uFF1A\u534A\u900F\u67D4\u5149\u73BB\u7483\uFF08\u53C2\u6570=N5 \u7528\u6237\u4E09\u8F6E\u5B9A\u7A3F\u503C\uFF1Atint .09/blur 26/brightness .86\uFF09
+   \u65E0\u5361 600px\uFF1B\u6709\u5361 1020px\uFF08:has \u95E8\u63A7\uFF09\u3002\u26A0 \u6574\u4E32\u7CBE\u786E\u7C7B\u540D\uFF08\u65E0 gap-4\uFF09\u4E0E\u6587\u4EF6\u4FE1\u606F\u533A\u533A\u5206\u3002 */
+body.fnos-movie-panel ${MOVIE_PANEL}{
+  position:absolute !important;
+  /* [lc-1031] min-height \u8BA9 TMDB \u5361(absolute, top/bottom:16)\u4E0D\u518D\u88AB\u7B80\u77ED\u7B80\u4ECB\u9501\u6210\u77EE\u6761\uFF1A
+     \u7535\u5F71\u7B80\u4ECB\u5E38\u53EA\u6709\u4E00\u4E24\u884C\uFF0C\u9762\u677F\u968F\u4E4B\u53EA\u5269 ~150px\uFF0C\u5361\u5185\u5BB9\u88AB\u88C1\u5F97\u53EA\u5269\u8BC4\u5206+meta\u3002 */
+  min-height:320px !important;
+  /* [lc-1028] top \u951A\u5B9A\u800C\u975E bottom\uFF1ASeries \u9875\u9762\u677F\u662F col \u672B\u5B50\u8282\u70B9\uFF08bottom:18=\u8D34\u9996\u5C4F\u5E95\uFF09\uFF0C
+     \u7535\u5F71\u9875 col \u5728\u9762\u677F\u4E4B\u540E\u8FD8\u6709\u6F14\u804C\u4EBA\u5458/\u6587\u4EF6\u4FE1\u606F\uFF08\u6298\u53E0\u7EBF\u4E0B\u5EF6\u4F38\uFF09\uFF0Ccol \u5E95\u8FDC\u5728\u89C6\u53E3\u5916\u2014\u2014
+     bottom \u4F1A\u628A\u9762\u677F\u951A\u5230\u89C6\u7A97\u5916\uFF08\u9996\u7248\u771F\u673A\u622A\u753B\u9762\u677F\u6D88\u5931\u7684\u6839\u56E0\uFF09\u3002top = 100vh - 32(body
+     \u9876padding, \u5217\u9876\u968F\u4E4B\u4E0B\u79FB) - cluster-h\uFF08cluster-h=\u9762\u677F\u9AD8+18\uFF0CJS \u5B9E\u6D4B\u56DE\u586B\uFF09\u6070\u4F7F\u9762\u677F
+     \u5E95\u6CBF\u8D34\u5728\u9996\u5C4F\u5E95\u6CBF\u4E0A\u65B9 18px\uFF0C\u4E0E\u5217\u9AD8\u89E3\u8026\uFF08\u6D3B\u4F53 geom.cjs\uFF1A-32 \u524D\u5E95\u6CBF 1014\uFF0C\u540E 982\uFF09\u3002 */
+  top:calc(100vh - 32px - var(--fnos-cluster-h, 360px)) !important; left:26px !important;
+  width:min(600px, calc(100vw - 52px)) !important;
+  max-height:calc(100vh - 32px - 230px) !important;
+  padding:18px 20px !important;
+  display:block !important;
+  background:linear-gradient(160deg,
+    rgba(255,255,255,.05) 0%,
+    rgba(255,255,255,.014) 45%,
+    rgba(255,255,255,.005) 100%),
+    rgba(var(--fnos-hero-tint, 25,25,26), .09) !important;
+  backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
+  -webkit-backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
+  border:none !important;
+  box-shadow:0 18px 54px rgba(0,0,0,.32) !important;
+  border-radius:22px !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  z-index:2 !important;
+  animation:fnos-series-panel-in .5s cubic-bezier(.22,.61,.36,1) both;
+}
+body.fnos-movie-panel ${MOVIE_PANEL}:has(> .fnos-beautify-card){
+  width:min(1020px, calc(100vw - 52px)) !important;
+}
+/* \u9762\u677F\u5185\u6052\u6697\u6750\u8D28 \u2192 Semi \u6587\u672C\u53D8\u91CF\u91CD\u5B9A\u4E49\u4E3A\u6D45\u8272\uFF08I \u6BB5\u5361\u6837\u5F0F\u96F6\u6539\u52A8\u81EA\u52A8\u8DDF\u968F\uFF09 */
+body.fnos-movie-panel ${MOVIE_PANEL}{
+  --semi-color-text-0:rgba(255,255,255,.94);
+  --semi-color-text-1:rgba(255,255,255,.72);
+  --semi-color-text-2:rgba(255,255,255,.58);
+  --semi-color-text-3:rgba(255,255,255,.42);
+}
+/* O6. \u7B80\u4ECB\uFF1A\u5168\u6587\u5C55\u793A\uFF08tmdbCard \u56DE\u586B fiber props.overview\uFF0C\u539F\u751F\u622A\u65AD+\u300C\u66F4\u591A\u300D\u540C\u6B3E\u5931\u6548\uFF09+ \u9690\u85CF\u300C\u66F4\u591A\u300D */
+body.fnos-movie-panel ${MOVIE_PANEL} > div[class*="text-justify"]{
+  margin:0 !important; width:100% !important;
+  font-size:14px !important; line-height:1.7 !important;
+  color:rgba(255,255,255,.88) !important;
+  text-shadow:0 1px 8px rgba(0,0,0,.38) !important;
+}
+body.fnos-movie-panel ${MOVIE_PANEL}:has(> .fnos-beautify-card) > div[class*="text-justify"]{
+  width:calc(57% - 15px) !important;
+}
+body.fnos-movie-panel .fnos-intro-full [class*="ml-1"][class*="cursor-pointer"]{
+  display:none !important;
+}
+/* O8b. TMDB \u7535\u5F71\u5361\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5230\u9762\u677F\u53F3\u5217\uFF08\u540C N8b\uFF1B\u5185\u90E8\u6EDA\u52A8\u4E0D\u6491\u9AD8\u9762\u677F\uFF1B\u5361\u81EA\u8EAB\u65E0\u6846\u65E0\u5E95\uFF09 */
+body.fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card{
+  position:absolute !important;
+  top:16px !important; bottom:16px !important;
+  left:calc(57% + 6px) !important; right:16px !important;
+  width:auto !important;
+  margin:0 !important; padding:2px 10px 2px 4px !important;
+  background:transparent !important; border:none !important; box-shadow:none !important;
+  overflow-y:auto !important; overflow-x:hidden !important;
+  scrollbar-width:thin !important;
+  scrollbar-color:rgba(255,255,255,.16) transparent !important;
+}
+body.fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card::-webkit-scrollbar{ width:4px !important; }
+body.fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,.16) !important; border-radius:2px !important;
+}
+body.fnos-movie-panel ${MOVIE_PANEL} .fnos-showinfo__sec{
+  border-top:none !important; padding-top:12px !important;
+}
+/* O10. \u4E00\u5C4F\u8BED\u4E49\uFF08\u7528\u6237\u6307\u5B9A\u300C\u4E0D\u8981\u6EDA\u52A8\u9875\u9762\u300D\uFF0Clc-1029\uFF09\uFF1A\u6F14\u804C\u4EBA\u5458/\u6587\u4EF6\u4FE1\u606F/\u89C6\u9891\u4FE1\u606F/IMDB \u884C
+   \u6574\u4F53\u9690\u85CF\u2014\u2014\u4EBA\u5458\u4FE1\u606F\u7531 TMDB \u7535\u5F71\u5361\u7684\u5BFC\u6F14/\u7F16\u5267/\u4E3B\u6F14\u8986\u76D6\uFF0C\u6587\u4EF6\u7EC6\u8282\uFF08\u8DEF\u5F84/\u5927\u5C0F/\u7F16\u7801\uFF09\u4E0D\u53C2\u4E0E
+   \u6D4F\u89C8\u51B3\u7B56\uFF08\u6E05\u6670\u5EA6\u5FBD\u7AE0/\u5B57\u5E55/\u97F3\u8F68\u9009\u62E9\u5668\u5DF2\u5728\u805A\u7C07 meta \u884C\uFF09\u3002col \u53EA\u5269 wrapper(100vh) +
+   \u9762\u677F(absolute) \u2192 \u9875\u9762\u65E0\u6EDA\u52A8\uFF0C\u4E0E Series \u4E00\u7EA7\u9875\u540C\u4E00\u5C4F\u8BED\u4E49\u3002
+   \u26A0 \u53D6\u4EE3\u9996\u7248 O9\uFF08\u6F14\u5458\u533A\u7CBE\u4FEE\uFF09\uFF1A\u533A\u5DF2\u9690\u85CF\uFF0C\u7CBE\u4FEE\u65E0\u5BF9\u8C61\u3002\u6F14\u804C\u4EBA\u5458\u7D22\u5F15 = col.children[2]
+     (nth-child(3))\uFF0C\u6587\u4EF6\u4FE1\u606F\u533A = nth-child(4)\u3002 */
+body.fnos-movie-panel ${MOVIE_COL} > :nth-child(3),
+body.fnos-movie-panel ${MOVIE_COL} > :nth-child(4){
+  display:none !important;
+}
+
+/* ===== P. \u4E91\u6BCD\u589E\u5F3A\uFF08Glass UI\uFF09\u8054\u52A8\uFF1A\u73BB\u7483\u6A21\u5F0F\u4E0B\u805A\u7C07/\u6807\u9898\u680F\u6750\u8D28\u7EDF\u4E00\uFF08lc-1030\uFF09=====
+   \u7528\u6237\u62A5\u969C\uFF08\u73BB\u7483\u5F00\u542F + \u6D45\u8272\u6D77\u62A5\u622A\u56FE\uFF09\uFF1A\u2460 \u5DE6\u4E0B\u805A\u7C07\u662F\u300C\u6D77\u62A5\u53D6\u8272\u6DF1\u8272\u73BB\u7483\u300D\uFF08heroTint \u6052\u6697
+   L<=0.20 + brightness(.86) \u538B\u6697\uFF09\uFF0C\u538B\u5728\u6D45\u8272\u6D77\u62A5\u4E0A\u8BFB\u4F5C\u4E00\u5757\u6697\u8272\u6C61\u6E0D\uFF0C\u4E0E\u5168\u5C4F\u73BB\u7483\u6750\u8D28\u4E0D\u534F\u8C03\uFF1B
+   \u2461 \u9876\u680F\u8F6F\u4EF6\u63A7\u5236\u680F\u6A2A\u6761\uFF08N2c/O2c \u6458\u6761\u540E=\u88F8\u6D77\u62A5+\u767D\u7A97\u63A7\u952E\uFF09\u4E0D\u534F\u8C03\uFF0C\u8981\u6C42\u6539\u56DE\u81EA\u52A8\u53D6\u8272\u3002
+   \u65B9\u6848\uFF1A\u73BB\u7483\u6A21\u5F0F\u4E0B \u2460 \u805A\u7C07\u6539\u7528**\u73BB\u7483\u8272\u677F\u4E2D\u6027\u78E8\u7802**\uFF08--fntv-glass-tint-* \u968F html.dark \u81EA\u9002\u5E94\uFF1A
+   \u6D45\u8272\u4E3B\u9898\u767D\u78E8\u7802/\u6DF1\u8272\u4E3B\u9898\u6DF1\u78E8\u7802\uFF09\uFF0C\u53BB\u6389 brightness \u538B\u6697\uFF0C\u9762\u677F\u6587\u5B57\u968F\u73BB\u7483\u4E3B\u9898\u7FFB\u6DF1/\u7FFB\u767D\uFF1B
+   \u2461 \u6807\u9898\u680F\u53D6\u8272\u6761\u56DE\u5F52\u5E76\u78E8\u7802\u5316\uFF08\u534A\u900F\u53D6\u8272 + blur\uFF0C\u6DF1 tint \u4FDD\u767D\u56FE\u6807\u5BF9\u6BD4\u5EA6\uFF0C\u6BDB\u73BB\u7483\u8FB9\u81EA\u7136\u878D\u5165\u6D77\u62A5\uFF09\u3002
+   \u975E\u73BB\u7483\u6A21\u5F0F\u4E0D\u5339\u914D\u672C\u6BB5\u4EFB\u4F55\u89C4\u5219 = \u5DF2\u9A8C\u6536\u7684\u53D6\u8272\u73BB\u7483\u539F\u6837\u3002 */
+/* P1. \u6807\u9898\u680F\u81EA\u52A8\u53D6\u8272\u6761\u56DE\u5F52\uFF08\u78E8\u7802\u5316\uFF1BM \u6BB5\u5B9E\u5FC3 alpha1 \u5728\u73BB\u7483\u6A21\u5F0F\u4E0B\u88AB\u672C\u6761\u8986\u76D6\u4E3A\u534A\u900F\u78E8\u7802\uFF09 */
+html[data-fntv-glass] body.fnos-series-panel #custom-titlebar[data-fntv-tb]::before,
+html[data-fntv-glass] body.fnos-movie-panel #custom-titlebar[data-fntv-tb]::before{
+  background:rgba(var(--fnos-hero-tint, 25,25,26), .45) !important;
+  backdrop-filter:blur(18px) saturate(1.2);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+}
+/* P2. [lc-1031] \u805A\u7C07\u6750\u8D28\u6781\u6027\u8DDF**\u6D77\u62A5\u660E\u6697**\u8D70\uFF08\u4E0D\u8DDF\u4E3B\u9898\u2014\u2014\u9762\u677F\u7684\u5B9E\u9645\u89C2\u611F\u7531 blur \u80CC\u540E\u7684
+   \u6D77\u62A5\u51B3\u5B9A\uFF0C\u6D45\u8272\u4E3B\u9898+\u6DF1\u6D77\u62A5\u7684\u7EC4\u5408\u4E0B\u767D\u78E8\u7802+\u6DF1\u5B57\u4F1A\u770B\u4E0D\u6E05\uFF0C\u7528\u6237\u5B9E\u62CD\u7FFB\u8F66\uFF09\uFF1A
+   \xB7 \u6697\u6D77\u62A5\uFF08\u9ED8\u8BA4\uFF0CheroTint \u5B9E\u6D4B\u5747\u4EAE <0.5\uFF09\u2192 \u53D6\u8272\u6DF1\u78E8\u7802 rgba(tint,.32) + brightness(.86)
+     \u538B\u6697 + \u6D45\u5B57\uFF08N/O \u539F\u6781\u6027\uFF1Btint \u4E0E\u6D77\u62A5\u540C\u8272\u7CFB = \u81EA\u52A8\u53D6\u8272\uFF09\uFF1B
+   \xB7 \u4EAE\u6D77\u62A5\uFF08body[data-fntv-hero-bright=1]\uFF0CheroTint \u5168\u56FE\u5E73\u5747\u611F\u77E5\u4EAE\u5EA6 \u22650.5\uFF09\u2192 \u767D\u78E8\u7802
+     \u65E0\u538B\u6697 + \u6DF1\u5B57\uFF08P3\uFF09\u3002 */
+html[data-fntv-glass] body.fnos-series-panel ${SERIES_PANEL},
+html[data-fntv-glass] body.fnos-movie-panel ${MOVIE_PANEL}{
+  background:linear-gradient(160deg,
+    rgba(255,255,255,.06) 0%,
+    rgba(255,255,255,.015) 45%,
+    rgba(255,255,255,.005) 100%),
+    rgba(var(--fnos-hero-tint, 25,25,26), .32) !important;
+  backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
+  -webkit-backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
+  box-shadow:0 18px 54px rgba(0,0,0,.24) !important;
+}
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL},
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL}{
+  background:linear-gradient(160deg,
+    rgba(255,255,255,.10) 0%,
+    rgba(255,255,255,.03) 45%,
+    rgba(255,255,255,.012) 100%),
+    rgba(255,255,255,.38) !important;
+  backdrop-filter:blur(26px) saturate(155%) !important;
+  -webkit-backdrop-filter:blur(26px) saturate(155%) !important;
+  box-shadow:0 18px 54px rgba(0,0,0,.16) !important;
+}
+/* P3. \u6587\u5B57\u6781\u6027\u968F\u6D77\u62A5\uFF1A\u4EAE\u6D77\u62A5 \u2192 \u9762\u677F Semi \u53D8\u91CF\u7FFB\u6DF1 + N6/O6 \u663E\u5F0F\u767D\u5B57\u7FFB\u6DF1 + \u5B63\u5361\u6587\u672C\u7FFB\u6DF1
+   + \u79FB\u9664\u767D\u5B57\u9634\u5F71\uFF1B\u6697\u6D77\u62A5\u4E0D\u5339\u914D = N/O \u539F\u6D45\u5B57\u4E0E\u9634\u5F71 */
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL},
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL}{
+  --semi-color-text-0:rgba(28,28,30,.92);
+  --semi-color-text-1:rgba(28,28,30,.72);
+  --semi-color-text-2:rgba(28,28,30,.58);
+  --semi-color-text-3:rgba(28,28,30,.42);
+}
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} > div[class*="text-justify"],
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL} > div[class*="text-justify"]{
+  color:rgba(28,28,30,.88) !important; text-shadow:none !important;
+}
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} [data-id="details"] p{
+  color:rgba(28,28,30,.9) !important; text-shadow:none !important;
+}
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} [data-id="details"] p + p{
+  color:rgba(28,28,30,.55) !important;
+}
+/* P4. \u4EAE\u6D77\u62A5\u6D45\u78E8\u7802\u4E0A\u5361\u6EDA\u52A8\u6761\u6539\u6DF1\u8272\u53EF\u89C1 */
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card,
+html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card{
+  scrollbar-color:rgba(0,0,0,.22) transparent !important;
+}
+
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   [v1.4.0] \u624B\u673A\u7F51\u9875\uFF08\u7A84\u5C4F\u89E6\u5C4F\uFF09\u672B\u6BB5\u8986\u76D6 \u2014\u2014 \u5FC5\u987B\u653E\u5728\u6574\u5F20\u6837\u5F0F\u8868\u7684\u6700\u540E\uFF01
+   \u5C42\u53E0\u89C4\u5219\uFF1A\u540C\u7279\u5F02\u6027\u6309\u6E90\u987A\u5E8F\uFF0C\u540E\u8005\u80DC\u3002\u684C\u9762\u6BB5(\u4E24\u680F grid/\u7EDD\u5BF9\u5B9A\u4F4D\u5361)\u4E0E\u5355\u5217\u6BB5
+   \u7684\u9009\u62E9\u5668\u7279\u5F02\u6027\u5B8C\u5168\u76F8\u540C\uFF08\u540C\u4E00\u6761 COL \u94FE + \u540C\u6837\u7684 !important\uFF09\uFF0C\u9760\u58F0\u660E\u987A\u5E8F\u51B3\u80DC\u3002
+   \u95E8\u63A7\u7528 html.fnos-touch-narrow \u6807\u8BB0\u7C7B\uFF08injectBeautifyStyle \u5B89\u88C5\uFF1A\u89E6\u5C4F\u80FD\u529B\u4E00\u6B21\u6027
+   \u5224\u5B9A + min-width \u5A92\u4F53\u67E5\u8BE2\u8DDF\u89C6\u53E3\u5BBD\uFF09\uFF0C\u4E0D\u7528 @media (pointer:coarse)\u2014\u2014\u540E\u8005\u4F1A\u88AB
+   \u622A\u56FE\u5DE5\u5177/\u5916\u63A5\u9F20\u6807\u7B49\u573A\u666F\u4E2D\u9014\u7FFB\u8F6C\uFF0C\u5E03\u5C40\u5728\u4E24\u680F/\u5355\u5217\u95F4\u8DF3\u53D8\u3002
+   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+html.fnos-touch-narrow body.fnos-beautify ${COL}{
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto auto auto !important;
+  column-gap:0 !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(2){ grid-area:2 / 1 / 3 / 2 !important; }
+html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(3){ grid-area:3 / 1 / 4 / 2 !important; }
+/* \u5E8F\u53F7\u89C6\u56FE\uFF1Acontents \u5316\u7EF4\u6301\uFF08\u6807\u9898/\u6F14\u5458\u4ECD\u8981\u6C89\u5230\u5361\u4E0B\u65B9\uFF09\uFF0C\u5361\u4ECE\u7EDD\u5BF9\u5B9A\u4F4D\u6539\u56DE\u6D41\u5185 row3 */
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM}{
+  grid-template-rows:auto auto auto auto auto !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
+  position:static !important;
+  grid-area:3 / 1 / 4 / 2 !important;
+  left:auto !important; right:auto !important;
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
+  grid-area:4 / 1 / 5 / 2 !important;
+  margin:28px 0 0 !important;   /* \u5355\u5217\u4E0B\u65E0\u9700\u7ED9\u53F3\u680F\u5267\u7167\u7559\u7A7A\u5F53\uFF0C\u5E38\u89C4\u6BB5\u95F4\u8DDD */
+}
+html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
+  grid-area:5 / 1 / 6 / 2 !important;
+}
+`;
+  function injectBeautifyStyle() {
+    if (!document.getElementById(STYLE_ID2)) {
+      const st = document.createElement("style");
+      st.id = STYLE_ID2;
+      st.textContent = BEAUTIFY_CSS;
+      (document.head || document.documentElement).appendChild(st);
+    }
+    installMobileFlag();
+  }
+  var _mobileFlagMq = null;
+  var MOBILE_FLAG_MQ = "(min-width: 641px)";
+  function isTouchCapable() {
+    try {
+      return "ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0;
+    } catch {
+      return false;
+    }
+  }
+  function installMobileFlag() {
+    if (!isTouchCapable()) return;
+    const apply = () => {
+      const narrow = !_mobileFlagMq || !_mobileFlagMq.matches;
+      document.documentElement.classList.toggle("fnos-touch-narrow", narrow);
+    };
+    if (!_mobileFlagMq && typeof window.matchMedia === "function") {
+      try {
+        _mobileFlagMq = window.matchMedia(MOBILE_FLAG_MQ);
+        const handler = () => apply();
+        if (_mobileFlagMq.addEventListener) _mobileFlagMq.addEventListener("change", handler);
+        else _mobileFlagMq.addListener(handler);
+      } catch {
+      }
+    }
+    apply();
+  }
+
+  // src/preload/plugins/danmakuWeb.ts
   var log6 = logger_default;
   var loadedGuids = /* @__PURE__ */ new Set();
   var GUID_RE2 = /\/v\/(?:movie|tv|video)(?:\/(?:season|episode))?\/([a-f0-9]{32})/i;
@@ -2941,12 +4340,49 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
 .trim-mc__video-player--root div:has(> .semi-spin) {
     display: none !important;
 }
+
+/* \u2500\u2500 [v1.4.1] \u624B\u673A\u7F51\u9875\uFF1A\u5E95\u90E8\u63A7\u5236\u680F\u89E6\u5C4F\u9002\u914D \u2500\u2500
+   \u771F\u5B9E\u5E95\u680F 8 \u63A7\u4EF6\uFF08\u64AD\u653E/\u65F6\u95F4/\u500D\u901F/\u539F\u753B/\u9009\u96C6/\u5F39\u5E55/\u97F3\u91CF/\u8BBE\u7F6E/\u5168\u5C4F\uFF09\u5728 390px \u7AD6\u5C4F
+   \u5B9E\u6D4B\u4EC5\u4F59 4px \u6A2A\u5411\u4F59\u91CF\uFF0C\u4E14\u6587\u5B57\u6309\u94AE\u70B9\u51FB\u70ED\u533A\u53EA\u6709 22px \u9AD8\uFF08Apple HIG \u6700\u4F4E 44px\uFF09\u3002
+   \u95E8\u63A7 html.fnos-touch-narrow\uFF08beautifyStyle \u6CE8\u5165\u4FA7\u5B89\u88C5\u7684\u89E6\u5C4F\u7A84\u5C4F\u6807\u8BB0\uFF0C\u8BBE\u5907\u786C\u4E8B\u5B9E
+   \u5224\u5B9A\uFF0C\u65E0 pointer \u5A92\u4F53\u67E5\u8BE2\u7684\u4E2D\u9014\u7FFB\u8F6C\u95EE\u9898\uFF1B\u64AD\u653E\u9875\u53EF\u80FD\u672A\u6CE8\u5165\u7F8E\u5316\u6837\u5F0F\u2014\u2014v1.4.1 \u8D77\u628A
+   installMobileFlag \u6302\u5230\u672C\u6837\u5F0F\u6CE8\u5165\u94FE\uFF0C\u4E24\u5904\u5E42\u7B49\u5171\u7528\uFF09\u3002
+   \u63AA\u65BD\uFF1A\u89E6\u63A7\u70ED\u533A padding \u6491\u5230 \u226540px \u9AD8 / \u226532px \u5BBD\uFF08\u89C6\u89C9\u6587\u5B57\u4E0D\u52A8\uFF09\uFF1B\u5B57\u53F7 14\u219213px\u3001
+   \u63A7\u4EF6\u95F4\u8DDD 14\u219210px\u3001\u65F6\u95F4\u884C 12px \u5F31\u5316\uFF0C\u7ED9\u70ED\u533A\u6269\u5F20\u817E\u51FA\u6A2A\u5411\u7A7A\u95F4\uFF1B\u8FDB\u5EA6\u6761\u89E6\u63A7\u5E26\u52A0\u9AD8
+   \uFF08\u70B9\u62D6\u8FDB\u5EA6\u662F\u624B\u673A\u6700\u9AD8\u9891\u64CD\u4F5C\uFF0C\u539F\u751F 14px \u547D\u4E2D\u5E26\u592A\u7A84\uFF09\u3002 */
+html.fnos-touch-narrow xg-controls .control-item,
+html.fnos-touch-narrow xg-controls span.cursor-pointer {
+    font-size: 13px !important;
+    padding: 9px 2px !important;   /* \u7EB5\u5411 9+9 \u6491\u70ED\u533A\uFF1B\u6A2A\u5411 2px\u2014\u2014\u53F3\u680F 6 \u63A7\u4EF6 390px \u91CC\u6A2A\u5411\u9884\u7B97\u6781\u7D27 */
+    white-space: nowrap !important;   /* \u70ED\u533A padding \u6324\u5360\u5185\u5BB9\u5BBD\u65F6\u300C\u5F39\u5E55\u300D\u4E24\u5B57\u4F1A\u7AD6\u6392\u6298\u884C */
+}
+html.fnos-touch-narrow xg-controls .plugin-placeholder {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 40px !important;
+}
+html.fnos-touch-narrow xg-right-grid { gap: 2px !important; }
+html.fnos-touch-narrow xg-left-grid { gap: 4px !important; }
+/* \u65F6\u95F4\u884C\u5F31\u5316\uFF1A\u6570\u5B57\u4E32\u662F\u5E95\u680F\u6700\u5BBD\u7684\u9759\u6001\u5143\u7D20\uFF0C\u7F29\u4E00\u53F7\u5E76\u964D\u900F\u660E\u5EA6\uFF08\u4FE1\u606F\u4FDD\u7559\uFF09 */
+html.fnos-touch-narrow xg-left-grid .control-item:not(:first-child) {
+    font-size: 11px !important;
+    opacity: .75;
+    padding: 9px 2px !important;
+}
+/* \u8FDB\u5EA6\u6761\u89E6\u63A7\u5E26\u52A0\u9AD8\uFF08\u539F\u751F\u547D\u4E2D\u5E26 ~14px\uFF0C\u62C7\u6307\u64CD\u4F5C\u96BE\u70B9\u4E2D\uFF09 */
+html.fnos-touch-narrow .xg-progress {
+    height: 26px !important;
+    bottom: 48px !important;
+    display: flex !important;
+    align-items: flex-end !important;
+}
 `;
     const el = document.createElement("style");
     el.id = PLAYER_HEADER_STYLE_ID;
     el.textContent = css;
     (document.head || document.documentElement).appendChild(el);
     _headerStyleInjected = true;
+    installMobileFlag();
     log6.info("[danmakuWeb] \u64AD\u653E\u9875\u9876\u90E8\u6807\u9898\u680F\u7F8E\u5316 CSS \u5DF2\u6CE8\u5165");
   }
   function resetHeaderHideTimer() {
@@ -3209,6 +4645,11 @@ html.fntv-ph-hidden [class*="top-bar"]:not([class*="xgplayer"]):not([class*="con
   transition:opacity .18s cubic-bezier(.22,1,.36,1), transform .18s cubic-bezier(.22,1,.36,1), visibility 0s linear .18s;
 }
 .fntv-dm-list.active{opacity:1; visibility:visible; pointer-events:auto; transform:none; transition-delay:0s}
+/* [v1.4.1] \u624B\u673A\u7F51\u9875\uFF1Avisibility:hidden \u7684\u9762\u677F\u4ECD\u5360\u5E03\u5C40\uFF0Cabsolute+right \u8D1F\u504F\u79FB\u4F1A\u628A body \u6491\u51FA
+   \u6A2A\u5411\u6EDA\u52A8\uFF08\u5B9E\u6D4B\u9875\u9762\u80FD\u5DE6\u53F3\u6643 210px\uFF09\u3002\u9690\u85CF\u6001 display:none \u515C\u4F4F\u5E03\u5C40\uFF08display \u4E0D\u53C2\u4E0E\u8FC7\u6E21\uFF0C
+   \u6DE1\u5165\u8DEF\u5F84\uFF1Adisplay \u5148\u7FFB\u5757\u518D\u8D70 opacity\u2014\u2014\u6D4F\u89C8\u5668\u5BF9 display:none\u2192block + transition \u7EC4\u5408
+   \u5728\u540C\u5E27\u6E32\u67D3\u65F6\u8FC7\u6E21\u4F1A\u4E22\uFF0C\u4F46\u6253\u5F00\u662F\u300C\u77AC\u95F4\u53EF\u89C1\u53EF\u63A5\u53D7\u300D\uFF0C\u5173\u95ED\u6DE1\u51FA\u7167\u5E38\u8D70\u5B8C\u624D\u56DE none\uFF09\u3002 */
+html.fnos-touch-narrow .fntv-dm-list:not(.active){ display:none !important; }
 /* [v1.4.0] \u624B\u673A\u7F51\u9875\uFF1A320px \u5B9A\u5BBD + right:-6px \u4F1A\u6EA2\u51FA\u7AD6\u5C4F\u89C6\u53E3\u3002\u89E6\u5C4F\u7A84\u5C4F(html.fnos-touch-narrow,
    \u7531 beautifyStyle \u6CE8\u5165\u4FA7\u5B89\u88C5;\u5F39\u5E55\u6309\u94AE\u6302\u8F7D\u665A\u4E8E\u8BE6\u60C5\u9875\u6837\u5F0F\u6CE8\u5165,\u64AD\u653E\u9875\u65E0\u8BE5\u6807\u8BB0\u65F6\u6B64\u5904\u56DE\u9000
    max-width \u5A92\u4F53\u67E5\u8BE2)\u4E0B\u6539\u4E3A\u89C6\u53E3\u5BBD\u51CF\u8FB9\u8DDD\u3001\u8D34\u89C6\u53E3\u53F3\u7F18\u3002 */
@@ -5579,7 +7020,7 @@ html.fnos-perf.dark{
 
   // src/preload/plugins/hotUpdates.ts
   var PANEL_ID = "fntv-hot-updates";
-  var STYLE_ID2 = "fntv-hot-updates-style";
+  var STYLE_ID3 = "fntv-hot-updates-style";
   var BLOCK_KEY = "fntv-hot-blocked";
   var DAILY_VISIBLE_KEY = "fnos-show-daily";
   var HOT_REFRESH_DAYS_KEY = "fnos-hot-refresh-days";
@@ -5692,7 +7133,7 @@ html.fnos-perf.dark{
     }
   }
   function injectStyle2() {
-    if (document.getElementById(STYLE_ID2)) return;
+    if (document.getElementById(STYLE_ID3)) return;
     const css = `
 /* ===== \u5BAB\u706F\u6309\u94AE \u2014\u2014 \u60AC\u6D6E\u53D1\u5149\u3001\u8109\u51B2\u547C\u5438\u3001\u4E00\u773C\u53EF\u89C1 ===== */
 #fntv-hot-tab {
@@ -5922,7 +7363,7 @@ html.fnos-perf.dark{
 #fntv-hot-panel.fntv-hot-light .fntv-hot-err { color: rgba(0,0,0,.6); }
 `;
     const el = document.createElement("style");
-    el.id = STYLE_ID2;
+    el.id = STYLE_ID3;
     el.textContent = css;
     (document.head || document.documentElement).appendChild(el);
   }
@@ -9559,1403 +11000,6 @@ html.fnos-perf.dark{
         he.addEventListener("wheel", handler, { passive: false });
       }
     });
-  }
-
-  // src/preload/plugins/embyWall/detail/beautifyStyle.ts
-  var STYLE_ID3 = "fnos-beautify-css";
-  var HERO = ':is(.semi-always-dark[class*="h-[470px]"],.semi-always-dark[class*="min-h-[390px]"],.trim-mc__details--key-version)';
-  var COL = `:has(> ${HERO}):is(:has([data-id="details"]), :has([class*="grid-cols-[repeat(auto-fill,52px"])):has(> :nth-child(3))`;
-  var COL_NUM = `${COL}:has(> :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"])`;
-  var SERIES_PANEL = 'div[class="relative box-border flex w-full flex-col px-[44px]"]';
-  var SERIES_BTNROW = 'div[class="relative w-full"] > div[class^="mt-4 "]';
-  var MOVIE_PANEL = 'div[class="relative flex w-full flex-col box-border px-[46px]"]';
-  var MOVIE_BTNROW = 'div[class="relative w-full"] > div[class^="mt-4 "]';
-  var MOVIE_COL = 'div[class*="mb-[46px]"][class*="flex flex-col gap-3"]:has(> div > .trim-mc__details--key-version)';
-  var BEAUTIFY_CSS = `
-/* ===== 0. \u8BED\u4E49\u8BBE\u8BA1 token\uFF08\u660E/\u6697\u4E24\u5957\uFF1B\u6587\u672C\u8272\u6CBF\u7528 Semi \u4E3B\u9898\u53D8\u91CF\uFF0C\u65E0\u9700\u5728\u6B64\u91CD\u590D\uFF09===== */
-body.fnos-beautify{
-  --fnos-accent:#0071e3;
-  --fnos-hairline:rgba(0,0,0,.10);
-  --fnos-hairline-soft:rgba(0,0,0,.055);
-  --fnos-row-hover:rgba(0,0,0,.035);
-  --fnos-panel-fill:rgba(0,0,0,.038);
-  --fnos-muted:#86868b;
-  --fnos-topbar-fg:rgba(255,255,255,.8);   /* \u8BE6\u60C5\u9875\u9876\u680F\u80CC\u666F\u6052\u6697(\u89C1 K \u6BB5), \u524D\u666F\u8272\u6545\u4E0D\u5206\u4E3B\u9898 */
-  --fnos-backdrop-img-opacity:.30;
-  --fnos-scrim-top:rgba(250,250,252,.62);
-  --fnos-scrim-mid:rgba(250,250,252,.82);
-  --fnos-scrim-bot:rgba(250,250,252,.92);
-}
-html.dark body.fnos-beautify{
-  --fnos-accent:#0a84ff;
-  --fnos-hairline:rgba(255,255,255,.14);
-  --fnos-hairline-soft:rgba(255,255,255,.075);
-  --fnos-row-hover:rgba(255,255,255,.06);
-  --fnos-panel-fill:rgba(255,255,255,.07);
-  --fnos-muted:#98989d;
-  --fnos-topbar-fg:rgba(255,255,255,.8);   /* \u4E0E\u6D45\u8272\u540C\u503C: \u9876\u680F\u6052\u6697\u80CC\u666F\u7531\u98DE\u725B\u94FA, \u4E0E\u4E3B\u9898\u65E0\u5173 */
-  --fnos-backdrop-img-opacity:.42;
-  --fnos-scrim-top:rgba(10,10,12,.32);
-  --fnos-scrim-mid:rgba(10,10,12,.55);
-  --fnos-scrim-bot:rgba(10,10,12,.78);
-}
-
-/* ===== A. \u4E24\u680F Grid\uFF08\u4EC5 season \u9875\uFF1B\u96F6\u8282\u70B9\u642C\u8FD0\uFF0CReact-proof\uFF09===== */
-body.fnos-beautify ${COL}{
-  display:grid !important;
-  grid-template-columns:minmax(0,60fr) minmax(0,40fr) !important;
-  grid-template-rows:auto auto !important;
-  column-gap:32px !important;
-  row-gap:20px !important;
-  align-items:start !important;
-  align-content:start !important;
-  width:100% !important;
-  box-sizing:border-box !important;
-  /* [v1.3.5] \u5E8F\u53F7\u89C6\u56FE\u4E0B TMDB \u5361\u8981 absolute+grid-area \u9489\u5728 row2/col2\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5143\u7D20\u7684
-     "grid \u533A\u5305\u542B\u5757"\u89E3\u6790\u8981\u6C42 grid \u5BB9\u5668\u672C\u8EAB\u5C31\u662F\u5176\u5305\u542B\u5757\uFF08\u6700\u8FD1 positioned \u7956\u5148\uFF09\uFF0C
-     static \u65F6\u56DE\u843D\u5230\u66F4\u5916\u5C42/\u89C6\u53E3\u3002COL \u81EA\u4EFB relative \u4E00\u52B3\u6C38\u9038\uFF08\u6D41\u5185\u5E03\u5C40\u96F6\u5F71\u54CD\uFF09\u3002 */
-  position:relative !important;
-}
-/* hero \u8DE8\u5168\u5BBD(row1) */
-body.fnos-beautify ${COL} > ${HERO}{ grid-area:1 / 1 / 2 / 3 !important; }
-/* \u9009\u96C6\uFF1A\u5DE6\u5217 row2\uFF08\u7AD6\u5411\u5217\u8868\uFF0C\u5360 6 \u6210\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(2){ grid-area:2 / 1 / 3 / 2 !important; min-width:0 !important; }
-/* \u6F14\u804C\u4EBA\u5458 + \u6CE8\u5165\u7684\u5267\u96C6\u4FE1\u606F\u5361\uFF1A\u53F3\u5217 row2\uFF08\u5360 4 \u6210\uFF0C\u9876\u90E8\u5BF9\u9F50\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(3){ grid-area:2 / 2 / 3 / 3 !important; min-width:0 !important; }
-/* \u53F3\u5217\u6E05\u6846\uFF1A\u539F\u751F\u5BB9\u5668\u82E5\u5E26 border/\u5E95\u8272/\u9634\u5F71\uFF0C\u4F1A\u4E0E\u5361\u5185\u5206\u9694\u7EBF\u62FC\u51FA\u300C\u534A\u95ED\u5408\u6846\u300D\u2192 \u4E00\u5F8B\u62B9\u6389\u3002
-   \u552F\u4E00\u8C41\u514D .fnos-beautify-card\uFF08\u6211\u4EEC\u6CE8\u5165\u7684 TMDB \u4FE1\u606F\u5361\uFF09\uFF1A\u7528\u6237\u8981\u6C42\u53F3\u680F\u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\u300D\uFF0C
-   \u90A3\u4E2A\u5BB9\u5668\u5C31\u662F\u5B83\u3002\u82E5\u4E0D\u8C41\u514D\uFF0C\u8FD9\u6761\u89C4\u5219\u7684\u7279\u5F02\u6027(COL \u7684 :has \u94FE + body.fnos-beautify = 0,5,1)\u4F1A\u538B\u8FC7
-   I \u6BB5\u5361\u672C\u8EAB\u7684 (0,1,0)\uFF0C\u73BB\u7483\u6A21\u5F0F\u5173\u95ED\u65F6\u5361\u4F1A\u88AB\u6253\u6210\u5168\u900F\u660E \u2192 \u4E00\u4E2A\u5BB9\u5668\u90FD\u4E0D\u5269\u3002
-   \u540C\u7406\uFF0C\u8C41\u514D\u8D70 :not() \u8BA9\u9009\u62E9\u5668\u6839\u672C\u4E0D\u5339\u914D\uFF0C\u800C\u4E0D\u662F\u518D\u5199\u4E00\u6761\u66F4\u9AD8\u7279\u5F02\u6027\u7684\u89C4\u5219\u53BB\u5BF9\u6297\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3),
-body.fnos-beautify ${COL} > :nth-child(3) > *:not(.fnos-beautify-card){
-  background:transparent !important;
-  border:none !important; box-shadow:none !important;
-}
-/* \u539F\u751F\u300C\u94FE\u63A5\uFF1AIMDB\u94FE\u63A5\u300D\u533A\u5757\uFF1A\u9690\u85CF\uFF08\u7528\u6237\u660E\u786E\u8981\u6C42\u53BB\u6389\uFF09\u3002
-   \u5B9E\u673A DOM(\u76D7\u5893\u738B\u5B63\u9875)\uFF1A\u5B83\u662F\u5185\u5BB9\u5217\u7B2C 4 \u4E2A\u5B50\u8282\u70B9 DIV.box-border.w-full.px-[46px]\uFF0C
-   \u5185\u90E8\u53EA\u6709\u4E00\u4E2A a[href*=imdb.com/title/]\uFF0C\u6CA1\u6709 person \u94FE\u63A5\u3002
-   \u26A0 \u53CC\u4FDD\u9669\u7F3A\u4E00\u4E0D\u53EF\uFF1A\u53EA\u6309 nth-child(4) \u4F1A\u5728\u67D0\u4E9B\u5B63\u9875\u5C11\u4E00\u4E2A\u8282\u70B9\u65F6\u8BEF\u4F24\u522B\u7684\u4E1C\u897F\uFF1B
-     \u53EA\u6309\u300C\u542B imdb \u94FE\u63A5\u300D\u5219\u53EF\u80FD\u547D\u4E2D\u6F14\u804C\u4EBA\u5458\u533A\u91CC\u7684\u5916\u94FE\u3002\u4E24\u6761\u90FD\u8981\u6EE1\u8DB3\u300C\u6709\u5916\u94FE \u4E14 \u65E0\u4EBA\u7269\u94FE\u63A5\u300D\u3002
-   \u26A0 \u7528 display:none \u800C\u4E0D\u662F\u5220\u8282\u70B9\uFF1A\u8282\u70B9\u5F52 React \u6240\u6709\uFF0C\u5220\u4E86\u4F1A\u5728\u4E0B\u6B21\u91CD\u6E32\u67D3\u65F6\u70B8\uFF1B
-     \u4E14 collectNativeImdb() \u9760 querySelectorAll('a') \u53D6 IMDb \u505A\u56DE\u9000\uFF0Cdisplay:none \u4E0D\u5F71\u54CD\u5B83\u3002
-   \u26A0 grid-template-rows \u5FC5\u987B\u540C\u6B65\u6536\u6210\u4E24\u884C(auto auto)\uFF1A\u7559\u7B2C\u4E09\u884C\u7684\u8BDD\uFF0C\u9690\u85CF\u540E\u4F1A\u591A\u51FA\u4E00\u6761 20px row-gap\u3002 */
-body.fnos-beautify ${COL} > :nth-child(4):has(a[href*="imdb.com"], a[href*="themoviedb.org"]):not(:has(a[href*="/v/person/"])),
-body.fnos-beautify ${COL} > div[class*="px-[46px]"]:has(a[href*="imdb.com"], a[href*="themoviedb.org"]):not(:has(a[href*="/v/person/"])){
-  display:none !important;
-}
-
-/* ===== A2. \u4E24\u680F\u5185\u5BB9\u5165\u573A\u8FC7\u6E21\uFF08lc-1011\uFF0C\u8F7B\u5FAE\uFF09=====
-   \u7F8E\u5316\u5957\u7528\u77AC\u95F4(settle \u65F6 body.fnos-beautify \u6302\u4E0A, \u4E24\u680F Grid \u540C\u65F6\u751F\u6548)\u7ED9\u9009\u96C6\u5217/\u53F3\u680F\u4E00\u4E2A
-   \u8F7B\u5FAE\u6DE1\u5165\u4E0A\u79FB, \u4E0E N \u6BB5\u7CFB\u5217\u9875\u9762\u677F(fnos-series-panel-in)\u540C\u4E00\u624B\u611F; TMDB \u5361\u662F settle \u540E\u5F02\u6B65
-   \u63D2\u5165\u7684\u65B0\u8282\u70B9, \u6302\u8F7D\u65F6\u5404\u81EA\u64AD\u653E\u3002\u4EC5 opacity+translateY(\u5408\u6210\u5668\u5C5E\u6027, \u4E0D\u89E6\u53D1\u5E03\u5C40);
-   teardown \u6458 body class \u2192 \u518D\u8FDB\u8BE6\u60C5\u9875\u91CD\u653E, \u6BCF\u6B21\u5BFC\u822A\u6070\u597D\u4E00\u6B21, \u96F6\u5E38\u9A7B\u5F00\u9500\u3002
-   \u26A0 \u4E0D\u52A8 hero(row1): veil \u5DF2\u6709\u9875\u9762\u7EA7\u8FC7\u6E21, \u518D\u53E0\u4F1A\u663E\u62D6\u6C93\u3002 */
-@media (prefers-reduced-motion: no-preference){
-  body.fnos-beautify ${COL} > :nth-child(2),
-  body.fnos-beautify ${COL} > :nth-child(3){
-    animation:fnos-series-panel-in .42s cubic-bezier(.22,.61,.36,1) both;
-  }
-  body.fnos-beautify ${COL} > :nth-child(3){ animation-delay:.06s; }
-  body.fnos-beautify ${COL} .fnos-beautify-card{
-    animation:fnos-series-panel-in .45s cubic-bezier(.22,.61,.36,1) both;
-  }
-}
-
-/* ===== B. \u9875\u9762\u80CC\u666F\u900F\u660E\u5316\uFF1A\u8BA9\u6CE8\u5165\u7684\u5168\u5C4F\u5E95\u56FE\u900F\u51FA\uFF08\u4EC5\u8BE6\u60C5\u9875 body.fnos-beautify \u751F\u6548\uFF09===== */
-body.fnos-beautify [class*="bg-[var(--semi-color-bg-1)]"]{ background-color:transparent !important; }
-
-/* ===== C. \u5BFC\u822A\u680F\u6C89\u6D78\u900F\u660E ===== */
-body.fnos-beautify div.relative.z-20.flex.items-center.justify-between.px-11.py-5{
-  background:transparent !important;
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
-  box-shadow:none !important;
-  border:none !important;
-}
-
-/* ===== D. \u9009\u96C6\uFF1A\u6A2A\u5411\u6EDA\u52A8 \u2192 Apple TV+ \u5F0F\u7AD6\u5411\u884C\uFF08CSS-only\uFF0C\u96F6\u8282\u70B9\u642C\u8FD0\uFF09=====
-   \u539F\u751F\u7ED3\u6784: .ms-container[!overflow-x-scroll whitespace-nowrap] > .flex.w-max > [data-id=details]
-             \u6BCF\u5F20\u5361 = .relative.flex.flex-col.w-[260px].max-h-[260px]\uFF083 \u5B50\uFF1B\u6D77\u62A5\u5F0F\uFF0C\u7F29\u7565\u56FE\u5728\u9876\uFF09
-   \u76EE\u6807: \u5217\u8868\u7AD6\u6392\uFF1B\u6BCF\u884C = 180px 16:9 \u7F29\u7565\u56FE(\u5DE6\uFF0C\u9996\u5B50\u8282\u70B9) + \u6587\u672C(\u53F3\uFF0C\u5176\u4F59\u5B50\u8282\u70B9\u81EA\u52A8\u5806\u53E0)\u3002
-   \u26A0 \u57511(lc-982 \u5B9E\u6D4B): \u672C\u6BB5\u6BCF\u6761\u89C4\u5219\u90FD\u5FC5\u987B\u7528\u300C> :nth-child(2)\u300D\u6536\u7A84\u5230\u9009\u96C6\u533A\u3002
-     \u53F3\u680F\u300C\u6F14\u804C\u4EBA\u5458\u300D\u7684\u6A2A\u6ED1\u5BB9\u5668\u5E26\u5B8C\u5168\u76F8\u540C\u7684 .ms-container[overflow-x-scroll] > .w-max \u7ED3\u6784\uFF0C
-     \u5199\u6210 COL \u540E\u4EE3\u9009\u62E9\u5668\u4F1A\u628A\u6F14\u5458\u4E00\u8D77\u6539\u6210\u7AD6\u6392(\u5355\u4E2A\u7AD6\u5411\u6392\u5217)\u3002
-   \u26A0 \u57512: img \u89C4\u5219\u5FC5\u987B\u9650\u5B9A\u5728\u300C> :first-child img\u300D(\u7F29\u7565\u56FE\u5185)\u3002\u5199\u6210\u300C[data-id=details] img\u300D
-     \u4F1A\u628A\u6E05\u6670\u5EA6\u89D2\u6807/\u64AD\u653E\u6309\u94AE\u7B49\u5C0F\u56FE\u4E5F\u5F3A\u5236\u62C9\u6210 16:9 \u6EE1\u5BBD\u3002
-   \u26A0 \u57513: \u672C\u6587\u4EF6 CSS \u6574\u4F53\u662F\u53CD\u5F15\u53F7\u6A21\u677F\u5B57\u7B26\u4E32\uFF0C\u6CE8\u91CA\u91CC\u7EDD\u4E0D\u80FD\u51FA\u73B0\u53CD\u5F15\u53F7\uFF0C\u5426\u5219\u6A21\u677F\u63D0\u524D\u95ED\u5408(tsc TS1109)\u3002 */
-/* \u9009\u96C6\u533A(nth-child 2)\u53CA\u5176\u76F4\u63A5 .relative \u5305\u88F9\u5C42\uFF1A\u539F\u751F\u4E3A\u5B9A\u9AD8\u6A2A\u6ED1\u5E26\uFF0C\u53EF\u80FD\u5E26 overflow/max-h
-   \u4F1A\u88C1\u6389\u7AD6\u6392\u540E\u53D8\u9AD8\u7684\u5217\u8868 \u2192 \u5F3A\u5236 auto \u9AD8\u5EA6 + visible\uFF0C\u8BA9\u5217\u8868\u81EA\u7136\u5C55\u5F00\u3001\u9875\u9762\u6B63\u5E38\u6EDA\u52A8\u3002 */
-body.fnos-beautify ${COL} > :nth-child(2),
-body.fnos-beautify ${COL} > :nth-child(2) > .relative{
-  height:auto !important; max-height:none !important; overflow:visible !important;
-}
-body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"]{
-  overflow:visible !important;
-  white-space:normal !important;
-  max-height:none !important; height:auto !important;
-  padding:0 44px !important;   /* \u4E0E\u300C\u9009\u96C6\u300D\u6807\u9898 px-11(44px) \u5DE6\u53F3\u5BF9\u9F50 */
-}
-body.fnos-beautify ${COL} > :nth-child(2) .ms-container[class*="overflow-x-scroll"] > [class*="w-max"]{
-  display:flex !important; flex-direction:column !important;
-  width:100% !important; height:auto !important; gap:0 !important;
-}
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]{
-  display:grid !important;
-  grid-template-columns:180px minmax(0,1fr) !important;
-  grid-auto-rows:min-content !important;
-  align-items:center !important;
-  gap:3px 18px !important;
-  width:100% !important; max-width:none !important;
-  height:auto !important; min-height:0 !important; max-height:none !important;
-  padding:14px 0 !important;
-  white-space:normal !important;
-  background:transparent !important;
-  border:none !important; box-shadow:none !important;
-  border-radius:12px !important;
-  transition:background .2s ease !important;
-}
-/* \u7F29\u7565\u56FE = \u5361\u7247\u9996\u5B50\u8282\u70B9\uFF08\u539F\u751F div.rounded-lg.relative.mb-3.flex.h-[146px].w-full.shrink-0.overflow-hidden\uFF09
-   \u2192 \u56FA\u5B9A\u5DE6\u5217\u5E76\u8DE8\u884C\u5C45\u4E2D\uFF1B\u5176\u4F59\u6587\u672C\u5B50\u8282\u70B9\u7531 Grid \u81EA\u52A8\u6D41\u5165\u53F3\u5217\u9010\u884C\u5806\u53E0\u3002
-   \u26A0 \u584C\u9677\u5751(lc-986, \u7528\u6237\u5B9E\u673A DOM \u5B9E\u8BC1): \u8FD9\u4E2A\u5BB9\u5668**\u5185\u90E8\u6CA1\u6709\u4EFB\u4F55\u5728\u6587\u6863\u6D41\u91CC\u6491\u9AD8\u7684\u4E1C\u897F**\u2014\u2014
-     \xB7 \u56FE\u7247\u94FE div.box-border > div.relative.size-full > div.size-full > picture > img \u4E2D\uFF0C
-       picture/img \u5E26\u5185\u8054 position:absolute + width/height:100%\uFF08absolute \u4E0D\u53C2\u4E0E\u7236\u9AD8\u8BA1\u7B97\uFF09\uFF0C
-       \u4E2D\u95F4\u5C42\u662F size-full = height:100%\uFF0C\u7236\u9AD8\u4E3A auto \u65F6\u767E\u5206\u6BD4\u89E3\u6790\u4E0D\u51FA\u6765 \u2192 0\uFF1B
-     \xB7 \u53E6\u5916\u4E09\u4E2A\u76F4\u63A5\u5B50\u8282\u70B9(\u89C2\u770B\u8FDB\u5EA6\u6761 / \u5E95\u90E8\u6E10\u53D8\u5C42 / hover overlay)\u5168\u662F absolute\u3002
-     \u6240\u4EE5\u4E00\u65E6\u7528 height:auto \u6E05\u6389\u539F\u751F h-[146px]\uFF0C\u5BB9\u5668\u5C31\u584C\u6210 border \u7684\u7EA6 2px =\u300C\u7EC6\u6210\u4E00\u6761\u7EBF\u300D\u3002
-     \u7ED9\u5185\u90E8 img \u8865 aspect-ratio \u4E5F\u6551\u4E0D\u4E86\uFF1A\u5B83\u7684\u5185\u8054 position:absolute \u6CA1\u88AB\u8986\u76D6\uFF0Cabsolute \u6491\u4E0D\u5F00\u7236\u7EA7\u3002
-   \u6B63\u89E3\uFF1A\u4E0D\u7ED9 height\uFF0C\u7ED9\u5BB9\u5668 aspect-ratio\u3002width \u5DF2\u5B9A 180px \u2192 \u81EA\u52A8\u7B97\u51FA 101.25px\uFF0C
-     \u5185\u90E8 absolute \u94FE\u7684 height:100% \u968F\u4E4B\u6709\u4E86\u786E\u5B9A\u53C2\u7167 \u2192 \u56FE\u7247\u6B63\u5E38\u586B\u6EE1\u3002
-   (\u539F\u751F h-[146px] \u672C\u5C31\u662F 260px \u5BBD\u7684 16:9: 260\xD79/16=146.25 \u2192 16/9 \u662F\u8FD8\u539F\u539F\u751F\u6BD4\u4F8B\uFF0C\u4E0D\u662F\u65B0\u53D1\u660E\u3002) */
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] > :first-child{
-  grid-column:1 !important; grid-row:1 / span 3 !important;
-  align-self:center !important; justify-self:start !important;
-  width:180px !important; max-width:180px !important;
-  height:auto !important; min-height:0 !important; max-height:none !important;
-  aspect-ratio:16 / 9 !important;
-  margin:0 !important;              /* \u539F\u751F mb-3 \u4F1A\u5728 Grid \u5355\u5143\u91CC\u989D\u5916\u9876\u51FA 12px */
-  position:relative !important;
-  border-radius:10px !important;
-  /* \u9634\u5F71\u6253\u5728\u5BB9\u5668\u4E0A\uFF1A\u5BB9\u5668\u81EA\u5E26 overflow-hidden\uFF0C\u6253\u5728\u5185\u90E8 img \u4E0A\u4F1A\u88AB\u81EA\u5DF1\u88C1\u6389 */
-  box-shadow:0 2px 12px rgba(0,0,0,.16) !important;
-}
-/* \u7F29\u7565\u56FE\u672C\u4F53 img\uFF1A\u539F\u751F\u5DF2\u5E26\u5185\u8054 position:absolute + width/height:100% \u4E0E object-cover\uFF0C
-   **\u5C3A\u5BF8\u4EC0\u4E48\u90FD\u4E0D\u7528\u6539**\uFF0C\u53EA\u52A0 hover \u8FC7\u6E21\u3002
-   \u26A0 \u522B\u5199 width/height/aspect-ratio\uFF1Aheight:auto \u4F1A\u5E9F\u6389 absolute \u7684 100% \u586B\u6EE1\uFF0C\u56FE\u7247\u4F1A\u6309\u56FA\u6709\u6BD4\u4F8B\u4E71\u7A9C\u3002
-   \u26A0 \u5FC5\u987B\u7528 picture \u6536\u7A84\uFF1A\u5BB9\u5668\u5185\u8FD8\u6709\u6E05\u6670\u5EA6\u6807\u8BC6\u4F4D\u56FE(data:image/png;base64)\u7B49\u5C0F\u56FE\uFF0C
-     \u5199\u6210\u300C> :first-child img\u300D\u4F1A\u628A\u5B83\u4EEC\u4E00\u8D77\u62C9\u6210 16:9 \u6EE1\u5BBD\u5E76\u5957\u4E0A\u5706\u89D2\u9634\u5F71(lc-983 \u5B9E\u9645\u53D1\u751F\u8FC7)\u3002 */
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] > :first-child picture img{
-  transition:transform .34s cubic-bezier(.25,.1,.25,1) !important;
-}
-/* \u5E95\u90E8\u6E10\u53D8\u5C42\u539F\u751F h-[76px] \u914D 146px \u5BB9\u5668 \u2248 52%\uFF1B\u5BB9\u5668\u7F29\u5230 101px \u540E\u4E0D\u52A8\u5B83\u5C31\u4F1A\u76D6\u4F4F 3/4 \u7F29\u7565\u56FE
-   (\u5E95\u90E8\u4E00\u7247\u6B7B\u9ED1)\u3002\u7B49\u6BD4\u7F29\u5230 52px \u4FDD\u6301\u539F\u751F\u89C2\u611F\u3002\u6E05\u6670\u5EA6\u6807\u8BC6\u5728 bottom-2.5\uFF0C\u4E0D\u53D7\u5F71\u54CD\u3002 */
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] > :first-child [class*="bg-gradient-to-t"]{
-  height:52px !important;
-}
-/* \u884C\u95F4\u53D1\u4E1D\u5206\u9694\uFF08\u76F8\u90BB\u5361\uFF09+ \u60AC\u505C\u5FAE\u5E95\u8272 & \u7F29\u7565\u56FE\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u65E0 lift/\u65E0\u5927\u9634\u5F71\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] + [data-id="details"]{
-  border-top:1px solid var(--fnos-hairline-soft) !important;
-}
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover{ background:var(--fnos-row-hover) !important; }
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"]:hover > :first-child picture img{ transform:scale(1.035) !important; }
-
-/* \u2500\u2500 [lc-1124] \u5E8F\u53F7\u89C6\u56FE\uFF08\u7EAF\u6570\u5B57\u9009\u96C6\uFF09\u4E0E\u6F14\u804C\u4EBA\u5458 \u7CBE\u4FEE \u2500\u2500
-   \u539F\u751F\u300C\u5207\u6362\u4E3A\u5E8F\u53F7\u89C6\u56FE\u300D(\u5DE5\u5177\u884C title="\u5207\u6362\u4E3A\u5E8F\u53F7\u89C6\u56FE") \u5728\u7F8E\u5316\u4F5C\u7528\u57DF\u4E0B\u529F\u80FD\u5B8C\u597D
-   \uFF08\u7AD6\u6392\u89C4\u5219 [data-id=details] \u4E0D\u547D\u4E2D\u6B64\u89C6\u56FE\u7684\u6570\u5B57\u5757\uFF0C\u5B9E\u6D4B beautifyGridHit=false\uFF09\uFF0C
-   \u672C\u6BB5\u53EA\u505A\u89C6\u89C9\u8BED\u8A00\u7EDF\u4E00\uFF1A
-   \xB7 \u6570\u5B57\u5757\uFF08.grid[grid-cols-[repeat(auto-fill,52px)]] \u5185\u7684 semi-button\uFF09\u52A0\u53D1\u4E1D\u7EBF +
-     \u7EDF\u4E00 10px \u5706\u89D2 + hover \u5FAE\u6D6E\uFF1B\u5F53\u524D\u96C6(.semi-button-primary)\u4FDD\u7559\u539F\u751F\u54C1\u724C\u5E95\uFF0C\u53EA\u8865\u63CF\u8FB9\u5149\u73AF\uFF1B
-   \xB7 \u6F14\u804C\u4EBA\u5458\u5361 hover \u5934\u50CF\u5FAE\u653E\u5927\uFF08\u4E0E\u9009\u96C6\u7F29\u7565\u56FE hover \u540C\u8BED\u8A00\uFF09\u3002
-   \u6F14\u804C\u4EBA\u5458\u4E0E\u9009\u96C6\u5171\u7528 .ms-container[overflow-x-scroll] \u6A2A\u6ED1\uFF08I \u6BB5\u5DF2\u7ED9 44px \u5BF9\u9F50\uFF09\u3002 */
-
-/* \u6570\u5B57\u5757\uFF08\u975E\u5F53\u524D\u96C6\uFF09\uFF1A\u53D1\u4E1D\u7EBF + \u5706\u89D2 + hover \u5FAE\u6D6E\uFF0C\u5E95\u8272\u4EA4\u56DE\u539F\u751F tertiary \u81EA\u9002\u5E94\u660E\u6697 */
-body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button:not(.semi-button-primary){
-  border-radius:10px !important;
-  border:1px solid var(--fnos-hairline-soft) !important;
-  transition:background .16s ease, border-color .16s ease, transform .16s ease !important;
-}
-body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button:not(.semi-button-primary):hover{
-  background:var(--fnos-row-hover) !important;
-  border-color:rgba(140,150,180,.45) !important;
-  transform:translateY(-1px) !important;
-}
-/* \u5F53\u524D\u96C6\uFF1A\u54C1\u724C\u63CF\u8FB9\u5149\u73AF\uFF08\u539F\u751F primary \u5E95\u4FDD\u7559\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(2) [class*="grid-cols-[repeat(auto-fill,52px"] button.semi-button-primary{
-  border-radius:10px !important;
-  box-shadow:0 0 0 1px var(--semi-color-primary, #6d7ff2), 0 2px 12px -2px rgba(109, 127, 242, .4) !important;
-}
-
-/* \u6F14\u5458\u5361 hover\uFF1A\u5934\u50CF\u5FAE\u653E\u5927\uFF08\u514B\u5236\uFF0C\u4E0E\u9009\u96C6\u7F29\u7565\u56FE scale \u540C\u6863\uFF09\u3002
-   \u26A0 [v1.3.2] \u4F5C\u7528\u57DF\u4FEE\u6B63\uFF1A\u6F14\u804C\u4EBA\u5458\u6A2A\u6ED1\u5728 COL>nth-child(3)\uFF08\u53F3\u680F\uFF0CtmdbCard._cardHost \u7684
-   children[2]\uFF09\uFF0C\u65E7\u7248\u5199\u6210 nth-child(2) \u662F\u6761\u6C38\u4E0D\u547D\u4E2D\u7684\u6B7B\u89C4\u5219\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline img{
-  transition:transform .3s cubic-bezier(.25, .1, .25, 1) !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container[class*="overflow-x-scroll"] a.no-underline:hover img{
-  transform:scale(1.05) !important;
-}
-
-/* \u2500\u2500 [v1.3.2\u2192v1.3.5] \u5E8F\u53F7\u89C6\u56FE\uFF1A\u6F14\u804C\u4EBA\u5458\u63D0\u5230\u9009\u96C6\u6B63\u4E0B\u65B9\uFF08\u7EA2\u7EBF\u5904\uFF09\uFF0CTMDB \u5361\u7EDD\u5BF9\u5B9A\u4F4D\u8131\u9AD8 \u2500\u2500
-   \u7528\u6237\u9700\u6C42\uFF082026-09-11 \u622A\u56FE\u7EA2\u7EBF\uFF09\uFF1A\u6570\u5B57\u9009\u96C6\u4E0B\u65B9\u3001\u4E0E\u53F3\u680F\u5267\u7167\u5757\u5E95\u90E8\u5927\u81F4\u9F50\u5E73\u5904\u5F00\u59CB\u653E\u6F14\u804C\u4EBA\u5458\uFF0C
-   \u53F3\u680F\u5267\u96C6\u4FE1\u606F\u5361\u4F4D\u7F6E\u4E0E\u5BBD\u5EA6\u4E0D\u53D8\u3002
-   v1.3.3 \u75C5\u7076\uFF1A\u5361(2/2)\u4E0E\u6807\u9898/\u6A2A\u6ED1(3/1\u30014/1)\u540C\u4E3A\u6D41\u5185 grid item\uFF0C\u800C Grid \u540C\u4E00\u884C\u8DE8\u5217**\u5171\u4EAB\u884C\u9AD8**
-   \u2014\u2014row2 \u88AB\u53F3\u680F\u9AD8\u5361\uFF08\u542B\u5267\u7167/\u76F8\u4F3C\u5267/\u522B\u540D\u2026\u7EA6\u5343 px\uFF09\u6491\u5927\uFF0C\u5DE6\u680F row2 \u865A\u9AD8\uFF0C\u6807\u9898\u53EA\u80FD\u4ECE\u5361\u5E95\u5F00\u59CB
-   \uFF08\u7528\u6237\u62A5"\u6F14\u804C\u4EBA\u5458\u6CA1\u5F80\u4E0A\u63D0"\uFF09\u3002
-   \u505A\u6CD5\uFF1A
-   \u2460 nth-child(3) \u4E0E\u5185\u5C42 div.relative \u53CC\u53CC display:contents\uFF08v1.3.3 \u7ED3\u8BBA\u4ECD\u6210\u7ACB\uFF1Adisplay:contents
-     \u53EA\u63D0\u5347\u4E00\u7EA7\uFF0C\u5B59\u7EA7\u6807\u9898/\u6A2A\u6ED1\u5FC5\u987B\u8FDE\u5305\u88C5\u5C42\u4E00\u8D77 contents \u5316\u624D\u80FD\u6210\u4E3A COL grid \u7684\u76F4\u63A5 item\uFF09\uFF1B
-   \u2461 TMDB \u5361 position:absolute + grid-area:2/2 \u2014\u2014 CSS Grid \u89C4\u8303\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5B50\u5143\u7D20\u5E26\u786E\u5B9A grid-area
-     \u65F6\u4EE5\u8BE5\u7F51\u683C\u533A\u4E3A\u5305\u542B\u5757\u3002\u5361\u65E2\u9489\u5728\u539F\u53F3\u680F\u4F4D\uFF08\u9876\u90E8\u5BF9\u9F50\u6570\u5B57\u9009\u96C6\u3001\u5BBD\u5EA6=\u53F3\u5217\u8F68\u9053\uFF0C\u89C6\u89C9\u4E0E\u539F\u5E03\u5C40
-     \u4E00\u81F4\uFF09\uFF0C\u53C8\u5F7B\u5E95\u8131\u79BB\u884C\u9AD8\u8BA1\u7B97 \u2192 row2 \u9AD8\u5EA6\u53EA\u7531\u5DE6\u680F\u9009\u96C6\u6570\u5B57\u51B3\u5B9A\u3002contents \u5316\u7684\u4E24\u5C42\u5305\u88C5\u4E0D\u518D
-     \u751F\u6210\u76D2 \u2192 \u5361\u4E0E COL \u4E4B\u95F4\u65E0 positioned \u7956\u5148\uFF0C"grid \u5BB9\u5668\u5373\u5305\u542B\u5757"\u5224\u5B9A\u6210\u7ACB\uFF1B\u5361\u8D85\u51FA row2 \u533A\u65F6
-     \u5411\u4E0B\u81EA\u7136\u5EF6\u5C55\uFF08overflow \u53EF\u89C1\uFF09\uFF0C\u53F3\u5217 3/4 \u884C\u65E0\u6D41\u5185 item\uFF0C\u4E0E\u5DE6\u680F\u6F14\u5458\u5217\u8868\u4E92\u4E0D\u91CD\u53E0\u3002
-   \u2462 \u6807\u9898 margin-top:80px\uFF08+row-gap 20px \u2248 100px\uFF09\uFF1A\u7528\u6237\u7EA2\u7EBF\u5728\u6570\u5B57\u5757\u4E0B\u65B9 ~95px\uFF08\u2248\u53F3\u680F\u5267\u7167\u5757
-     3 \u5F20 16:9 \u6A2A\u6392\u7684\u5E95\u90E8\uFF0C2026-09-11 \u622A\u56FE\u5B9E\u6D4B 390\u2192487px\uFF09\u3002\u5267\u7167\u9AD8\u5EA6\u968F\u680F\u5BBD\u7F29\u653E\uFF0C\u56FA\u5B9A\u503C\u4E0D\u8FFD
-     \u6781\u7AEF\u7A97\u5BBD\uFF0C\u4EE5\u6B64\u7A97\u5BBD\u6807\u5B9A\u3002
-   \xB7 \u6F14\u5458\u5217\u8868(row4)\u968F\u6807\u9898\u4E0B\u7F18\u81EA\u7136\u6392\u5217\uFF0C\u884C\u9AD8\u5168\u90E8\u7531\u5DE6\u680F\u81EA\u8EAB\u5185\u5BB9\u9A71\u52A8\u3002
-   \xB7 \u5217\u8868\u89C6\u56FE(\u5361\u7247\u9009\u96C6)\u5B8C\u5168\u4E0D\u547D\u4E2D\u6B64\u6BB5\uFF0C\u7EF4\u6301\u539F\u4E24\u680F\u5E03\u5C40\u3002 */
-
-body.fnos-beautify ${COL_NUM}{
-  grid-template-rows:auto auto auto auto !important;
-}
-body.fnos-beautify ${COL_NUM} > :nth-child(3),
-body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative{ display:contents !important; }
-/* TMDB \u5361\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u9489\u5728\u539F\u53F3\u680F\u4F4D\uFF08row2 col2 \u7F51\u683C\u533A = \u5305\u542B\u5757\uFF09\uFF0C\u4E0D\u53C2\u4E0E\u884C\u9AD8\u8BA1\u7B97\u3002
-   \u26A0 left/right \u5FC5\u987B\u663E\u5F0F 0\uFF1Aabspos+auto inset \u65F6\u5BBD\u5EA6\u8D70 shrink-to-fit\uFF08\u590D\u523B\u9875\u5B9E\u6D4B\u5361\u7F29\u5230
-   ~415px\uFF09\uFF0C\u4E0E\u539F"\u5360\u6EE1\u53F3\u680F 40% \u5217"\u4E0D\u7B26\uFF1B\u663E\u5F0F\u8D34\u8FB9\u540E\u6A2A\u5411\u94FA\u6EE1\u7F51\u683C\u533A\u8F68\u9053\u3002 */
-body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
-  position:absolute !important;
-  grid-area:2 / 2 / 3 / 3 !important;
-  top:0 !important; left:0 !important; right:0 !important;
-  margin:0 !important;
-  min-width:0 !important;
-}
-/* \u300C\u6F14\u804C\u4EBA\u5458\u300D\u6807\u9898 \u2192 \u9009\u96C6\u6B63\u4E0B\u65B9\uFF08row3 \u5DE6\u680F\uFF09\uFF0C\u9876\u90E8 80px \u7A7A\u5F53\u5BF9\u9F50\u53F3\u680F\u5267\u7167\u5757\u5E95\u90E8\uFF08\u7528\u6237\u7EA2\u7EBF\uFF09 */
-body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
-  grid-area:3 / 1 / 4 / 2 !important;
-  margin:80px 0 0 !important;
-  min-width:0 !important;
-}
-/* \u6F14\u5458\u5217\u8868 \u2192 \u6807\u9898\u4E0B\u65B9\uFF08row4 \u5DE6\u680F\uFF09 */
-body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
-  grid-area:4 / 1 / 5 / 2 !important;
-  min-width:0 !important;
-}
-/* [v1.4.0] \u624B\u673A\u7A84\u5C4F\u5355\u5217\u9002\u914D\u632A\u5230\u6837\u5F0F\u8868\u6700\u672B\u5C3E\uFF08\u540C\u7279\u5F02\u6027\u9760\u6E90\u987A\u5E8F\u51B3\u80DC\uFF0C\u89C1\u6587\u4EF6\u5C3E\u6CE8\u91CA\uFF09 */
-
-/* [lc-1049] \u9690\u85CF\u539F\u751F\u6A2A\u6ED1\u7FFB\u9875\u7BAD\u5934\uFF08Semi ScrollList \u7684 [class*="semi-color-bg-arrow-mask"] \u63A9\u819C\u5C42\uFF09\u3002
-   \u7528\u6237\u62A5\u969C\uFF1A\u9009\u96C6\u5217\u8868(\u96C6\u6570\u636E)\u4E0E\u5267\u96C6\u4FE1\u606F\u5361\u4E4B\u95F4\u6709\u4E2A\u300C\u9875\u9762\u5207\u6362\u6807\u7B7E\u300Dhover \u65F6\u77ED\u6682\u95EA\u73B0 \u2014\u2014 \u90A3\u662F\u539F\u751F
-   \u6A2A\u6ED1\u5E26\u7684\u53F3\u7F18\u7FFB\u9875\u7BAD\u5934\uFF1A\u7AD6\u6392\u6539\u9020\u540E\u6A2A\u6ED1\u5E26\u5DF2\u4E0D\u5B58\u5728\uFF0C\u7BAD\u5934\u6210\u4E3A\u60AC\u5728\u4E24\u5BB9\u5668\u4E4B\u95F4\u7684\u6E38\u9B42\uFF08Semi \u539F\u751F
-   opacity \u60AC\u505C\u903B\u8F91\u8BA9\u5B83\u53EA\u5728\u9F20\u6807\u7ECF\u8FC7\u65F6\u77ED\u6682\u663E\u5F62\uFF09\u3002
-   wheelToScroll \u53EA\u5728\u300C\u6EDA\u8F6E\u6A2A\u5411\u6EDA\u52A8\u300D\u5F00\u5173\u5F00\u542F\u65F6\u4EE5\u884C\u5185 opacity:0 \u89C6\u89C9\u9690\u85CF\u5B83\u4EEC\uFF08\u7EDD\u4E0D\u78B0 display\uFF0C
-   \u6015\u7834\u574F\u539F\u751F\u6062\u590D\u903B\u8F91\uFF09\uFF1B\u800C\u7F8E\u5316\u7AD6\u6392\u540E\u6574\u4E2A COL \u5185\u5DF2\u65E0\u4EFB\u4F55\u5408\u6CD5\u6A2A\u6ED1\u5E26 \u2192 \u6309\u7F8E\u5316\u4F5C\u7528\u57DF\u76F4\u63A5 display:none
-   \u5373\u53EF"\u5220\u6389"\u3002\u5173\u7F8E\u5316 = body class \u6458\u9664 \u2192 \u89C4\u5219\u5931\u6548\uFF0C\u539F\u751F\u7BAD\u5934\u5B8C\u6574\u8FD8\u539F\uFF1B\u4E24\u8005\u4E92\u4E0D\u51B2\u7A81\uFF08CSS !important
-   \u538B\u8FC7 wheelToScroll \u7684\u884C\u5185\u975E\u91CD\u8981\u58F0\u660E\uFF0C\u884C\u5185\u6E05\u4E0D\u6389\u4E5F\u4E0D\u788D\u4E8B\uFF09\u3002\u6F14\u804C\u4EBA\u5458\u6A2A\u6ED1\u5E26\u540C\u75C5\u540C\u6CBB\uFF08lc-1034
-   \u7AD6\u6392\u6539\u9020\u540E\u5176\u7BAD\u5934\u540C\u4E3A\u6B8B\u7559\uFF09\u3002 */
-body.fnos-beautify ${COL} [class*="semi-color-bg-arrow-mask"]{
-  display:none !important;
-}
-
-/* ===== E. \u6F14\u804C\u4EBA\u5458 / \u4EBA\u7269\u9879\uFF1A\u53BB lift\uFF0C\u4EC5\u900F\u660E\u5EA6\u53CD\u9988\uFF08\u53F3\u5217\u539F\u751F\u6A2A\u6ED1\uFF0C\u4FDD\u6301\u4E0D\u52A8\uFF09===== */
-body.fnos-beautify a[href*="/v/person/"]{
-  border-radius:14px !important;
-  transition:opacity .2s ease !important;
-}
-body.fnos-beautify a[href*="/v/person/"]:hover{ opacity:.8 !important; }
-body.fnos-beautify a[href*="/v/person/"] img{ border-radius:12px !important; }
-
-/* ===== E2. \u6F14\u804C\u4EBA\u5458\u7CBE\u4FEE\uFF08lc-1020\uFF0C\u6309\u5B9E\u673A DOM \u5BF9\u9F50\uFF09\uFF1A\u4E0E\u53F3\u680F\u4FE1\u606F\u5361\u540C\u4E00\u5957\u6392\u7248\u8BED\u8A00 =====
-   \u539F\u751F\u5F62\u6001\uFF1A16px \u5927\u5B57\u6807\u9898 + \u5E38\u9A7B\u6A2A\u5411\u6EDA\u52A8\u6761 + 16px \u4EBA\u540D\uFF0C\u4E0E\u4E0A\u65B9\u78E8\u7802\u4FE1\u606F\u5361\u7684 11px \u5C0F\u6807\u7B7E
-   \u5C42\u7EA7\u8BED\u8A00\u4E0D\u4E00\u81F4\uFF08\u7528\u6237\u8981\u6C42\u6F14\u5458\u4FE1\u606F\u5C55\u793A\u8D34\u5408\u6574\u4F53\u6837\u5F0F\uFF09\u3002\u6536\u655B\u4E3A\uFF1A\u5C0F\u53F7\u5F31\u5316\u5206\u533A\u6807\u7B7E /
-   \u5934\u50CF\u65E0\u63CF\u8FB9\u65E0\u6295\u5F71\uFF08lc-1038 \u7528\u6237\u8981\u6C42\u53BB\u6389\u67D4\u6295\u5F71\uFF09/ \u60AC\u6D6E\u8F7B\u62AC\u5347 / \u9690\u85CF\u6EDA\u52A8\u6761\u3002
-   \u5B9E\u673A\u7ED3\u6784\uFF1A\u5BBF\u4E3B COL>nth-child(3) \u5185 p.semi-typography(\u6807\u9898) + .ms-container(\u6A2A\u6ED1) >
-   a[href*=/v/person/] > div.size-[90px].rounded-full(\u5934\u50CFwrapper,\u539F\u751Ftransition-all) + p \u540D\u5B57(text-base) + p \u89D2\u8272(text-xs)\u3002
-   \u6CE8\uFF1ATMDB \u5361\u4E5F\u63D2\u5728\u672C\u5BBF\u4E3B\u9876\u90E8\uFF0C\u4F46\u5176 HTML \u5168\u90E8\u7528 .fnos-showinfo__* \u7C7B\u3001\u65E0 p.semi-typography\uFF0C\u4E92\u4E0D\u8BEF\u4F24\u3002 */
-/* \u2460 \u5206\u533A\u6807\u9898\u300C\u6F14\u804C\u4EBA\u5458\u300D\uFF1A16px \u5927\u5B57 \u2192 12px \u5F31\u5316\u5B57\u8DDD\u6807\u7B7E\uFF08\u4E0E\u4FE1\u606F\u5361 block label \u540C\u5C42\u7EA7\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(3) p.semi-typography{
-  font-size:12px !important; letter-spacing:.14em !important;
-  color:var(--fnos-ui-sub) !important; font-weight:500 !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) p.semi-typography strong,
-body.fnos-beautify ${COL} > :nth-child(3) p.semi-typography span{
-  font-size:inherit !important; color:inherit !important;
-  font-weight:inherit !important; letter-spacing:inherit !important;
-}
-/* \u2461 \u9690\u85CF\u6A2A\u6ED1\u6EDA\u52A8\u6761\uFF08\u65E0\u8FB9\u6846\u65E0\u7EBF\u6761\uFF1B\u6EDA\u8F6E/\u89E6\u63A7\u677F\u6A2A\u6ED1\u4ECD\u53EF\u7528\uFF09 */
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container{ scrollbar-width:none !important; }
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container::-webkit-scrollbar{
-  width:0 !important; height:0 !important; display:none !important;
-}
-/* \u2461b [lc-1036] \u6F14\u804C\u4EBA\u5458\u6539**\u7AD6\u5411\u5217\u8868**\uFF08\u7528\u6237\u6307\u5B9A\uFF1A\u5355\u4E2A\u6A2A\u5411\u5C55\u793A\u3001\u4E0D\u8981\u65B9\u6846\u3001\u6BCF\u884C\u95F4\u5FAE\u5C0F\u7EC6\u7EBF\uFF09\uFF1A
-   \u539F\u751F .ms-container \u5B9A\u9AD8\u6A2A\u6ED1\u5E26\u5168\u90E8\u89E3\u9664\uFF08auto \u9AD8/overflow visible/white-space normal/\u53BB pl-44\uFF09\uFF0C
-   \u5185\u5BB9\u884C\u6539\u5757\u7EA7\u5806\u53E0\u2014\u2014\u6BCF\u4E2A\u6F14\u5458\u4E00\u884C\uFF1A\u5934\u50CF(56px \u5706) \u5DE6 + \u540D\u5B57/\u9970\u6F14\u89D2\u8272\u6A2A\u6392 + \u53F3\u7F18\u8865\u5145\u4FE1\u606F\u69FD\uFF0C
-   \u884C\u4E0E\u884C\u4E4B\u95F4 hairline \u7EC6\u7EBF\uFF08--fnos-hairline-soft \u968F\u660E\u6697\u4E3B\u9898\uFF09\u3002\u5BB9\u5668\u540C\u65F6\u662F TMDB \u5361\u5BBF\u4E3B\uFF0C
-   \u5217\u8868\u6491\u9AD8\u540E\u5361\u968F\u4E4B\u53D8\u9AD8\uFF08\u5185\u90E8\u6EDA\u52A8\uFF09\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container{
-  height:auto !important; max-height:none !important;
-  overflow:visible !important;
-  white-space:normal !important;
-  padding-left:0 !important; padding-right:0 !important;
-}
-/* \u26A0 [lc-1036] \u53EA\u6536\u7A84\u5230\u300C\u884C wrapper\u300D\u5C42\uFF08.ms-container > div > div.group\uFF09\uFF1A
-   \u5934\u50CF div \u7C7B\u540D\u91CC\u4E5F\u5E26 group-hover: \u5DE5\u5177\u7C7B\uFF0C\u5BBD\u5339\u914D div[class*="group"] \u4F1A\u8FDE\u5934\u50CF\u4E00\u8D77
-   width/height:auto !important\uFF0C\u4E0E \u2462 \u7684 56px \u6253\u6210 important \u5BF9 important\u3002
-   wrapper \u539F\u751F w-[120px] h-[145px]\uFF08120x145 \u7AD6\u5361\uFF09\u9700\u5728\u6B64\u89E3\u9664\u6210\u884C\u5BBD\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container > div > div[class*="group"]{
-  width:auto !important; height:auto !important; max-width:none !important;
-  flex:0 0 auto !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container > div{
-  display:block !important;
-  width:100% !important; max-width:none !important; height:auto !important;
-  overflow:visible !important;
-}
-/* \u2462 \u884C\u5E03\u5C40\uFF1A\u5934\u50CF\u5DE6 + \u540D\u5B57/\u9970\u6F14\u6A2A\u6392 + \u7EC6\u7EBF\u5206\u9694\uFF1B\u60AC\u6D6E\u8F7B\u5FAE\u5E95\u8272\uFF08\u65E0\u65B9\u6846\uFF09\u3002
-   \u26A0 [lc-1036] \u7EC6\u7EBF\u6302\u5728 a \u4E0A\u65F6 :last-of-type \u4F1A\u5168\u91CF\u547D\u4E2D\u2014\u2014\u6BCF\u4E2A a \u90FD\u662F\u81EA\u5DF1 wrapper
-   \uFF08div.group\uFF09\u91CC\u552F\u4E00\u7684 a\uFF0C12 \u884C\u8FB9\u6846\u5168\u88AB\u300C\u672B\u884C\u8C41\u514D\u300D\u6390\u6389\u3002\u672B\u884C\u8C41\u514D\u5FC5\u987B\u6309 wrapper
-   \u5C42\u7EA7\uFF08div:last-child > a\uFF09\u8868\u8FBE\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"]{
-  display:flex !important; flex-direction:row !important; align-items:center !important;
-  width:100% !important; padding:9px 12px 9px 4px !important; box-sizing:border-box !important;
-  background:transparent !important; border-radius:0 !important;
-  border-bottom:1px solid var(--fnos-hairline-soft, rgba(128,128,128,.14)) !important;
-  transition:background .18s ease !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"]:hover{
-  background:var(--semi-color-fill-0) !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) .ms-container > div > div[class*="group"]:last-child > a[href*="/v/person/"]{
-  border-bottom:none !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] > div:first-of-type{
-  width:56px !important; height:56px !important;
-  margin:0 14px 0 0 !important;   /* \u6E05\u6389\u539F\u751F mx-auto\uFF08\u5934\u50CF\u968F\u884C\u5185\u5BB9\u957F\u77ED\u6C34\u5E73\u6F02\u79FB\uFF09+ mb-2.5 */
-  flex-shrink:0 !important;
-  /* [lc-1038] \u5934\u50CF\u6295\u5F71\u5DF2\u53BB\u6389\uFF08\u7528\u6237\u62A5\uFF1A\u6F14\u5458\u5217\u8868\u5DE6\u4E0B\u89D2\u9634\u5F71\u4E0D\u597D\u770B\uFF09\u2014\u2014E2 \u521D\u7248\u7684
-     \u300C\u67D4\u6295\u5F71\u66FF\u4EE3\u63CF\u8FB9\u300D\u5728\u6D45\u8272\u4E3B\u9898\u4E0B\u6BCF\u9897\u5934\u50CF\u4E0B\u65B9\u90FD\u62D6\u51FA\u4E00\u56E2\u7070\u5F71\uFF0C\u89C2\u611F\u810F\u3002 */
-}
-/* \u2463 \u4EBA\u540D 13.5px \u534A\u7C97 + \u9970\u6F14\u89D2\u8272\u6A2A\u6392\u8DDF\u968F\uFF0812px \u5F31\u5316\uFF09\u3002
-   \u26A0 \u539F\u751F\u540D\u5B57/\u89D2\u8272 p \u90FD\u5E26 w-[120px] text-center\u2014\u2014\u4E0D\u6E05\u6389\u7684\u8BDD\u884C\u4E2D\u90E8\u51FA\u73B0\u5927\u7A7A\u9699\u3001
-   \u6587\u5B57\u5728\u56FA\u5B9A\u5BBD\u76D2\u5B50\u91CC\u5C45\u4E2D\uFF0C\u89C6\u89C9\u4E0A\u300C\u504F\u79FB\u6563\u4E71\u300D\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] p[class*="text-base"]{
-  font-size:13.5px !important; font-weight:600 !important;
-  margin:0 !important; flex-shrink:0 !important;
-  width:auto !important; text-align:left !important;
-}
-body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] p:not([class*="text-base"]){
-  font-size:12px !important; margin:0 0 0 10px !important;
-  color:var(--fnos-muted,#86868b) !important;
-  width:auto !important; text-align:left !important;
-  flex:0 1 auto !important; min-width:0 !important;
-  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-}
-/* \u2463b [lc-1036] TMDB/\u672C\u5730\u8865\u5145\u4FE1\u606F\u69FD\uFF08\u53F3\u7F18\u5BF9\u9F50\uFF1BpersonWorks \u9010\u6F14\u5458\u5F02\u6B65\u6CE8\u5165\uFF09\uFF1A
-   \u804C\u4E1A\u5206\u7C7B / \u751F\u65E5 / \u4EE3\u8868\u4F5C\uFF08\u53D6 TMDB \u4EBA\u7269\u8D44\u8BAF\u4E0E\u70ED\u95E8\u4F5C\u54C1\uFF09\u3002\u53EF\u6536\u7F29\uFF08min-width:0\uFF09\uFF0C
-   \u884C\u5185\u62E5\u6324\u65F6\u5148\u4E8E\u540D\u5B57\u8BA9\u4F4D\u5E76\u7701\u7565\uFF0C\u4E0D\u4F1A\u9876\u5230\u5BB9\u5668\u53F3\u7F18\u5916\u3002 */
-body.fnos-beautify ${COL} > :nth-child(3) a[href*="/v/person/"] .fn-cast-extra{
-  margin-left:auto !important; flex:0 1 auto !important; min-width:0 !important;
-  font-size:11px !important; color:var(--fnos-muted,#86868b) !important;
-  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  max-width:44% !important; text-align:right !important;
-}
-
-/* ===== F. hero \u6D77\u62A5\u5FAE\u6295\u5F71\uFF08hero \u6574\u4F53\u4FDD\u6301\u539F\u751F\uFF0C\u53EA\u8BA9\u6D77\u62A5\u66F4\u7ACB\u4F53\uFF09===== */
-body.fnos-beautify ${HERO} img[class*="rounded"], body.fnos-beautify ${HERO} .shrink-0 img{
-  box-shadow:0 16px 44px rgba(0,0,0,.34) !important;
-}
-
-/* ===== G. \u6CE8\u5165\u7684\u5168\u5C4F\u5E95\u56FE\u5C42\uFF08backdrop.ts \u521B\u5EFA\uFF09\uFF1A\u660E\u6697\u81EA\u9002\u5E94 scrim =====
-   [lc-1017] __img \u4E3A A/B \u53CC\u5C42\u4EA4\u53C9\u6DE1\u6362\u7ED3\u6784\uFF0Copacity \u7531 backdrop.ts \u9010\u5C42 inline \u9A71\u52A8
-   (\u6D3B\u8DC3\u5C42=var(--fnos-backdrop-img-opacity,.30)\uFF0C\u975E\u6D3B\u8DC3\u5C42=0)\uFF0C\u6837\u5F0F\u8868\u53EA\u7ED9\u8FC7\u6E21\u3002 */
-.fnos-detail-backdrop{
-  position:fixed !important; inset:0 !important; z-index:-1 !important;
-  pointer-events:none !important; overflow:hidden !important;
-  border-radius:16px !important; /* [lc-1025] \u56DB\u89D2\u968F\u7A97\u53E3\u5706\u89D2\uFF1Alight \u4E3B\u9898 __scrim \u9876\u90E8\u8FD1\u767D\uFF0C\u65B9\u5F62\u89D2\u4F1A\u9732\u767D\u8FB9 */
-  transition:opacity .34s ease !important;
-}
-.fnos-detail-backdrop.is-leaving{ opacity:0 !important; }
-.fnos-detail-backdrop__img{
-  position:absolute !important; inset:-8% !important;
-  background-size:cover !important; background-position:center 18% !important;
-  filter:blur(52px) saturate(1.22) !important;
-  transform:scale(1.12) !important;
-  transition:opacity .5s ease !important;
-}
-.fnos-detail-backdrop__scrim{
-  position:absolute !important; inset:0 !important;
-  background:linear-gradient(to bottom,
-    var(--fnos-scrim-top) 0%,
-    var(--fnos-scrim-mid) 42%,
-    var(--fnos-scrim-bot) 100%) !important;
-}
-
-/* ===== H. \u77AC\u95F4\u52A0\u8F7D\u5C42\uFF08backdrop.ts \u521B\u5EFA\uFF09\uFF1A\u7F13\u5B58\u6D77\u62A5 + \u9AA8\u67B6 shimmer\uFF0C\u76D6\u4F4F fnOS \u539F\u751F\u767D\u5C4F ===== */
-.fnos-instant-layer{
-  position:fixed !important; inset:0 !important; z-index:2147483000 !important;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  background:var(--semi-color-bg-0,#0b0b0f) !important;
-  border-radius:16px !important; /* [lc-1025] \u8FDB\u8BE6\u60C5\u77AC\u95F4\u7684\u5168\u7A97\u5B9E\u5FC3\u5C42\uFF0C\u56DB\u89D2\u968F\u7A97\u53E3\u5706\u89D2 */
-  transition:opacity .32s ease !important; overflow:hidden !important;
-}
-.fnos-instant-layer.is-hiding{ opacity:0 !important; pointer-events:none !important; }
-.fnos-instant-layer__bg{
-  position:absolute !important; inset:-6% !important;
-  background-size:cover !important; background-position:center 22% !important;
-  filter:blur(40px) saturate(1.2) !important; transform:scale(1.1) !important; opacity:.5 !important;
-}
-.fnos-instant-layer__scrim{ position:absolute !important; inset:0 !important; background:linear-gradient(to bottom,rgba(0,0,0,.2),rgba(0,0,0,.6)) !important; }
-.fnos-instant-layer__body{ position:relative !important; z-index:2 !important; display:flex !important; gap:22px !important; align-items:flex-start !important; padding:0 46px !important; width:100% !important; max-width:1180px !important; box-sizing:border-box !important; }
-.fnos-instant-layer__poster{ width:214px !important; height:320px !important; flex:0 0 214px !important; border-radius:14px !important; object-fit:cover !important; box-shadow:0 14px 40px rgba(0,0,0,.5) !important; background:rgba(255,255,255,.06) !important; }
-.fnos-instant-layer__lines{ flex:1 1 auto !important; min-width:0 !important; display:flex !important; flex-direction:column !important; gap:14px !important; padding-top:116px !important; }
-.fnos-instant-skel{ border-radius:8px !important; background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%) !important; background-size:400% 100% !important; animation:fnos-instant-shimmer 1.3s ease infinite !important; }
-@keyframes fnos-instant-shimmer{ 0%{background-position:100% 50%} 100%{background-position:0 50%} }
-
-/* ===== I. \u5EF6\u540E\u6CE8\u5165\u7684 TMDB \u5267\u96C6\u4FE1\u606F\u5361\uFF08tmdbCard.ts\uFF0C\u8FFD\u52A0\u8FDB\u53F3\u5217\uFF09=====
-   \u6392\u7248\u8303\u5F0F(lc-985 \u7ACB\u3001lc-988 \u6269)\uFF1A\u5BF9\u6807 Netflix / Apple TV+ / TMDB \u4FA7\u680F\uFF0C\u5F03\u7528\u540E\u53F0\u8868\u5355\u5F0F label-value \u53CC\u5217\u3002
-   \u5206\u6BB5(lc-988 \u7ACB\u3001lc-1006 \u53BB\u7B80\u4ECB)\uFF1A\u8BC4\u5206\u5757(\u89C6\u89C9\u951A) \u2192 \u6807\u8BED \u2192 meta \u4E32(\u65E0 label) \u2192 \u4E8B\u5B9E\u533A(\u7A84 label)
-     \u2192 \u4E3B\u521B \u2192 \u672C\u5B63 \u2192 \u5267\u7167 \u2192 \u76F8\u4F3C\u5267\u96C6 \u2192 \u66F4\u591A(\u522B\u540D/\u5173\u952E\u8BCD/\u5728\u7EBF\u770B/\u70ED\u5EA6/\u7F16\u53F7) \u2192 \u5916\u94FE \u2192 \u6765\u6E90\u884C\u3002
-   \u4E3A\u4EC0\u4E48\u8FD9\u4E48\u957F\uFF1A\u98DE\u725B\u539F\u751F\u5B63\u9875**\u5B8C\u5168\u6CA1\u6709**\u8FD9\u4E9B\u6570\u636E\uFF0C\u5168\u662F\u672C\u63D2\u4EF6\u4ECE TMDB \u8865\u7684\uFF1B
-     \u7528\u6237\u660E\u786E\u8981\u6C42\u300C\u5C3D\u53EF\u80FD\u591A\u83B7\u53D6\u548C\u663E\u793A\u300D\u3002\u2234 \u5185\u5BB9\u4EE5\u300C\u539F\u751F\u6CA1\u6709\u7684\u300D\u4E3A\u754C\uFF0C\u4E0D\u505A\u5220\u51CF\u3002
-     \u26A0 \u5267\u96C6\u7B80\u4ECB(lc-1006 \u6309\u7528\u6237\u8981\u6C42\u79FB\u9664)\uFF1A\u5361\u5185**\u4E0D\u518D\u6E32\u67D3** show overview(\u539F\u2463)\u4E0E season overview
-       (\u539F\u2466\u5185)\u3002\u7528\u6237\u5B9E\u6D4B\u5F53\u524D\u5267 hero \u9876\u90E8\u5DF2\u6709\u539F\u751F\u7B80\u4ECB\uFF0C\u5361\u5185\u4E24\u6BB5\u5C5E\u91CD\u590D\u3002**\u4EE3\u4EF7(\u5DF2\u77E5\u53D6\u820D)**\uFF1A
-       \u539F\u751F hero \u7B80\u4ECB\u4E3A\u7A7A\u7684\u5267\u5C06\u5361\u5185\u4E5F\u65E0\u7B80\u4ECB \u2014\u2014 lc-988 \u5B9E\u6D4B\u76D7\u5893\u738B hero innerText \u4EC5
-       \u300C\u76D7\u5893\u738B \u7B2C 1 \u5B63 \u7B2C 1 \u96C6 2026\u300D\u3001\u6D4B\u8BD5/Betas \u5B63 getEditDetail overview="" \u5373\u5C5E\u6B64\u7C7B\u3002
-       \u7528\u6237\u5DF2\u786E\u8BA4\u63A5\u53D7\u6B64\u53D6\u820D\uFF0C\u52FF\u518D"\u628A\u7B80\u4ECB\u8865\u56DE\u5361\u5185"\u3002
-   \u53BB\u91CD(\u4ECD\u7136\u6210\u7ACB)\uFF1A\u6807\u9898\u4E0D\u6E32\u67D3(hero \u5DF2\u6709)\uFF1B\u4E3B\u6F14 cast \u4E0D\u6E32\u67D3(\u539F\u751F\u300C\u6F14\u804C\u4EBA\u5458\u300D\u533A\u5B9E\u673A\u786E\u8BA4\u6709\u5934\u50CF+\u59D3\u540D\u6A2A\u6ED1)\uFF0C
-     \u4F46\u4E3B\u521B\u5206\u5DE5(\u521B\u4F5C\u8005/\u5BFC\u6F14/\u7F16\u5267/\u4F5C\u66F2/\u5236\u7247/\u5236\u4F5C)\u539F\u751F\u533A\u6CA1\u6709 \u2192 \u8865\uFF1B
-     \u539F\u540D\u964D\u5230\u4E8B\u5B9E\u533A\u672B\u884C(\u65E5\u6587/\u97E9\u6587\u539F\u540D\u5E38\u5360\u4E24\u4E09\u884C\uFF0C\u653E\u9876\u90E8\u4F1A\u51B2\u6563\u8BC4\u5206\u5757\u4E0E meta \u4E32\u7684\u8282\u594F)\u3002
-   \u5206\u7EC4\u53EA\u9760\u7559\u767D + \u53D1\u4E1D\u7EBF(__sec \u7684 border-top) + 11px \u5C0F\u6807\u9898\uFF0C**\u8282\u5185\u96F6\u5BB9\u5668**(\u7528\u6237\u660E\u786E\u8981\u6C42
-     \u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\uFF0C\u5185\u90E8\u7684\u5404\u5C0F\u6807\u9898\u6587\u5B57\u90FD\u4E0D\u8981\u6709\u5BB9\u5668\u5305\u88F9\u300D)\u3002
-
-   \u26A0 \u547D\u540D\u786C\u7EA6\u675F(lc-987, \u7528\u6237\u660E\u786E\u8981\u6C42\u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\uFF0C\u5185\u90E8\u7684\u5404\u5C0F\u6807\u9898\u6587\u5B57\u90FD\u4E0D\u8981\u6709\u5BB9\u5668\u5305\u88F9\u300D)\uFF1A
-     glassUI.ts \u7684\u7EC4\u4EF6\u7EA7\u73BB\u7483\u89C4\u5219\u5199\u4F5C [class*="card"] \u2014\u2014 \u90A3\u662F**\u5B50\u4E32**\u5339\u914D\u3002\u5185\u90E8\u5757\u539F\u5148\u53EB
-     fnos-beautify-card__*\uFF0C\u5168\u90FD\u542B card \u5B50\u4E32 \u2192 \u8BC4\u5206\u5757/meta/\u4E8B\u5B9E\u533A/\u5916\u94FE/\u6765\u6E90\u884C\u4E43\u81F3\u6BCF\u4E00\u4E2A __row
-     \u90FD\u88AB\u5404\u81EA\u5957\u4E0A background + backdrop-filter:blur(14px) + border + box-shadow\uFF0C\u4E00\u5C42\u5C42\u5C0F\u73BB\u7483\u6846
-     \u53E0\u5728\u5927\u6846\u91CC(\u8FD8\u987A\u5E26\u8FDD\u80CC\u672C\u6587\u4EF6\u5F53\u65F6\u300C\u5168\u8868\u96F6 backdrop-filter\u300D\u7684\u4F4E GPU \u7EA6\u675F\uFF1B
-     \u8BE5\u7EA6\u675F\u5DF2\u4E8E lc-990 \u4E3A\u9876\u680F\u73BB\u7483\u6761\u7834\u4F8B**\u4E00\u5904**\uFF0C\u89C1 L \u6BB5\u4E0E\u6587\u4EF6\u5934\u7B2C 7 \u6761)\u3002
-     \u4FEE\u6CD5\u9009\u300C\u6539\u540D\u8BA9\u9009\u62E9\u5668\u6839\u672C\u4E0D\u5339\u914D\u300D\u800C\u4E0D\u662F\u5199\u66F4\u9AD8\u7279\u5F02\u6027 !important \u53BB\u5BF9\u6297 \u2014\u2014
-     \u4F9D\u636E\u662F glassUI.ts \u81EA\u5DF1\u7684\u6559\u8BAD\u6CE8\u91CA\u300C\u4E8B\u540E\u6392\u9664\u89C4\u5219 !important \u5BF9\u6297\u4E0D\u7A33\u5B9A\u300D\u3002
-     \u2234 \u5185\u90E8\u4E00\u5F8B\u7528 fnos-showinfo__ \u524D\u7F00(\u4E0D\u542B glassUI \u4EFB\u4F55\u5B50\u4E32 token)\uFF1B
-       \u5916\u5C42**\u523B\u610F\u4FDD\u7559** fnos-beautify-card \u8FD9\u4E2A\u540D\u5B57\uFF0C\u8BA9\u5B83\u6210\u4E3A\u5168\u7AD9\u73BB\u7483\u89C4\u5219\u552F\u4E00\u547D\u4E2D\u7684\u5143\u7D20 = \u90A3\u4E2A\u5927\u5BB9\u5668\u3002
-     \u5F80\u5185\u90E8\u5757\u52A0\u65B0 class \u65F6\uFF0C\u5FC5\u987B\u5148\u786E\u8BA4\u540D\u5B57\u91CC\u4E0D\u542B card/Card/panel/Panel/search/Search/navbar/topbar/
-     appbar/toolbar/playbar/control-bar/z-10/z-20/header-bar/nav-bar/page-header/list-head \u4EFB\u4E00\u5B50\u4E32\u3002 */
-/* \u5927\u5BB9\u5668\u672C\u4F53\u3002\u73BB\u7483\u6A21\u5F0F\u5F00\uFF1AglassUI \u7684\u89C4\u5219\u7279\u5F02\u6027\u66F4\u9AD8\uFF0C\u4F1A\u628A\u4E0B\u9762\u7684 background/border/box-shadow
-   \u6362\u6210\u78E8\u7802\u9762\u677F(\u5B83\u4ECE\u4E0D\u8BBE border-radius/padding\uFF0C\u6545\u5706\u89D2\u4E0E\u5185\u8FB9\u8DDD\u59CB\u7EC8\u7531\u672C\u89C4\u5219\u51B3\u5B9A)\u3002
-   \u73BB\u7483\u6A21\u5F0F\u5173\uFF1AglassUI \u6574\u7EC4\u89C4\u5219\u8981\u6C42 html[data-fntv-glass]\uFF0C\u4E0D\u5339\u914D \u2192 \u53EA\u6709\u672C\u89C4\u5219\u751F\u6548\uFF0C
-   \u9760\u534A\u900F\u660E\u586B\u5145 + \u53D1\u4E1D\u8FB9\u6846\u7ED9\u51FA\u540C\u7B49\u7684\u300C\u6D6E\u8D77\u9762\u677F\u300D\u89C2\u611F\uFF0C\u4E24\u79CD\u6A21\u5F0F\u4E0B\u90FD\u6070\u597D\u4E00\u4E2A\u5927\u5BB9\u5668\u3002
-   \u524D\u63D0\uFF1AA \u6BB5\u7684\u53F3\u5217\u6E05\u6846\u89C4\u5219\u5DF2\u7528 :not(.fnos-beautify-card) \u8C41\u514D\u672C\u5361\uFF0C\u5426\u5219\u5B83 (0,5,1) \u4F1A\u538B\u6389\u8FD9\u91CC (0,1,0)\u3002 */
-.fnos-beautify-card{
-  background:var(--fnos-panel-fill) !important;
-  border:1px solid var(--fnos-hairline-soft) !important;
-  box-shadow:none !important;
-  border-radius:14px !important;
-  padding:16px 18px !important; margin:0 0 10px !important;
-  box-sizing:border-box !important;
-  color:var(--semi-color-text-0,#1d1d1f) !important;
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif !important;
-  font-size:13px !important; line-height:1.6 !important;
-  -webkit-font-smoothing:antialiased !important;
-}
-/* \u7EC4\u95F4\u8DDD\u7531\u300C\u76F8\u90BB\u5757\u300D\u4E00\u6761\u89C4\u5219\u7EDF\u4E00\u627F\u62C5\uFF1A\u4EFB\u4F55\u4E00\u6BB5\u56E0\u6570\u636E\u7F3A\u5931\u800C\u4E0D\u6E32\u67D3\u65F6\uFF0C\u95F4\u8DDD\u90FD\u4E0D\u4F1A\u584C\u9677\u3002 */
-.fnos-showinfo__block + .fnos-showinfo__block{ margin-top:18px !important; }
-/* \u2460 \u8BC4\u5206\u5757\uFF1A34px \u5927\u6570\u5B57\u662F\u53F3\u680F\u552F\u4E00\u7684\u89C6\u89C9\u951A\uFF08\u65E7\u7248 17px \u4E0E 13px \u6B63\u6587\u884C\u51E0\u4E4E\u65E0\u5C42\u7EA7\u5DEE \u2192 \u8BC4\u5206\u88AB\u57CB\u6CA1\uFF09\u3002 */
-.fnos-showinfo__rating{ display:flex !important; align-items:baseline !important; }
-.fnos-showinfo__num{
-  font-size:34px !important; font-weight:700 !important; line-height:1 !important;
-  letter-spacing:-.03em !important; font-variant-numeric:tabular-nums !important;
-  color:var(--semi-color-text-0,#1d1d1f) !important;
-}
-.fnos-showinfo__outof{ margin-left:4px !important; font-size:12px !important; font-weight:500 !important; color:var(--fnos-muted) !important; }
-.fnos-showinfo__rsub{ display:flex !important; align-items:center !important; gap:9px !important; margin-top:7px !important; }
-/* \u534A\u661F\uFF1A\u5E95\u5C42\u7070\u661F + \u9876\u5C42\u91D1\u661F\u6309 inline width \u88C1\u5207\u3002\u7EAF CSS\uFF0C\u65E0 SVG\u3001\u65E0\u73AF\u5F62\u8FDB\u5EA6(\u90A3\u4F1A\u5F15\u5165\u65B0\u7684\u300C\u6846\u300D)\u3002 */
-.fnos-showinfo__stars{ position:relative !important; display:inline-block !important; font-size:12px !important; line-height:1 !important; letter-spacing:1.5px !important; }
-.fnos-showinfo__stars-bg{ color:var(--fnos-hairline) !important; }
-.fnos-showinfo__stars-fg{ position:absolute !important; left:0 !important; top:0 !important; overflow:hidden !important; white-space:nowrap !important; color:#ff9f0a !important; }
-.fnos-showinfo__votes{ font-size:11.5px !important; color:var(--fnos-muted) !important; }
-/* \u2461 meta \u4E32\uFF1A\u65E0 label \u7684\u4E24\u884C\u7070\u5B57\uFF0C\u53D6\u4EE3\u65E7\u7248\u300C\u72B6\u6001/\u89C4\u6A21/\u7C7B\u578B/\u5355\u96C6\u300D\u56DB\u884C label-value\u3002 */
-.fnos-showinfo__meta{ font-size:12.5px !important; line-height:1.7 !important; color:var(--semi-color-text-1,#3c3c43) !important; }
-.fnos-showinfo__meta-sub{ font-size:12px !important; color:var(--fnos-muted) !important; }
-/* \u2462 \u4E8B\u5B9E\u533A\uFF1Alabel \u5217 3.4em(\u65E7\u7248 62px \u592A\u5BBD\uFF0C\u628A value \u63A8\u5F97\u8FC7\u8FDC\uFF0C\u56DB\u4E2A\u4E2D\u6587\u5B57\u5BBD\u521A\u597D)\u4FDD\u8BC1 value \u5DE6\u7F18\u5BF9\u9F50\uFF1B
-     \u7EC4\u5185\u9760 4px padding \u5206\u884C\uFF0C\u65E0\u6A2A\u7EBF\u3002 */
-.fnos-showinfo__row{ display:flex !important; gap:12px !important; align-items:baseline !important; padding:4px 0 !important; }
-.fnos-showinfo__k{ flex:0 0 3.4em !important; font-size:12px !important; color:var(--fnos-muted) !important; }
-.fnos-showinfo__v{
-  flex:1 1 auto !important; min-width:0 !important; font-size:12.5px !important; line-height:1.6 !important;
-  color:var(--semi-color-text-0,#1d1d1f) !important; word-break:break-word !important;
-}
-/* \u2462b \u5206\u8282(lc-988 \u6269\u5B57\u6BB5\u540E\u65B0\u589E)\uFF1A\u4E00\u6761\u53D1\u4E1D\u7EBF + 11px \u5C0F\u6807\u9898\uFF0C\u8282\u5185**\u96F6\u5BB9\u5668**(\u7528\u6237\u660E\u786E\u8981\u6C42
-     \u300C\u53EA\u8981\u4E00\u4E2A\u5927\u7684\u5BB9\u5668\u5305\u8D77\u6765\uFF0C\u5185\u90E8\u7684\u5404\u5C0F\u6807\u9898\u6587\u5B57\u90FD\u4E0D\u8981\u6709\u5BB9\u5668\u5305\u88F9\u300D)\u3002
-     \u8282\u95F4\u8DDD\u6CBF\u7528\u65E2\u6709 __block \u76F8\u90BB\u89C4\u5219(18px)\uFF0C__sec \u81EA\u8EAB\u53EA\u8865 padding-top \u8BA9\u7EBF\u4E0D\u8D34\u5B57\u3002
-     \u26A0 \u7C7B\u540D\u4E25\u7981\u542B glassUI \u5B50\u4E32 token(card/panel/search/navbar/z-10/z-20/list-head\u2026)\uFF1A
-       sec / sec-t / tag / ov / stills / still / recs \u5747\u5DF2\u9010\u4E2A\u6838\u5BF9\u8FC7\u6E05\u5355\uFF0C\u5B89\u5168\u3002 */
-.fnos-showinfo__sec{ padding-top:14px !important; border-top:1px solid var(--fnos-hairline-soft) !important; }
-.fnos-showinfo__sec-t{
-  font-size:11px !important; letter-spacing:.06em !important; line-height:1 !important;
-  color:var(--fnos-muted) !important; margin-bottom:8px !important;
-}
-/* \u6807\u8BED\uFF1A\u6BD4\u6B63\u6587\u66F4\u65E9\u7ED9\u51FA\u8C03\u6027\uFF0C\u5F31\u5316\u5230\u7070\u5B57\u4E00\u7EA7\u3002 */
-.fnos-showinfo__tag{ font-size:12.5px !important; line-height:1.6 !important; color:var(--fnos-muted) !important; }
-/* \u5267\u7167\uFF1A3 \u5F20\u7B49\u5BBD 16:9\u3002img \u521D\u59CB opacity 0 + \u65E0 src(\u6E32\u67D3\u9636\u6BB5\u96F6\u8BF7\u6C42)\uFF0C
-   \u53D6\u5230 dataUrl \u540E\u7531 _fillStills \u52A0 is-ready \u6DE1\u5165\uFF1B\u53D6\u4E0D\u5230\u7684\u5355\u5F20\u4F1A\u88AB\u6458\u6389\uFF0C\u4E0D\u7559\u7A7A\u4F4D\u3002
-   aspect-ratio \u800C\u975E height\uFF1A\u5BBD\u5EA6\u662F calc \u51FA\u6765\u7684\u767E\u5206\u6BD4\uFF0C\u5199\u6B7B height \u5728\u7A84\u680F\u4F1A\u53D8\u5F62\u3002 */
-.fnos-showinfo__stills{ display:flex !important; gap:8px !important; }
-.fnos-showinfo__still{
-  width:calc((100% - 16px) / 3) !important; aspect-ratio:16 / 9 !important; object-fit:cover !important;
-  border-radius:8px !important; background:var(--fnos-hairline-soft) !important;
-  opacity:0 !important; transition:opacity .3s ease !important;
-}
-.fnos-showinfo__still.is-ready{ opacity:1 !important; }
-/* \u76F8\u4F3C\u5267\u96C6\uFF1A\u7EAF\u6587\u672C\u94FE\u63A5\u6D41(\xB7 \u5206\u9694)\uFF0C\u4E0D\u662F\u6D77\u62A5\u5899 \u2014\u2014 \u6D77\u62A5\u5899\u4F1A\u5F15\u5165\u4E00\u6392\u65B0\u6846\u3002 */
-.fnos-showinfo__recs{ font-size:12.5px !important; line-height:1.8 !important; }
-.fnos-showinfo__recs a{ color:var(--semi-color-text-0,#1d1d1f) !important; text-decoration:none !important; }
-.fnos-showinfo__recs a:hover{ color:var(--fnos-accent) !important; text-decoration:underline !important; }
-.fnos-showinfo__recs i{ font-style:normal !important; color:var(--semi-color-text-3,#c7c7cc) !important; margin:0 6px !important; }
-/* \u2463 \u5916\u94FE\uFF1A\u7EC4\u95F4\u8DDD\u7EDF\u4E00\u7531 __block \u76F8\u90BB\u89C4\u5219\u7ED9\uFF0C\u8FD9\u91CC\u4E0D\u518D\u81EA\u5E26 margin-top\u3002 */
-.fnos-showinfo__links{ display:flex !important; flex-wrap:wrap !important; gap:4px 12px !important; align-items:center !important; font-size:12.5px !important; }
-.fnos-showinfo__links a{ color:var(--fnos-accent) !important; text-decoration:none !important; font-weight:500 !important; }
-.fnos-showinfo__links a:hover{ text-decoration:underline !important; }
-.fnos-showinfo__links span{ color:var(--semi-color-text-3,#c7c7cc) !important; }
-.fnos-showinfo__loading,.fnos-showinfo__error{ color:var(--fnos-muted) !important; font-size:12.5px !important; padding:8px 0 !important; }
-/* [lc-1039] \u5B63\u9875\u5361\u9AA8\u67B6\u5360\u4F4D\uFF08tmdbCard.ts seasonSkeletonHtml\uFF09\uFF1A\u6570\u636E\u672A\u5230\u65F6\u6309\u6700\u7EC8\u7248\u5F0F\u94FA\u7070\u5757\u2014\u2014
-   \u5267\u7167 3 \u683C(\u540C .fnos-showinfo__still \u7684\u4E09\u7B49\u5206 16:9) + \u5206\u8282(\u53D1\u4E1D\u7EBF+\u5C0F\u6807\u9898+3 \u884C) + \u5916\u94FE\u884C\u3002
-   \u534A\u900F\u660E fill \u968F\u660E\u6697\u4E3B\u9898\uFF1B\u8109\u51B2\u53EA\u52A8 opacity(\u5408\u6210\u5668\u8DEF\u5F84\uFF0C\u96F6\u5E03\u5C40\u6296\u52A8)\uFF0C\u9519\u5CF0 delay \u51FA\u547C\u5438\u611F\uFF1B
-   \u78C1\u76D8\u7F13\u5B58\u547D\u4E2D\u65F6\u9AA8\u67B6\u6BEB\u79D2\u7EA7\u5373\u88AB\u771F\u5B9E\u5185\u5BB9\u6574\u5757\u66FF\u6362\u3002 */
-.fnos-showinfo__skel i{
-  display:block !important;
-  background:var(--semi-color-fill-0,rgba(128,128,128,.16)) !important;
-  border-radius:6px !important;
-  animation:fnos-skel-pulse 1.5s ease-in-out infinite !important;
-}
-.fnos-showinfo__skel-stills{ display:flex !important; gap:8px !important; }
-.fnos-showinfo__skel-stills i{
-  width:calc((100% - 16px) / 3) !important; aspect-ratio:16 / 9 !important;
-  border-radius:8px !important;
-}
-.fnos-showinfo__skel-stills i:nth-child(2){ animation-delay:.22s !important; }
-.fnos-showinfo__skel-stills i:nth-child(3){ animation-delay:.44s !important; }
-.fnos-showinfo__skel-sec{
-  margin-top:18px !important; padding-top:14px !important;
-  border-top:1px solid var(--fnos-hairline-soft) !important;
-}
-.fnos-showinfo__skel-t{ width:52px !important; height:11px !important; margin-bottom:2px !important; animation-delay:.1s !important; }
-.fnos-showinfo__skel-l{ height:12px !important; margin-top:9px !important; }
-.fnos-showinfo__skel-l:nth-of-type(3){ animation-delay:.18s !important; }
-.fnos-showinfo__skel-l:nth-of-type(4){ animation-delay:.36s !important; }
-.fnos-showinfo__skel-links{ display:flex !important; gap:12px !important; margin-top:18px !important; }
-.fnos-showinfo__skel-links i{ width:40px !important; height:12px !important; }
-.fnos-showinfo__skel-links i:nth-child(2){ animation-delay:.15s !important; }
-.fnos-showinfo__skel-links i:nth-child(3){ animation-delay:.3s !important; }
-.fnos-showinfo__skel-links i:nth-child(4){ animation-delay:.45s !important; }
-@keyframes fnos-skel-pulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
-@media (prefers-reduced-motion:reduce){
-  .fnos-showinfo__skel i{ animation:none !important; opacity:.5 !important; }
-}
-/* \u2464 \u6765\u6E90\u884C\uFF1A\u5168\u5361\u6700\u5F31\u4E00\u7EA7(10.5px)\u3002\u5237\u65B0\u9ED8\u8BA4\u7070\u3001hover \u624D\u67D3 accent \u2014\u2014
-     \u5B83\u662F\u5F00\u53D1\u8005\u89C6\u89D2\u7684\u64CD\u4F5C\uFF0C\u4E0D\u8BE5\u548C TMDB/IMDb \u5916\u94FE\u62A2\u540C\u4E00\u7EA7\u89C6\u89C9\u6743\u91CD\u3002 */
-.fnos-showinfo__foot{
-  margin-top:16px !important;
-  display:flex !important; justify-content:space-between !important; align-items:center !important; gap:10px !important;
-  font-size:10.5px !important; color:var(--fnos-muted) !important;
-}
-.fnos-showinfo__refresh{
-  background:transparent !important; border:none !important; padding:0 2px !important; cursor:pointer !important;
-  color:var(--fnos-muted) !important; font-size:12px !important; line-height:1 !important; font-family:inherit !important;
-  transition:color .18s ease !important;
-}
-.fnos-showinfo__refresh:hover{ color:var(--fnos-accent) !important; }
-
-/* ===== J. \u6E05\u6670\u5EA6\u6807\u8BC6\uFF1A\u539F\u751F\u89D2\u6807(\u8D34\u7F29\u7565\u56FE\u53F3\u4E0B) \u2192 \u96C6\u6807\u9898\u540E\u7684\u5C0F\u56FE\uFF08epResolution.ts \u6CE8\u5165\uFF09=====
-   \u26A0 \u5B9E\u8BC1\u7EA0\u6B63(lc-986, \u7528\u6237\u63D0\u4F9B\u7684\u771F\u5B9E DOM): \u539F\u751F\u6E05\u6670\u5EA6\u6807\u8BC6**\u4E0D\u662F\u6587\u672C**\uFF0C\u662F\u4E00\u5F20 base64 \u4F4D\u56FE\u2014\u2014
-     \u7F29\u7565\u56FE\u5BB9\u5668 > div.absolute.bottom-0(\u5E95\u90E8\u6E10\u53D8\u5C42) > div.absolute.bottom-2.5.right-2.5.flex.gap-1.5
-       > div.flex.h-[22px].items-center > img[src^="data:image/png;base64"][alt=""]
-     \u6240\u4EE5 lc-984 \u7684\u300C\u6587\u672C\u53F6\u5B50 + \u6E05\u6670\u5EA6\u8BCD\u8868\u300D\u6C38\u8FDC\u5931\u914D\uFF0C\u90A3\u7248\u80F6\u56CA\u4E00\u6B21\u90FD\u6CA1\u6CE8\u5165\u6210\u529F\u3002
-   \u73B0\u5728\u6539\u4E3A\u514B\u9686\u8FD9\u5F20\u4F4D\u56FE\uFF1A\u56FE\u91CC\u753B\u7684\u662F\u4EC0\u4E48(1080/4K/HDR\u2026)\u8BFB\u4E0D\u6210\u6587\u5B57\uFF0C\u514B\u9686\u662F\u552F\u4E00\u4FDD\u771F\u505A\u6CD5\u3002
-   \u9690\u85CF\u8D70 class \u800C\u975E\u5220\u8282\u70B9: \u539F\u751F\u89D2\u6807\u53EA\u88AB\u52A0\u6807\u8BB0, DOM \u4F4D\u7F6E/\u5C5E\u6027/src \u5168\u4E0D\u52A8, teardown \u6458\u6389\u5373\u590D\u539F\u3002 */
-body.fnos-beautify .fnos-res-native-hidden{ display:none !important; }
-/* \u6807\u9898\u540E\u7684\u6807\u8BC6\uFF1A\u88F8\u56FE\uFF0C\u4E0D\u5957\u6846\u4E0D\u52A0\u5E95\u8272\u3002\u4F4D\u56FE\u672C\u8EAB\u5DF2\u662F\u4E0D\u900F\u660E\u8272\u5757(palette PNG \u65E0 alpha)\uFF0C
-   \u518D\u5305\u4E00\u5C42 pill \u5C31\u6210\u4E86\u300C\u6846\u91CC\u5957\u6846\u300D\u3002 */
-body.fnos-beautify .fnos-ep-res{
-  display:inline-block !important; margin-left:7px !important;
-  vertical-align:middle !important; line-height:0 !important; white-space:nowrap !important;
-}
-body.fnos-beautify .fnos-ep-res-img{
-  display:block !important; height:15px !important; width:auto !important;  /* \u4FDD\u6301\u4F4D\u56FE\u56FA\u6709\u6BD4\u4F8B */
-  border-radius:3px !important;
-}
-/* \u80F6\u56CA append \u5728\u6807\u9898 p \u672B\u5C3E: \u82E5\u8BE5 p \u5E26 truncate(nowrap+ellipsis) \u6216 line-clamp, \u957F\u96C6\u6807\u9898\u4F1A\u628A\u80F6\u56CA\u88C1\u6CA1\u3002
-   \u7528 :has \u7CBE\u51C6\u53EA\u89E3\u7981\u300C\u771F\u6536\u5230\u4E86\u80F6\u56CA\u7684\u90A3\u4E2A p\u300D, \u4E0D\u5F71\u54CD\u5176\u5B83\u6BB5\u843D\u3002 */
-body.fnos-beautify ${COL} > :nth-child(2) [data-id="details"] p:has(> .fnos-ep-res){
-  display:block !important; white-space:normal !important;
-  overflow:visible !important; text-overflow:clip !important;
-  -webkit-line-clamp:unset !important;
-}
-
-/* ===== K. \u9876\u680F\u5DE6\u4E0A\u89D2\u56FE\u6807\u6309\u94AE\u914D\u8272\u8865\u9F50\uFF08home / hamburger\uFF1Blc-989\uFF09=====
-   \u26A0 \u8FD9\u662F**\u98DE\u725B\u539F\u751F\u81EA\u5DF1\u7684 bug**\uFF0C\u6211\u4EEC\u53EA\u662F\u8865\u9F50\u5B83\u5DF2\u7ECF\u7528\u5728\u300C\u8FD4\u56DE\u300D\u6309\u94AE\u4E0A\u7684\u540C\u7B49\u8BED\u4E49\u3002
-   \u5B9E\u6D4B\uFF08\u6D3B\u4F53 NAS /v/tv/season/<id>\uFF0C\u6D45\u8272\u4E3B\u9898 = \u7528\u6237\u9ED8\u8BA4\uFF0CelementsFromPoint \u4E8E\u6309\u94AE\u4E2D\u5FC3 (74,41)\uFF09:
-     \u8BE6\u60C5\u9875\u9876\u680F\u80CC\u666F\u7531\u4E09\u5C42\u53E0\u6210\u3001\u4E14**\u6052\u6697**\uFF08\u4E0E\u4E3B\u9898\u65E0\u5173\uFF09:
-       \u2460 div.z-[2].h-[80px].top-0.w-full  \u2192 linear-gradient(rgba(0,0,0,.5) \u2192 rgba(0,0,0,0))
-       \u2461 div.gradient-for-full            \u2192 linear-gradient(90deg, rgba(25,25,26,.96) 0%, .74 28%, \u2026)
-       \u2462 div.semi-always-dark.h-[470px]   \u2192 background-color: rgb(25,25,26)
-     \u98DE\u725B\u53EA\u7ED9\u300C\u8FD4\u56DE\u300D\u6309\u94AE\u5355\u72EC\u5305\u4E86 .semi-always-dark \u2192 \u6052\u767D rgb(255,255,255)\uFF0C\u5BF9\u6BD4\u5EA6 19.2:1\uFF0C\u6B63\u786E\u3002
-     \u5374**\u6F0F\u4E86\u5B83\u5DE6\u8FB9\u7684 home \u4E0E hamburger**: \u4E24\u8005\u8D70 text-[var(--semi-color-text-1)]\uFF0C\u6D45\u8272\u4E3B\u9898\u4E0B
-     computed color = rgba(0,0,0,.8)\uFF08home \u7684 svg fill \u5B9E\u6D4B rgb(0,0,0)\uFF09\u2192 \u6DF1\u56FE\u6807\u538B\u5728\u6052\u6697\u80CC\u666F\u4E0A\u3002
-   \u91CF\u5316: \u80CC\u666F\u5408\u6210 rgb(18.9)\uFF08\u2460 \u5728 y=41 \u5904 alpha 0.244\uFF09\u2192 \u4FEE\u6B63\u524D\u5BF9\u6BD4\u5EA6 **1.10:1**
-     \uFF08WCAG \u975E\u6587\u672C\u6700\u4F4E\u95E8\u69DB 3:1\uFF0C\u7B49\u4E8E\u770B\u4E0D\u89C1\uFF09\uFF1B\u4FEE\u6B63\u540E **12.03:1**\u3002
-     /v/tv/<id>\uFF08\u975E season\uFF09\u8BE6\u60C5\u9875\u80CC\u666F\u4E3A\u7EAF rgb(25,25,26) \u2192 before 1.16:1 / after 11.53:1\uFF0C\u540C\u4E00\u7ED3\u8BBA\u3002
-     \u65C1\u8BC1: \u53F3\u4E0A\u89D2\u641C\u7D22/\u7528\u6237/\u8BBE\u7F6E\u4E09\u4E2A .semi-button-content \u5728\u6D45\u8272\u4E3B\u9898\u4E0B\u5B9E\u6D4B\u4E5F\u5DF2\u662F rgba(255,255,255,.8)
-     \u2014\u2014\u98DE\u725B\u540C\u6837\u6309\u6052\u6697\u5904\u7406\uFF0C\u53EA\u6709 home/hamburger \u662F\u6F0F\u7F51\u7684\u4E24\u4E2A\u3002
-   \u53D6\u503C: --fnos-topbar-fg = rgba(255,255,255,.8)\uFF0C\u6B63\u662F\u6697\u8272\u4E3B\u9898\u4E0B --semi-color-text-1 \u7684\u539F\u751F\u503C\u3002
-     \u4E0D\u53D1\u660E\u65B0\u7684\u989C\u8272\u5173\u7CFB\uFF0C\u53EA\u662F\u8BA9\u6D45\u8272\u4E3B\u9898\u4E0E\u6697\u8272\u4E3B\u9898\u89C2\u611F\u4E00\u81F4\uFF08\u6700\u5C0F\u5E72\u9884\uFF09\u3002
-   \u26A0 \u5FC5\u987B\u5E26 svg \u540E\u4EE3\u9009\u62E9\u5668: home \u7684 svg \u81EA\u8EAB class \u4E5F\u542B text-[var(--semi-color-text-1)]
-     \uFF08h-[22px] cursor-pointer align-top leading-sm text-[var(--semi-color-text-1)]\uFF09\uFF0C
-     \u53EA\u6539\u5916\u5C42 div / a \u4F1A\u88AB\u5B83\u81EA\u5DF1\u90A3\u4E00\u5C42\u538B\u56DE\u53BB\uFF1B\u5B9E\u6D4B\u4E09\u5C42\u9F50\u4E0A + !important \u624D\u771F\u7684\u751F\u6548\u3002
-   \u26A0 \u53EA\u6539 color \u4E0D\u5199 fill: \u4E09\u4E2A\u56FE\u6807\u7684 svg \u6839\u90FD\u662F fill="currentColor"\uFF0C\u5B50\u5143\u7D20(path/g/rect/defs/clipPath)
-     \u65E0 fill \u5C5E\u6027 \u2192 \u6539 color \u5373\u5168\u94FE\u7EE7\u627F\uFF08\u5B9E\u6D4B\u5185\u90E8 path/g/rect \u5168\u90E8\u8DDF\u968F\u53D8\u767D\uFF09\u3002
-   \u26A0 \u4E0D\u52A8\u300C\u8FD4\u56DE\u300D\u6309\u94AE: \u5B83\u5DF2\u88AB\u98DE\u725B\u7684 .semi-always-dark \u4FDD\u8BC1\u6052\u767D\uFF0C\u672C\u6BB5\u9009\u62E9\u5668\u4E5F\u547D\u4E0D\u4E2D\u5B83\u3002
-   \u26A0 \u5FC5\u987B\u7528 body.fnos-beautify \u95E8\u63A7\uFF08= \u4EC5\u8BE6\u60C5\u9875\uFF09: \u9996\u9875\u9876\u680F\u5B9E\u6D4B**\u6CA1\u6709**\u90A3\u5C42\u9ED1\u6E10\u53D8
-     \uFF08\u80CC\u666F\u662F bg-[var(--semi-color-bg-1)]\uFF0C\u6D45\u8272\u4E3B\u9898\u4E0B\u4E3A\u767D\uFF09\uFF0C\u6DF1\u56FE\u6807\u914D\u767D\u5E95\u662F\u6B63\u786E\u7684\uFF0C\u5168\u5C40\u6539\u4F1A\u6539\u574F\u9996\u9875\u3002
-   \u26A0 \u4E0E glassUI \u65E0\u51B2\u7A81: \u73BB\u7483\u6A21\u5F0F\u5BF9\u9876\u680F\u662F\u6392\u9664/\u900F\u660E\u5316\u89C4\u5219\uFF08[data-fnos-clear=1] / [class*=z-20] / z-10\uFF09\uFF0C
-     \u4E0D\u4F1A\u7ED9\u9876\u680F\u52A0\u6D45\u8272\u78E8\u7802 \u2192 \u6052\u6697\u80CC\u666F\u5728\u73BB\u7483\u5F00\u5173\u4E24\u79CD\u72B6\u6001\u4E0B\u90FD\u6210\u7ACB\u3002
-   \u9009\u62E9\u5668\u7528\u5C5E\u6027\u5B50\u4E32\uFF08class*="h-[80px]"\uFF09\u800C\u975E .h-[80px]: \u907F\u5F00 Tailwind \u4EFB\u610F\u503C\u7684\u65B9\u62EC\u53F7\u8F6C\u4E49\u3002 */
-body.fnos-beautify div[class*="h-[80px]"][class*="top-0"] div[class*="gap-4"][class*="lg:!hidden"],
-body.fnos-beautify div[class*="h-[80px]"][class*="top-0"] div[class*="gap-4"][class*="lg:!hidden"] a,
-body.fnos-beautify div[class*="h-[80px]"][class*="top-0"] div[class*="gap-4"][class*="lg:!hidden"] svg{
-  color:var(--fnos-topbar-fg) !important;
-}
-
-/* ===== L. \u8BE6\u60C5\u9875\u4E0A\u90E8\u906E\u7F69 \u2192 \u5C01\u9762\u53D6\u8272\u7684\u73BB\u7483\uFF08lc-990\uFF09=====
-   \u8BC9\u6C42(\u7528\u6237\u539F\u8BDD)\uFF1A\u300C\u4E8C\u7EA7\u8BE6\u60C5\u9875\u91CC\u4E0A\u90E8\u7684\u906E\u7F69\u592A\u4E11\u4E00\u4E0D\u597D\u770B\u6539\u6210\u5C01\u9762\u53D6\u8272\u7684\u73BB\u7483\u6837\u5F0F\u300D\u3002
-   \u300C\u4E11\u300D\u662F\u91CF\u5F97\u51FA\u6765\u7684 \u2014\u2014 \u539F\u751F\u4E24\u5C42\u906E\u7F69\u8272\u503C\u5168\u662F\u786C\u7F16\u7801\u4E2D\u6027\u8272\uFF0C\u4E14\u5DE6\u53F3\u660E\u6697\u4E25\u91CD\u4E0D\u5747
-   (\u6D3B\u4F53 /v/tv/season/<id>\uFF0C\u6D45\u8272\u4E3B\u9898\uFF0C\u540C\u4E00\u884C y=41 \u4E0A\u7684\u767D\u5B57\u5BF9\u6BD4\u5EA6)\uFF1A
-     \u9876\u680F 80px \u9ED1\u6E10\u53D8 + hero \u7684 .gradient-for-full(\u4E24\u5C42 25,25,26)
-     \u2192 \u5DE6\u4FA7\u56FE\u6807\u533A 12.23(\u5C01\u9762\u8272\u88AB\u5403\u5230\u6B7B\u9ED1)\uFF0C\u53F3\u4FA7\u6309\u94AE\u7EC4\u53EA\u5269 4.50(\u51E0\u4E4E\u6CA1\u538B\u6697)\u3002
-   \u6362\u6210\u5C01\u9762\u540C\u8272\u7CFB\u540E\u540C\u4E00\u6279\u91C7\u6837\u70B9\u6536\u655B\u5230 9.72~11.00\uFF0C\u6807\u9898\u300C\u7B2C 1 \u5B63\u300D8.92\u3002
-   tint \u6765\u6E90\uFF1AheroTint.ts \u4ECE hero \u5267\u7167\u53D6\u4E3B\u8272\u6876\uFF0C\u628A HSL \u4EAE\u5EA6\u538B\u5230 L<=0.20(\u53EA\u538B\u4E0D\u63D0\u3001H/S \u539F\u503C\u4FDD\u7559)\uFF0C
-     \u5199\u6210 body \u4E0A\u7684 --fnos-hero-tint\u3002\u53D6\u8272\u5931\u8D25\u65F6\u8BE5\u53D8\u91CF\u4E0D\u5B58\u5728 \u2192 \u4E0B\u9762\u6BCF\u4E2A var() \u7684\u7B2C\u4E8C\u53C2\u6570
-     \u7CBE\u786E\u56DE\u843D\u5230\u98DE\u725B\u539F\u751F\u7684 25,25,26\uFF0C\u5373\u4F18\u96C5\u964D\u7EA7(\u53D8\u91CF\u5728/\u7F3A\u5931\u4E24\u6001\u5747\u5DF2\u5B9E\u6D4B)\u3002
-
-   \u26A0 \u4E09\u4E2A\u8BBE\u8BA1\u8981\u70B9\uFF0C\u6BCF\u6761\u90FD\u6709\u5B9E\u6D4B\u4F9D\u636E\uFF0C\u6539\u52A8\u524D\u52A1\u5FC5\u8BFB\uFF1A
-   \u2460 tint \u5E95\u8272 / \u78E8\u7802 / \u6E10\u9690 mask **\u4E09\u8005\u5168\u653E ::before**\uFF0C\u4E0D\u653E bar \u672C\u4F53\u3002
-      mask \u4F1A\u88C1\u6389\u5143\u7D20\u81EA\u5DF1\u7684\u6574\u4E2A\u6E32\u67D3\u5B50\u6811 \u2014\u2014 bar \u5185\u53EF\u89C1\u5185\u5BB9\u6700\u4F4E\u5230 y=62(78%)\u3001\u6E10\u9690\u4ECE 58% \u8D77\uFF0C
-      \u82E5\u628A mask \u52A0\u5728 bar \u672C\u4F53\u4E0A\uFF0C\u56FE\u6807\u4E0B\u6CBF\u4F1A\u88AB\u4E00\u8D77\u6DE1\u51FA\u3002\u4F2A\u5143\u7D20\u7684 mask \u53EA\u88C1\u5B83\u81EA\u5DF1\u3002
-      \u53E6 ::before \u662F z-auto\uFF0C\u800C bar \u7684\u5185\u5BB9\u5BB9\u5668\u5E26 z-20 \u2192 \u78E8\u7802\u5728\u5185\u5BB9\u4E4B\u4E0B\uFF0C\u56FE\u6807\u4E0D\u4F1A\u88AB\u6A21\u7CCA\u3002
-   \u2461 \u7528 mask \u6E10\u9690\uFF0C\u800C\u4E0D\u662F\u8BA9 background \u7684 alpha \u6E10\u9690\u5230 0\uFF1A
-      \u56FE\u6807\u533A(y=23..59)\u7684 tint alpha \u56E0\u6B64\u6052\u5B9A\u5728\u9876\u503C\uFF0C\u5BF9\u6BD4\u5EA6\u4ECE\u65E9\u524D\u6807\u5B9A\u7684 4.23 \u63D0\u5347\u5230\u4E24\u4F4D\u6570\u3002
-      \u82E5\u6CBF\u7528 alpha .72\u21920 \u90A3\u79CD\u5F62\u72B6\uFF0C\u56FE\u6807\u4E2D\u5FC3\u53EA\u5269 .351\uFF0C\u4EAE\u5267\u7167\u900F\u4E0A\u6765 \u2192 \u5BF9\u6BD4\u5EA6\u66B4\u8DCC\u5230 1.80~1.92\u3002
-      \u9876\u503C\u53D6 **1** \u800C\u4E0D\u662F .92\uFF0C\u662F lc-992 \u7684\u63A5\u7F1D\u8981\u6C42(\u89C1 M \u6BB5)\uFF1Ay=0..31 \u7684\u6807\u9898\u680F\u94FA\u540C\u8272\u7CFB\u5E95\u8272\u540E\uFF0C
-      \u53EA\u6709\u6761\u9996\u884C(y=32)\u4E5F\u662F\u7EAF tint\uFF0C\u4E24\u884C\u624D\u80FD\u5BF9\u4EFB\u610F x \u6052\u7B49 \u2192 \u63A5\u7F1D 1.0000(\u73B0\u72B6\u767D\u6761\u662F 9.8232)\u3002
-      \u4EFB\u4F55 <1 \u7684\u9876\u503C\u90FD\u4F1A\u8BA9\u63A5\u7F1D\u968F\u5C01\u9762\u660E\u6697\u6F02\u79FB(\u5B9E\u6D4B .98\u21921.0306\u3001.96\u21921.0623)\u3002
-      \u4EE3\u4EF7\u662F\u51C0\u6536\u76CA\uFF1A\u56FE\u6807\u884C y=41 \u767D\u5B57\u5BF9\u6BD4\u5EA6\u4ECE 9.35~10.62(1.14x \u843D\u5DEE)\u6536\u655B\u5230 **11.06~11.32(1.02x)**\uFF0C
-      12 \u79CD\u73AF\u5883(\u660E\u6697 \xD7 \u73BB\u7483\u5F00\u5173 \xD7 \u684C\u9762\u9ED1/\u4E2D\u7070/\u767D)\u5B8C\u5168\u4E00\u81F4\uFF1B\u73BB\u7483\u6761\u5916\u89C2\u6700\u5927\u6539\u53D8\u4EC5 15/255\u3002
-      \u6E10\u9690\u6BB5(y=78..110)\u9010\u884C\u4EAE\u5EA6\u5256\u9762\u7684\u6700\u5927\u9006\u5411\u6B65\u957F 0.0449\uFF0C\u800C\u5E95\u5C42\u5C01\u9762\u81EA\u8EAB\u5728\u540C\u4E00\u6BB5\u5C31\u6709 0.0574
-      \u2192 \u9006\u5411\u8D77\u4F0F\u662F\u5C01\u9762\u5185\u5BB9\u7EE7\u627F\u6765\u7684\uFF0Ctint \u8986\u76D6\u53CD\u800C\u628A\u5B83\u538B\u5E73\u4E86\uFF1B\u9876\u503C .92\u21921 \u5BF9\u5B83\u7684\u5F71\u54CD\u53EA\u6709 0.0001\u3002
-   \u2462 bar \u672C\u4F53\u53EA\u6E05 background-image\uFF0C**\u4E0D\u52A8 background-color**(\u5B83\u672C\u6765\u5C31\u662F rgba(0,0,0,0))\uFF1A
-      embyWall.ts \u7684 [lc-925] \u56FE\u6807\u53CD\u8272\u9760 elementsFromPoint \u9010\u5C42\u8BFB backgroundColor / backgroundImage
-      \u91C7\u6837\u80CC\u666F\u4EAE\u5EA6\uFF0C\u800C\u4F2A\u5143\u7D20\u4E0D\u53C2\u4E0E elementsFromPoint \u2192 \u91C7\u6837\u8DEF\u5F84\u4E0E\u672C\u6BB5\u6539\u52A8\u4E4B\u524D\u5B8C\u5168\u4E00\u81F4\uFF0C
-      \u4ECD\u6052\u547D\u4E2D hero \u7684\u5B9E\u5FC3 rgb(25,25,26) \u800C\u5224\u300C\u6697\u5E95 \u2192 \u56FE\u6807\u5237\u767D\u300D\uFF0C\u4E0E\u8FD9\u91CC\u7684\u6697 tint \u81EA\u6D3D\u3002
-
-   \u26A0 \u9009\u62E9\u5668\u5B89\u5168\u6027\uFF1A\u9996\u9875\u5B9E\u6D4B**\u4E0D\u5B58\u5728** div[class*="h-[80px]"][class*="top-0"]
-     (\u9996\u9875\u9876\u680F\u662F\u53E6\u4E00\u4E2A\u5143\u7D20 relative.z-[2].h-[80px].bg-[var(--semi-color-bg-1)]\uFF0C\u5B9E\u5FC3\u767D\u5E95\u3001\u4E0D\u5E26 top-0)\uFF0C
-     \u4E24\u4E2A\u906E\u7F69\u7C7B .gradient-for-full / .gradient \u5728\u9996\u9875\u6570\u5747\u4E3A 0\u3001\u4E09\u79CD hero \u4E5F\u90FD\u4E0D\u5B58\u5728
-     \u2192 \u518D\u53E0\u52A0 body.fnos-beautify \u95E8\u63A7(\u9996\u9875\u65E0 hero\uFF0C\u8BE5 class \u6C38\u4E0D\u4F1A\u52A0) = \u53CC\u91CD\u5B89\u5168\u3002
-   \u26A0 \u4E0D\u65B0\u589E\u4EFB\u4F55 class \u540D(\u5168\u8D70 ::before + \u65E2\u6709\u5C5E\u6027\u9009\u62E9\u5668) \u2192 \u65E0\u9700\u8FC7 glassUI \u7684\u5B50\u4E32 token \u6E05\u5355\u3002
-   \u26A0 \u523B\u610F\u4E0D\u78B0 hero \u672C\u4F53\u5E95\u8272 bg-[var(--semi-color-bg-1)] = rgb(25,25,26)\uFF1A\u5B83\u88AB\u6574\u5757\u4E0D\u900F\u660E\u5267\u7167
-     100% \u8986\u76D6\uFF0C\u6539\u4E86\u770B\u4E0D\u51FA\u533A\u522B\uFF1B\u800C .semi-always-dark \u5168\u6587\u6863\u6709 5 \u4E2A(\u53E6 4 \u4E2A\u662F 36x36 \u5C0F\u56FE\u6807)\uFF0C
-     \u591A\u4E00\u6761 !important \u53BB\u8986\u76D6 Semi \u5168\u5C40 token \u6709\u8BEF\u4F24\u98CE\u9669\u3002tint \u7F3A\u5931\u65F6 fallback \u6070\u597D\u4E5F\u662F 25,25,26\u3002
-   \u26A0 \u8FD9\u662F\u672C\u6587\u4EF6**\u552F\u4E00**\u4E00\u5904 backdrop-filter(\u7834\u4F8B\u8BF4\u660E\u89C1\u6587\u4EF6\u5934\u7B2C 7 \u6761)\uFF1A\u9762\u79EF\u4EC5 820x80\u3001\u53EA\u5728\u8BE6\u60C5\u9875\u3001
-     \u4E0D\u968F\u6EDA\u52A8\u91CD\u7B97\u3002bar \u7684\u7956\u5148\u94FE 7 \u5C42\u5B9E\u6D4B\u96F6 filter/transform/opacity/mask/will-change/contain/
-     isolation/perspective \u2192 \u4E0D\u7834\u574F backdrop root\uFF0C\u78E8\u7802\u80FD\u771F\u7684\u91C7\u5230 hero \u5267\u7167\u3002 */
-body.fnos-beautify div[class*="h-[80px]"][class*="top-0"]{
-  background-image:none !important;
-}
-body.fnos-beautify div[class*="h-[80px]"][class*="top-0"]::before{
-  content:''; position:absolute; inset:0; pointer-events:none;
-  background-image:linear-gradient(to bottom,
-    rgba(var(--fnos-hero-tint, 25,25,26), 1) 0%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .86) 100%);
-  backdrop-filter:blur(18px) saturate(1.5);
-  -webkit-backdrop-filter:blur(18px) saturate(1.5);
-  -webkit-mask-image:linear-gradient(to bottom, #000 0%, #000 58%, transparent 97%);
-  mask-image:linear-gradient(to bottom, #000 0%, #000 58%, transparent 97%);
-}
-/* hero \u906E\u7F69\uFF1A\u4E24\u5C42\u6E10\u53D8\u7684 alpha \u4E0E\u8272\u6807\u4F4D\u7F6E**\u4E00\u5B57\u4E0D\u6539**\uFF0C\u53EA\u628A 25,25,26 \u6362\u6210 tint\u3002
-   \u90A3\u5957 alpha \u5F62\u72B6\u662F\u6709\u529F\u80FD\u76EE\u7684\u7684(\u4FDD\u4F4F x=292 \u8D77\u7684\u767D\u8272\u6807\u9898/\u5B63/\u96C6/\u5E74\u4EFD)\uFF0C\u52A8\u5B83\u5C31\u52A8\u53EF\u8BFB\u6027\u3002
-   \u8FD9\u91CC\u4E0D\u52A0\u78E8\u7802\uFF1A\u7528\u6237\u8981\u7684\u662F\u5C01\u9762\u5267\u7167\u4FDD\u6301\u6E05\u6670\uFF0C\u78E8\u7802\u53EA\u5728\u9876\u680F\u90A3\u4E00\u6761(Apple / Netflix \u7684\u9876\u680F\u505A\u6CD5)\u3002 */
-body.fnos-beautify ${HERO} .gradient-for-full{
-  background-image:
-    linear-gradient(90deg,
-      rgba(var(--fnos-hero-tint, 25,25,26), .96) 0%,
-      rgba(var(--fnos-hero-tint, 25,25,26), .74) 28%,
-      rgba(var(--fnos-hero-tint, 25,25,26), .38) 58%,
-      rgba(var(--fnos-hero-tint, 25,25,26), .08) 100%),
-    linear-gradient(0deg,
-      rgba(var(--fnos-hero-tint, 25,25,26), 1) 0%,
-      rgba(var(--fnos-hero-tint, 25,25,26), .94) 22%,
-      rgba(var(--fnos-hero-tint, 25,25,26), .76) 54%,
-      rgba(var(--fnos-hero-tint, 25,25,26), .18) 100%) !important;
-}
-/* Series \u4E00\u7EA7\u9875\u7684\u906E\u7F69\u662F**\u53E6\u4E00\u4E2A\u7C7B\u540D**\uFF1A.gradient\uFF08\u7EC4\u4EF6 Zse \u6E32\u67D3\u7684
-   div.gradient.absolute.bottom-0.left-0.h-[45%].w-full\uFF09\u3002\u4E09\u70B9\u90FD\u4E0E\u4E0A\u9762\u90A3\u6761\u4E0D\u540C \u2014\u2014
-   \u7C7B\u540D\u4E0D\u540C\u3001\u53EA\u6709\u4E00\u5C42\u6E10\u53D8\uFF08\u4E0D\u662F\u4E24\u5C42\uFF09\u3001\u51E0\u4F55\u662F\u8D34\u5E95 45% \u9AD8\uFF08\u4E0D\u662F size-full \u6574\u5757 hero\uFF09
-   \u2192 \u5FC5\u987B\u5355\u72EC\u4E00\u6761\u89C4\u5219\uFF0C\u4E0A\u9762\u90A3\u6761\u5BF9\u5B83\u96F6\u547D\u4E2D\u3002
-   \u8272\u6807\u4F4D\u7F6E\u4E0E alpha \u5F62\u72B6\u7167\u6284\u98DE\u725B\u539F\u751F CSS \u539F\u6587\u4E00\u5B57\u4E0D\u6539\uFF1A
-     .gradient{background:linear-gradient(0deg, rgba(var(--semi-grey-1),1) 0%, 1 18%, .92 42%, .64 72%, 0 100%)}
-   \u53EA\u628A var(--semi-grey-1) \u6362\u6210 tint\u3002--semi-grey-1 \u5728 hero \u5B50\u6811\u91CC\u6052\u89E3\u6790\u4E3A 25,25,26
-   \uFF08.semi-always-dark \u5F3A\u5236\u6697\u8272 token\uFF0C\u6D45\u8272\u4E3B\u9898\u4E0B\u4E5F\u662F\uFF0Clc-990 \u6D3B\u4F53\u5B9E\u6D4B\u5DF2\u8BC1\uFF09\u2192 fallback \u503C\u4E00\u81F4\u3002
-   \u6807\u9898\u843D\u70B9\u5DF2\u6838\u7B97\uFF1A\u6807\u9898\u5757\u5728 bottom-[30px]\uFF08logo h-84 + gap-30 + h2 text-60\uFF09\uFF0C
-   \u6362\u7B97\u5230\u8FD9\u6761 252px \u9AD8\u7684\u6E10\u53D8\u91CC\uFF0Ch2 \u5904\u4E8E alpha .92~1 \u7684\u533A\u6BB5\uFF1Btint \u7684 HSL \u4EAE\u5EA6\u9501\u5728 L<=0.20
-   \u2192 \u767D\u6807\u9898\u5BF9\u6BD4\u5EA6 >=8.9\uFF0C\u4E0E lc-990 \u5BF9 Season \u9875\u6807\u5B9A\u7684 8.92 \u540C\u6863\u3002
-   \u26A0 \u7C7B\u540D\u9009\u62E9\u5668 .gradient \u5FC5\u987B\u7559\u5728 ${HERO} \u540E\u4EE3\u4F4D\u7F6E\uFF1A\u5B83\u592A\u901A\u7528\uFF0C\u8131\u79BB hero \u4F5C\u7528\u57DF\u4F1A\u8BEF\u4F24\u522B\u5904\u3002
-   \u26A0 \u7528 background-image \u8986\u76D6\u539F\u751F\u7684 background \u7B80\u5199\uFF08!important \u53EA\u538B\u7B80\u5199\u91CC\u7684 image \u5206\u91CF\uFF09\uFF0C
-     \u4E0E\u4E0A\u9762\u90A3\u6761 .gradient-for-full \u7684\u5199\u6CD5\u4E00\u81F4\uFF0C\u90A3\u6761\u5DF2\u6D3B\u4F53\u5B9E\u6D4B\u751F\u6548\u3002 */
-body.fnos-beautify ${HERO} .gradient{
-  background-image:linear-gradient(0deg,
-    rgba(var(--fnos-hero-tint, 25,25,26), 1) 0%,
-    rgba(var(--fnos-hero-tint, 25,25,26), 1) 18%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .92) 42%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .64) 72%,
-    rgba(var(--fnos-hero-tint, 25,25,26), 0) 100%) !important;
-}
-
-/* ===== M. \u7A97\u53E3\u6807\u9898\u680F(32px \u5B89\u5168\u533A)\u8DDF\u968F\u5C01\u9762\u53D6\u8272\uFF08lc-992\uFF09=====
-   \u8BC9\u6C42(\u7528\u6237\u539F\u8BDD)\uFF1A\u300C\u6574\u4E2A\u8F6F\u4EF6\u9876\u90E8\u7684\u63A7\u4EF6\u6837\u5F0F\u8DDF\u968F\u53D6\u8272\uFF0C\u4E0D\u8981\u4E00\u76F4\u4E3A\u767D\u8272\u300D\uFF0C\u5E76\u9644\u622A\u56FE\u6307\u660E\u5BF9\u8C61\u662F
-   Electron \u53F3\u4E0A\u89D2 min/max/close \u63A7\u5236\u680F(titlebar.ts \u6CE8\u5165\u7684 #custom-titlebar\uFF0Cy=0..31)\u3002
-
-   \u300C\u4E00\u76F4\u4E3A\u767D\u8272\u300D\u662F\u91CF\u5F97\u51FA\u6765\u7684\uFF0C\u800C\u4E14\u6BD4\u7528\u6237\u63CF\u8FF0\u7684\u66F4\u4E25\u91CD\uFF1A
-   \xB7 titlebar.ts \u65E7\u7248\u628A\u6761\u7684 background **\u65E0\u6761\u4EF6**\u5199\u6B7B transparent(\u6C89\u6D78/\u975E\u6C89\u6D78\u4E24\u6001\u90FD\u4E00\u6837)\uFF0C
-     \u4E8E\u662F\u8FD9 32px \u900F\u51FA\u6765\u7684\u662F\u4E3B\u8FDB\u7A0B ACRYLIC_CSS \u786C\u7F16\u7801\u7684\u8FD1\u767D\u4E9A\u514B\u529B rgba(250,244,250,.68)
-     + blur(30px)(mainwin.ts:134\uFF0C**\u4E0D\u5206\u4E3B\u9898**)\uFF0C\u518D\u53E0 G \u6BB5 __scrim \u7684 --fnos-scrim-top
-     (\u6D45\u8272 rgba(250,250,252,.62)) \u2014\u2014 \u4E24\u5C42\u90FD\u662F\u767D\u7684\u3002B \u6BB5\u53EA\u6E05\u98DE\u725B\u81EA\u5DF1\u7684 bg-1\uFF0C\u4ECE\u6765\u6CA1\u78B0\u8FC7\u8FD9\u5C42\u3002
-   \xB7 \u800C\u65E7\u7248 setImmersive \u53C8\u628A\u56FE\u6807\u5199\u6B7B #ffffff \u2192 \u767D\u56FE\u6807\u538B\u5728\u8FD1\u767D\u4E9A\u514B\u529B\u4E0A\u5B9E\u6D4B\u5BF9\u6BD4\u5EA6 **1.02**\uFF0C
-     \u5373\u4E09\u4E2A\u7A97\u53E3\u63A7\u4EF6\u5728\u8BE6\u60C5\u9875\u5B9E\u9645\u4E0A\u662F\u770B\u4E0D\u89C1\u7684\u3002
-   \xB7 \u53E6\u6709\u4E00\u5904\u771F bug\uFF1Atitlebar.ts \u79C1\u6709\u7684 isDetailPage() \u663E\u5F0F\u6392\u9664 /season/\uFF0C\u800C detail/glass.ts
-     \u7684\u540C\u540D\u51FD\u6570\u5305\u542B\u5B83 \u2192 season \u9875(\u672C\u6BB5\u4E3B\u6218\u573A)\u7F8E\u5316\u5DF2\u5957\u7528\u3001L \u6BB5 tint \u73BB\u7483\u6761\u4ECE y=32 \u94FA\u8D77\uFF0C
-     \u6807\u9898\u680F\u5374\u8D70\u975E\u6C89\u6D78\u5206\u652F\uFF0C\u767D\u6761\u6B63\u597D\u538B\u5728\u6DF1\u8272\u73BB\u7483\u6B63\u4E0A\u65B9\uFF0C\u5B9E\u6D4B\u63A5\u7F1D **9.8232**\u3002
-
-   \u4FEE\u6CD5(\u65B9\u6848 C\uFF1B12 \u79CD\u73AF\u5883 \xD7 6 \u4E2A\u5019\u9009\u626B\u53C2\u540E\u9009\u5B9A)\uFF1A\u6807\u9898\u680F\u94FA**\u7EAF tint**(alpha 1)\uFF0C
-   L \u6BB5\u6761\u9996\u884C alpha \u540C\u6B65\u62AC\u5230 1 \u2192 y=31 \u4E0E y=32 \u5BF9\u4EFB\u610F x \u6052\u7B49\uFF0C\u63A5\u7F1D **1.0000**\u3002
-   \u8FD9\u662F\u552F\u4E00\u7CBE\u786E\u89E3\uFF1A\u8981\u8BA9\u4E24\u884C\u6052\u7B49\uFF0C\u5C31\u5FC5\u987B\u8BA9\u4E24\u4FA7\u90FD\u4E0D\u4F9D\u8D56\u80CC\u540E\u7684\u50CF\u7D20\uFF1B\u4EFB\u4F55\u4E00\u4FA7 <1 \u90FD\u4F1A\u968F\u5C01\u9762
-   \u660E\u6697\u6F02\u79FB(\u5B9E\u6D4B .98 \u2192 1.0306\u3001.96 \u2192 1.0623\uFF0C\u5747\u8D85 1.03 \u7684\u5927\u5E73\u5766\u8272\u5757 Weber \u9608)\u3002
-   \u767D\u56FE\u6807\u5BF9\u6BD4\u5EA6 **11.06~11.32**(1.02x \u843D\u5DEE\uFF0C\u5168\u90E8\u9AD8\u4E8E AAA 7)\u3002
-
-   \u26A0 \u4E09\u4E2A\u5B9E\u73B0\u8981\u70B9\uFF0C\u6539\u52A8\u524D\u52A1\u5FC5\u8BFB\uFF1A
-   \u2460 \u5E95\u8272\u753B\u5728 ::before\uFF0C\u4E0D\u753B\u5728\u6761\u672C\u4F53\uFF1AglassUI.ts \u7684
-      html[data-fntv-glass] .fnos-tv-page body > div{background:transparent!important}
-      \u76F4\u63A5\u547D\u4E2D #custom-titlebar(\u5B83\u5C31\u662F body \u7684\u76F4\u63A5\u5B50 div)\uFF0C\u73BB\u7483\u6A21\u5F0F\u4E0B\u4F1A\u628A\u672C\u4F53\u5237\u6210\u900F\u660E\u3002
-      \u4F2A\u5143\u7D20\u4E0D\u88AB\u90A3\u6761\u89C4\u5219\u5339\u914D \u2014\u2014 \u4E0E glassUI.ts:142 \u81EA\u5DF1\u8BB0\u7684 lc-526~530 \u6559\u8BAD\u4E00\u81F4\uFF1A
-      \u8BA9\u9009\u62E9\u5668\u6839\u672C\u4E0D\u5339\u914D\uFF0C\u800C\u4E0D\u662F\u5199\u66F4\u9AD8\u7279\u5F02\u6027\u7684 !important \u53BB\u5BF9\u6297\u3002
-   \u2461 \u9009\u62E9\u5668\u951A data-fntv-tb(titlebar.ts \u6253\u7684\u6807\u8BB0)\u800C\u4E0D\u662F\u951A id\uFF1A\u539F\u751F\u9875\u5206\u652F\u590D\u7528\u540C\u4E00\u4E2A
-      #custom-titlebar\uFF0C\u5F62\u6001\u5374\u662F\u53F3\u4E0A\u89D2\u6D6E\u52A8\u5706\u5F62\u6309\u94AE\u7EC4(\u81EA\u5E26\u6DF1\u8272\u78E8\u7802\u5E95)\u3002injectTitleBar \u53EA\u5728
-      OnReady \u8DD1\u4E00\u6B21\u4E14\u88AB getElementById \u6321\u4F4F\uFF0C\u6240\u4EE5\u300C\u5F00\u673A\u505C\u5728\u767B\u5F55\u9875 \u2192 \u767B\u5F55\u540E\u8FDB TV \u9875\u300D\u8FD9\u6761\u8DEF\u5F84\u4E0A
-      \u6761\u6839\u672C\u4E0D\u4F1A\u518D\u5EFA\uFF0C\u53EA\u8BA4 id \u5C31\u4F1A\u628A\u6D6E\u52A8\u6309\u94AE\u7EC4\u5F53\u6761\u6765\u5237\u3002
-   \u2462 **\u523B\u610F\u4E0D\u52A0 backdrop-filter**\uFF1A\u5E95\u8272\u5DF2\u662F alpha 1 \u7684\u7EAF tint\uFF0C\u6A21\u7CCA\u8D21\u732E\u6052\u4E3A\u96F6\uFF0C\u52A0\u4E86\u53EA\u662F\u767D\u70E7 GPU\u3002
-      \u5168\u6587\u6863 backdrop-filter \u4ECD\u6070\u597D 1 \u5C42(L \u6BB5\u90A3\u6761)\uFF0C\u5B88\u4F4F\u6587\u4EF6\u5934\u7B2C 7 \u6761\u7684\u4F4E GPU \u7EA6\u675F\u3002
-
-   \u56FE\u6807\u8272\u4E0E hover \u4E0D\u5728\u8FD9\u91CC\u5199\u6B7B\u989C\u8272\uFF0C\u800C\u662F\u91CD\u5B9A\u4E49 theme.ts \u90A3\u6279 --fnos-titlebar-* \u53D8\u91CF\uFF1A
-   \u53D8\u91CF\u58F0\u660E\u5728 body \u4E0A\u3001\u6309\u7EE7\u627F\u5C31\u8FD1\u751F\u6548\uFF0C\u538B\u8FC7 theme.ts \u58F0\u660E\u5728 :root / html.dark \u4E0A\u7684\u540C\u540D\u53D8\u91CF\uFF0C
-   titlebar.ts \u6CE8\u5165\u7684\u6837\u5F0F\u8868\u6D88\u8D39\u540C\u540D\u53D8\u91CF\u5373\u81EA\u52A8\u8DDF\u968F \u2192 \u96F6\u7279\u5F02\u6027\u5BF9\u6297\u3001\u660E\u6697\u53CC\u4E3B\u9898\u540C\u4E00\u6761\u89C4\u5219\u3002
-   tint \u6052\u4E3A\u6697\u8272(heroTint.ts \u628A HSL \u4EAE\u5EA6\u4E0A\u9650\u9501\u5728 L<=0.20)\uFF0C\u6545\u56FE\u6807\u6052\u767D\u3001hover \u6052\u767D\u7CFB\uFF0C\u4E0D\u5206\u4E3B\u9898\u3002
-   \u53D6\u8272\u5931\u8D25\u65F6 --fnos-hero-tint \u4E0D\u5B58\u5728 \u2192 \u7CBE\u786E\u56DE\u843D 25,25,26\uFF0C\u4E0E L \u6BB5\u7684\u964D\u7EA7\u8DEF\u5F84\u5B8C\u5168\u4E00\u81F4\u3002 */
-body.fnos-beautify{
-  --fnos-titlebar-icon:#fff;
-  --fnos-titlebar-hover-minmax:rgba(255,255,255,.14);
-  --fnos-titlebar-hover-close-bg:rgba(232,17,35,.55);
-  --fnos-titlebar-hover-close-icon:#fff;
-}
-body.fnos-beautify #custom-titlebar[data-fntv-tb]::before{
-  /* [lc-1027] **\u76F4\u89D2** + \u5916\u6269 2px\uFF1A\u767D\u5F27\u6839\u56E0 = \u672C\u6761\u81EA\u5E26\u7684 16px \u5706\u89D2\u4E0E\u7A97\u53E3\u5706\u89D2\u88C1\u526A\u540C\u5FC3
-     \u91CD\u53E0\u3002\u6D3B\u4F53\u5B9E\u8BC1\uFF08\u7EA2\u6761\u67D3\u8272\u5B9E\u9A8C\uFF09\uFF1Amainwin \u2460 \u7684 html overflow:hidden+border-radius:
-     16px \u8FDE **fixed \u540E\u4EE3**\u4E00\u8D77\u6309 r16 \u5706\u89D2\u88C1\uFF08\u7ED9\u672C\u6761 radius 18 \u4E5F\u88AB\u88C1\u56DE 16 \u5F27\u7EBF\uFF09\uFF0C
-     \u4E8E\u662F\u5F27\u7EBF\u5904\u6709\u4E24\u6761 AA \u6E10\u53D8\u5E26\u53E0\u52A0\u2014\u2014\u672C\u6761\u6E10\u5F31\u5904\u900F\u51FA\u5176\u4E0B\u7C89\u767D\u4E9A\u514B\u529B/L \u6BB5\u91C7\u6837\u7684
-     \u6D45\u8272 \u2192 \u7528\u6237\u62A5\u969C\u7684\u300C\u53F3\u4E0A\u89D2\u5706\u89D2\u767D\u7EBF\u300D\u3002
-     \u672C\u6761\u6539\u76F4\u89D2\u540E\u8986\u76D6\u5728\u7A97\u53E3\u5185\u5904\u5904=1\uFF0C\u5F27\u7EBF\u4E0A\u53EA\u5269 html \u88C1\u526A\u8FD9\u4E00\u6B21\u53CD\u8D70\u6837\uFF08\u6DF1 tint \u5BF9
-     \u900F\u660E\u684C\u9762\uFF09\u2192 \u65E0\u7F1D\u3002\u5916\u6269 2px \u9632\u53F3/\u4E0A\u8FB9\u7F18\u4E9A\u50CF\u7D20\u7F1D\u9699\uFF1B\u5E95\u8FB9\u591A\u51FA\u7684 2px \u843D\u5728 L \u6761
-     \u540C\u8272 tint \u533A\uFF08M/L \u63A5\u7F1D\u672C\u5C31\u8981\u6C42\u6052\u7B49\uFF09\uFF0C\u4E0D\u53EF\u89C1\u3002
-     \u26A0 \u524D\u7F6E\u4FEE\u590D\uFF08mainwin \u2461\uFF09\uFF1Abody \u539F\u6302\u7684 backdrop-filter \u2260 none \u4F1A\u628A body \u53D8\u6210
-       fixed \u540E\u4EE3\u7684\u5305\u542B\u5757\uFF0Cbody \u7684\u5706\u89D2 overflow \u540C\u6837\u88C1\u672C\u6761\u2014\u2014\u5DF2\u79FB\u9664\uFF08\u8BE5 blur \u5728
-       \u900F\u660E\u7A97\u53E3\u91CC\u672C\u5C31\u662F\u7A7A\u8F6C\uFF1Abody \u80CC\u540E\u6CA1\u6709\u4EFB\u4F55\u5DF2\u753B\u5185\u5BB9\uFF09\u3002 */
-  content:''; position:absolute; inset:-2px; pointer-events:none;
-  background:rgba(var(--fnos-hero-tint, 25,25,26), 1);
-}
-
-/* ===== N. Series \u4E00\u7EA7\u9875\uFF1A\u6EE1\u5C4F\u6D77\u62A5 + \u5DE6\u4E0B\u89D2\u67D4\u5149\u73BB\u7483\u805A\u7C07\uFF08lc-1010\uFF0C\u7528\u6237\u6307\u5B9A\u65B9\u5411\uFF09=====
-   \u8BC9\u6C42(\u7528\u6237\u539F\u8BDD)\uFF1A\u300C\u6574\u4E2A\u6A2A\u5C4F\u6D77\u62A5\u5360\u6EE1\u5168\u5C4F\uFF0C\u5267\u96C6\u4FE1\u606F\u9009\u62E9\u5B63\u6570\u7B49\u4E1C\u897F\u90FD\u653E\u5230\u5DE6\u4E0B\u89D2\u4F60\u6392\u5217\u4E00\u4E0B\uFF0C
-   \u6574\u4F53\u6DFB\u52A0\u4E0A\u9AD8\u7EA7\u6750\u8D28\uFF0C\u67D4\u5149\u73BB\u7483\u6837\u5F0F\u3002\u98CE\u683C\u5C3D\u91CF\u8D8B\u5411\u4E8E\u82F9\u679C\u8BBE\u8BA1\u7406\u5FF5\u300D\uFF0C\u540E\u8FFD\u52A0\uFF1A
-   \u300C\u73BB\u7483\u8D28\u611F\u4F46\u662F\u4E0D\u8981\u6709\u7EBF\u6761\u611F\uFF0C\u5DE6\u4E0B\u89D2\u5404\u5BB9\u5668\u4E0D\u8981\u6709\u5B9E\u5FC3\u989C\u8272\uFF0C\u8981\u534A\u900F\u7684\u73BB\u7483\u6548\u679C\u300D\uFF0C\u518D\u8FFD\u52A0\uFF1A
-   \u300C\u5DE6\u4E0B\u89D2\u5185\u5BB9\u533A\u5E95\u8272\u8FD8\u662F\u5B9E\u5FC3\u7684\uFF0C\u8981\u534A\u900F\u6548\u679C\u53EF\u4EE5\u770B\u5230\u6700\u5E95\u4E0B\u7684\u6A2A\u5C4F\u6D77\u62A5\u56FE\uFF1B\u9876\u90E8\u6709\u4FA7\u8FB9\u680F\u6309\u94AE\u7684
-   \u4E00\u6A2A\u5185\u5BB9\u680F\u6709\u6846\u7EBF\u6846\u7684\u611F\u89C9\uFF0C\u505A\u6210\u5168\u900F\u7684\u300D\u3002
-
-   \u5E03\u5C40\u539F\u7406\uFF08\u4E3A\u4EC0\u4E48\u5FC5\u987B JS \u914D\u5408\u4E00\u4E2A\u53D8\u91CF\uFF09\uFF1A
-   \u7528\u6237\u8981\u7684\u662F\u300C\u6D77\u62A5\u6EE1\u5C4F + \u4FE1\u606F\u60AC\u6D6E\u5176\u4E0A\u300D\uFF0C\u5373\u805A\u7C07\u5FC5\u987B**\u8131\u79BB\u6587\u6863\u6D41**\u60AC\u6D6E\u5728 hero \u4E0A\uFF0C
-   \u800C\u805A\u7C07\u81EA\u4E0B\u800C\u4E0A\u662F \u9762\u677F(\u9AD8\u5EA6\u968F\u5185\u5BB9) \u2192 \u6309\u94AE\u884C \u2192 logo \u2014\u2014 \u540E\u4E24\u8005\u8981\u8D34\u7740\u9762\u677F\u9876\u6CBF\u6392\uFF0C
-   \u7EAF CSS \u65E0\u6CD5\u8BA9\u300C\u4E0A\u65B9\u5143\u7D20\u300D\u8D34\u4F4F\u300C\u4E0B\u65B9\u672A\u77E5\u9AD8\u5EA6\u5143\u7D20\u300D\u7684\u9876\u3002\u6545 tmdbCard.ts \u5728\u7CFB\u5217\u9875 settle \u65F6
-   \u5B9E\u6D4B\u9762\u677F\u9AD8\u5EA6\u5199 body \u7EA7 --fnos-cluster-h\uFF08\u9762\u677F\u9AD8 + bottom \u504F\u79FB\uFF0CgetComputedStyle \u8BFB\uFF0C
-   \u4E0D\u91CD\u590D\u5E38\u91CF\uFF09\uFF0C\u6309\u94AE\u884C/logo \u7684 bottom \u90FD\u7528 var() \u6302\u5728\u5B83\u4E0A\u9762\uFF1B\u7B80\u4ECB\u56DE\u586B\u3001TMDB \u5361\u6302\u8F7D\u3001
-   \u7A97\u53E3 resize \u65F6\u91CD\u6D4B\u3002\u53D8\u91CF\u7F3A\u7701\u56DE\u843D 360px\uFF08\u9762\u677F\u5E38\u89C1\u9AD8\u5EA6\uFF09\uFF0CJS \u672A\u8DD1\u65F6\u5E03\u5C40\u4ECD\u6210\u7ACB\u3002
-
-   \u60AC\u6D6E\u5B9E\u73B0\uFF1Acol \u52A0 position:relative + min-height:100vh-32px\uFF1B\u6309\u94AE\u884C absolute\uFF08\u951A wrapper\uFF0C
-   wrapper \u56E0\u6309\u94AE\u884C\u8131\u6D41\u800C\u6070\u7B49\u4E8E hero \u9AD8\u5EA6 = \u6EE1\u5C4F\uFF09\uFF1B\u9762\u677F absolute\uFF08\u951A col\uFF0Cbottom:18px\uFF09\u3002
-   \u4E09\u8005\u5168\u90E8\u8131\u6D41/\u60AC\u6D6E \u2192 \u9875\u9762\u5185\u5BB9\u53EA\u5269\u6EE1\u5C4F hero \u2192 \u6070\u597D\u4E00\u5C4F\u3001\u65E0\u6EDA\u52A8\u6761\u3002
-   \u26A0 \u523B\u610F\u7528 absolute \u800C\u975E fixed\uFF1ApageAnim \u7684\u9875\u9762\u8FC7\u6E21\u4F1A\u5BF9\u89C6\u56FE\u7956\u5148\u52A0 transform\uFF0C
-   fixed \u7956\u5148\u5E26 transform \u65F6\u4F1A\u9000\u5316\u4E3A\u76F8\u5BF9\u8BE5\u7956\u5148\u5B9A\u4F4D\uFF08\u4E14\u89C6\u53E3\u8BED\u4E49\u5931\u6548\uFF09\uFF0Cabsolute \u951A\u5B9A col \u4E0D\u53D7\u5F71\u54CD\u3002
-
-   \u67D4\u5149\u73BB\u7483\uFF08\u7528\u6237\u70B9\u540D\uFF1A\u65E0\u7EBF\u6761\u611F\u3001\u65E0\u5B9E\u5FC3\u3001\u534A\u900F\uFF09\uFF1A
-   \xB7 \u6750\u8D28 = \u767D\u8272\u9AD8\u5149\u6E10\u53D8(13%\u21921.5% \u5BF9\u89D2) + tint \u534A\u900F\u5E95(.32) + blur(40px) saturate(160%)\uFF0C
-     tint \u7528 --fnos-hero-tint\uFF08\u5C01\u9762\u53D6\u8272\uFF0CheroTint.ts\uFF09\u2192 \u73BB\u7483\u6C38\u8FDC\u548C\u6D77\u62A5\u540C\u8272\u7CFB\uFF08Apple vibrancy \u601D\u8DEF\uFF09\u3002
-   \xB7 \u65E0\u8FB9\u6846\uFF1Apanel/circle/\u5B63\u5361\u5168\u90E8 border:none\uFF1B\u5361\u5185 I \u6BB5\u5206\u8282\u53D1\u4E1D\u7EBF\u5728\u672C\u9875\u53BB\u9664\uFF08N8\uFF09\uFF1B
-     inset \u9AD8\u5149\u4E5F\u7701\u7565\uFF081px \u5185\u63CF\u8FB9\u5C31\u662F\u300C\u7EBF\u6761\u611F\u300D\uFF09\u3002
-   \xB7 \u9762\u677F\u4F5C\u7528\u57DF\u5185\u628A Semi \u6587\u672C\u53D8\u91CF\u91CD\u5B9A\u4E49\u4E3A\u6D45\u8272\uFF08\u6750\u8D28\u6052\u6697\uFF0CheroTint \u9501 L<=0.20\uFF09\u2192
-     I \u6BB5\u5361\u7247\u6837\u5F0F\u96F6\u6539\u52A8\u81EA\u52A8\u83B7\u5F97\u53EF\u8BFB\u7684\u6D45\u8272\u6587\u5B57\uFF0C\u660E\u6697\u4E3B\u9898\u540C\u4E00\u6761\u89C4\u5219\u3002
-
-   \u4E00\u5C4F\u8BED\u4E49\uFF1A\u539F\u751F\u9875\u6B64\u65F6\u4E5F\u786E\u5B9E\u53EA\u6709 hero+\u9762\u677F\u4E24\u5C42\u5185\u5BB9\uFF08\u5916\u94FE\u884C\u9690\u85CF\uFF0C\u89C1 N7\uFF09\uFF0C\u6EE1\u5C4F\u540E\u65E0\u5185\u5BB9\u88AB\u88C1\u3002 */
-/* N1. col \u6EE1\u5C4F\u5BB9\u5668 */
-body.fnos-series-panel div[class*="mb-[46px]"][class*="flex flex-col gap-3"]:has(> div > .trim-mc__details--key-version){
-  position:relative !important;
-  min-height:calc(100vh - 32px) !important;
-  margin-bottom:0 !important;
-}
-/* N2. hero \u6EE1\u5C4F\uFF08\u8986\u76D6 .trim-mc__details--key-version \u7C7B\u81EA\u5E26\u7684 560/576/470/48vh/700 \u5206\u6863\uFF09 */
-body.fnos-series-panel .trim-mc__details--key-version{
-  height:calc(100vh - 32px) !important;
-  min-height:0 !important; max-height:none !important;
-}
-/* \u5E95\u90E8\u6E10\u53D8\u906E\u7F69\u91CD\u505A\uFF08\u7528\u6237\u7B2C\u4E8C\u8F6E\u53CD\u9988\uFF1A\u300C\u534A\u900F\u6548\u679C\u53EF\u4EE5\u770B\u5230\u6700\u5E95\u4E0B\u7684\u6A2A\u5C4F\u6D77\u62A5\u56FE\u300D+\u300C\u9876\u680F\u5168\u900F\u300D\uFF09\uFF1A
-   \u539F\u751F .gradient \u662F\u6574\u5E45\u8D34\u5E95\u6A2A\u5E26\uFF08alpha 1\u21920\uFF0CL \u6BB5\u7167\u6284\uFF09\uFF0C\u73BB\u7483\u540E\u9762\u5168\u662F\u88AB\u538B\u9ED1\u7684\u56FE \u2192 \u73BB\u7483\u53D1\u95F7\u50CF\u5B9E\u5FC3\u3002
-   \u6539\u4E3A 25deg \u5BF9\u89D2\u6E10\u9690\uFF1A\u53EA\u62A4\u5DE6\u4E0B\u89D2\u805A\u7C07\u6587\u5B57\u533A\uFF0C\u53F3\u4E0B/\u4E2D\u90E8\u7684\u6D77\u62A5\u5B8C\u5168\u900F\u51FA\u3002
-   \u26A0 \u7C7B\u540D\u5199\u4E24\u904D\uFF1AL \u6BB5\u540C\u9009\u62E9\u5668(0,4,0)\u5728\u672C\u6587\u4EF6\u66F4\u65E9\u5904\uFF0C\u8FD9\u91CC\u5FC5\u987B\u6253\u5E73\u540E\u9760\u6E90\u5E8F\u53D6\u80DC\u3002 */
-body.fnos-series-panel .trim-mc__details--key-version.trim-mc__details--key-version .gradient{
-  height:58% !important;
-  background-image:linear-gradient(25deg,
-    rgba(var(--fnos-hero-tint, 25,25,26), .62) 0%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .34) 30%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .10) 55%,
-    rgba(var(--fnos-hero-tint, 25,25,26), 0) 75%) !important;
-}
-/* \u906E\u7F69\u53D8\u8F7B\u540E\uFF0C\u60AC\u6D6E\u6587\u5B57\u9760\u6295\u5F71\u4FDD\u53EF\u8BFB\uFF08\u4E0D\u5F15\u5165\u65B0\u7684\u5E95\u8272/\u6846\uFF09\u3002
-   \u53CC\u5C42\u6295\u5F71\uFF1A\u5C0F\u534A\u5F84\u538B\u4EAE\u8FB9\u3001\u5927\u534A\u5F84\u515C\u4EAE\u533A\uFF08genre \u884C\u5728\u4EAE\u90E8\u6D77\u62A5\u4E0A\u5355\u5C42\u4E0D\u591F\uFF09\u3002 */
-body.fnos-series-panel ${SERIES_BTNROW} span{
-  text-shadow:0 1px 2px rgba(0,0,0,.6), 0 2px 18px rgba(0,0,0,.5) !important;
-}
-body.fnos-series-panel .trim-mc__details--key-version > [class*="inset-x-[46px]"] img{
-  filter:drop-shadow(0 2px 14px rgba(0,0,0,.45));
-}
-/* N2b. \u9876\u680F\u5168\u900F\uFF08\u7528\u6237\u7B2C\u4E8C\u8F6E\u53CD\u9988\uFF1A\u300C\u9876\u90E8\u6709\u4FA7\u8FB9\u680F\u6309\u94AE\u7684\u4E00\u6A2A\u5185\u5BB9\u680F\u6709\u6846\u7EBF\u6846\u7684\u611F\u89C9\u300D\uFF09\u3002
-   L \u6BB5\u7ED9\u9876\u680F ::before \u94FA\u4E86\u53D6\u8272\u73BB\u7483\u6761+\u6E10\u9690 mask\uFF0C\u5728\u6EE1\u5C4F\u6D77\u62A5\u4E0A\u8BFB\u4F5C\u4E00\u6761\u5E26\u4E0B\u8FB9\u7F18\u7684\u6697\u5E26\uFF1B
-   \u672C\u9875\u73BB\u7483\u9762\u677F\u5DF2\u627F\u8F7D\u5BF9\u6BD4\u5EA6\uFF0C\u9876\u680F\u6539\u4E3A\u5B8C\u5168\u900F\u660E\uFF0C\u56FE\u6807\u4FDD\u6301 K \u6BB5\u767D\u8272 + drop-shadow \u4FDD\u53EF\u8BFB\u3002 */
-body.fnos-series-panel div[class*="h-[80px]"][class*="top-0"]::before{
-  content:none !important;
-}
-body.fnos-series-panel div[class*="h-[80px]"][class*="top-0"] svg{
-  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
-}
-/* N2c [lc-1024] \u6807\u9898\u680F(\u6700\u9876 32px \u7A97\u53E3\u63A7\u5236\u6761)\u968F\u9876\u680F\u4E00\u5E76\u5168\u900F + \u6D77\u62A5\u9876\u6EE1\u7A97\u53E3\u3002
-   \u7528\u6237\u62A5\u969C\uFF1A\u300C\u6253\u5F00\u4E00\u7EA7\u8BE6\u60C5\u9875\u65F6\uFF0C\u6700\u9876\u4E0A\u7684\u63A7\u5236\u680F\u4E00\u6A2A\u6761\u989C\u8272\u4E0D\u5BF9\u5F88\u7A81\u5140\u300D\u3002
-   \u6839\u56E0\uFF1AM \u6BB5\u7ED9\u8BE6\u60C5\u9875\u6807\u9898\u680F\u94FA\u7684\u5B9E\u8272 tint \u6761\u662F\u4E3A\u4E8C\u7EA7\u9875\u8BBE\u8BA1\u7684 \u2014\u2014 \u5F7C\u5904 L \u6BB5\u9876\u680F\u73BB\u7483\u6761
-   \u9996\u884C alpha \u6070\u4E3A 1\uFF0Cy=31/32 \u4E24\u884C\u5BF9\u4EFB\u610F x \u6052\u7B49(\u63A5\u7F1D 1.0000)\uFF1B\u672C\u9875\u9876\u680F\u5DF2\u88AB N2b \u5168\u900F\uFF0C
-   M \u6761\u5B64\u60AC\u5728\u6EE1\u5C4F\u6D77\u62A5\u4E0A\u65B9\uFF0C\u6761\u8272(\u5C01\u9762\u53D6\u8272\u7684\u6697\u8272\u8C03)\u4E0E\u6D77\u62A5\u9876\u90E8\u50CF\u7D20\u65E0\u5173 \u2192 \u8BFB\u4F5C\u4E00\u6761\u5F02\u7269\u3002
-   \u82E5\u53EA\u6458\u6761\u4E0D\u8865\u56FE\uFF0Cy=0..31 \u9732\u7684\u662F body \u8FD1\u767D\u4E9A\u514B\u529B(\u975E\u73BB\u7483\u6001)/\u684C\u9762\xB7\u73AF\u5883\u5149\u5E95(\u73BB\u7483\u6001)\uFF0C
-   \u4F9D\u65E7\u662F\u4E00\u6761\u6A2A\u5E26\u3002\u2234 \u6458\u6761 + \u6D77\u62A5\u4E0A\u63D0 32px \u5403\u6EE1\u5B89\u5168\u533A(height 100vh + margin-top:-32px)\uFF0C
-   \u6761\u533A\u80CC\u540E\u5C31\u662F\u6D77\u62A5\u5EF6\u7EED\uFF0C\u6574\u7A97\u4E00\u5F20\u56FE\u771F\u6B63\u6EE1\u5C4F\uFF1B\u7A97\u53E3\u63A7\u5236\u952E\u6CBF\u7528 M \u6BB5\u767D\u8272\u56FE\u6807 +
-   N2b \u540C\u6B3E drop-shadow \u4FDD\u53EF\u8BFB(\u4E0E\u9876\u680F\u56FE\u6807\u540C\u5F85\u9047)\u3002
-   \u51E0\u4F55\u96F6\u4F4D\u79FB\u6838\u7B97\uFF1Abtn row/panel \u5168\u90E8 bottom \u951A\u5B9A wrapper/col \u5E95(y=100vh)\uFF0Chero \u8D1F margin
-   \u53EA\u8BA9\u5176\u53EF\u89C1\u9876\u8FB9\u4E0A\u79FB(wrapper \u9AD8 = hero margin box 100vh-32 \u4E0D\u53D8\uFF0Chero \u89C6\u89C9\u6EA2\u51FA wrapper \u9876
-   32px\uFF0Ccol/wrapper \u5747 overflow \u53EF\u89C1)\uFF0C\u60AC\u6D6E\u805A\u7C07\u4F4D\u7F6E\u4E00\u4E2A\u50CF\u7D20\u90FD\u4E0D\u52A8\u3002 */
-/* [lc-1030] \u6458\u6761\u9650\u5B9A**\u975E\u73BB\u7483\u6A21\u5F0F**\uFF1A\u73BB\u7483\u6A21\u5F0F\u4E0B\u4FDD\u7559 M \u6BB5\u81EA\u52A8\u53D6\u8272\u6761\u5E76\u78E8\u7802\u5316\uFF08P1\uFF0C\u7528\u6237\u8981\u6C42
-   \u300C\u6539\u6210\u81EA\u52A8\u53D6\u8272\u4FDD\u8BC1\u534F\u8C03\u6027\u300D\u2014\u2014\u88F8\u6D77\u62A5+\u767D\u7A97\u63A7\u952E\u5728\u6D45\u8272\u6D77\u62A5\u4E0A\u4E0D\u534F\u8C03\uFF09\uFF0C\u89C1\u6587\u4EF6\u672B P \u6BB5\u3002 */
-html:not([data-fntv-glass]) body.fnos-series-panel #custom-titlebar[data-fntv-tb]::before{
-  content:none !important;
-}
-body.fnos-series-panel .trim-mc__details--key-version{
-  height:100vh !important;
-  margin-top:-32px !important;
-}
-body.fnos-series-panel #custom-titlebar[data-fntv-tb] button svg{
-  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
-}
-/* N3. logo \u4E0A\u79FB\u5230\u6309\u94AE\u884C\u4E0A\u65B9\uFF0818 \u9762\u677F\u5E95\u8DDD + 12 \u95F4\u9699 + 54 \u6309\u94AE\u884C + 16 \u95F4\u9699 = \u6302\u5728 var \u4E0A\u65B9 100px\uFF09 */
-body.fnos-series-panel .trim-mc__details--key-version > [class*="inset-x-[46px]"][class*="bottom-[30px]"]{
-  bottom:calc(var(--fnos-cluster-h, 360px) + 100px) !important;
-}
-/* N4. \u6309\u94AE\u884C\u60AC\u6D6E\uFF08wrapper \u8131\u6D41\u540E\u9AD8\u5EA6=hero\uFF0Cbottom:0 \u5373\u89C6\u53E3\u5E95\uFF09 */
-body.fnos-series-panel ${SERIES_BTNROW}{
-  position:absolute !important;
-  bottom:calc(var(--fnos-cluster-h, 360px) + 30px) !important;
-  left:26px !important;
-  width:min(1020px, calc(100vw - 52px)) !important;
-  padding:0 20px !important; margin:0 !important;
-  box-sizing:border-box !important; z-index:3 !important;
-}
-/* \u6309\u94AE\u884C\u6052\u6697\u80CC\u666F\uFF08\u6D77\u62A5\u5E95\u90E8\u6E10\u53D8\uFF09\u2192 \u6587\u5B57/\u56FE\u6807\u7EDF\u4E00\u6D45\u8272\uFF08svg fill=currentColor \u5168\u94FE\u7EE7\u627F\uFF09 */
-body.fnos-series-panel ${SERIES_BTNROW} span{ color:rgba(255,255,255,.78) !important; }
-body.fnos-series-panel ${SERIES_BTNROW} svg{ color:rgba(255,255,255,.92) !important; }
-/* \u5706\u5F62\u6309\u94AE\uFF08\u6536\u85CF/\u5DF2\u770B/\u66F4\u591A\uFF09\uFF1A\u534A\u900F\u73BB\u7483\u3001\u65E0\u8FB9\u6846\uFF08\u539F\u751F border+fill-0 \u5B9E\u5FC3\u5E95\u4E00\u5E76\u53BB\u6389\uFF09 */
-body.fnos-series-panel ${SERIES_BTNROW} div[class*="size-[54px]"]{
-  background:rgba(255,255,255,.10) !important;
-  backdrop-filter:blur(20px) saturate(150%) !important;
-  -webkit-backdrop-filter:blur(20px) saturate(150%) !important;
-  border:none !important;
-}
-body.fnos-series-panel ${SERIES_BTNROW} div[class*="size-[54px]"]:hover{
-  background:rgba(255,255,255,.18) !important;
-}
-/* N5. \u4FE1\u606F\u9762\u677F\uFF1A\u534A\u900F\u67D4\u5149\u73BB\u7483\uFF0C\u65E0\u8FB9\u6846\u3002
-   [lc-1010] \u4E8C\u8F6E\u964D\u5E95\u8272\uFF1Atint .32\u2192.16\u3001blur 40\u219230\u3002
-   [lc-1021] \u7528\u6237\u7B2C\u4E09\u8F6E\u53CD\u9988\u300C\u6574\u4E2A\u5DE6\u4E0B\u9762\u677F\u900F\u660E\u518D\u900F\u4E00\u70B9\u300D\uFF1Atint .16\u2192.09\u3001\u767D\u8272\u9AD8\u5149\u68AF\u5EA6\u518D\u964D\u3001
-   blur 30\u219226\u3001brightness .78\u2192.86\uFF08\u538B\u6697\u51CF\u8F7B=\u66F4\u900F\uFF0C\u53EF\u8BFB\u6027\u4ECD\u7531 blur+saturate+\u6D45\u8272\u6587\u5B57\u6295\u5F71\u627F\u62C5\uFF09\u3002
-   \u65E0\u5361\u65F6 600px\uFF08\u6B63\u597D\u5305\u4F4F\u5DE6\u5217\uFF09\uFF0C\u6709\u5361\u65F6 1020px\uFF08:has \u95E8\u63A7\uFF0C\u5361\u6302\u8F7D/\u64A4\u9664\u81EA\u52A8\u5207\u6362\uFF09\u3002 */
-body.fnos-series-panel ${SERIES_PANEL}{
-  position:absolute !important;
-  bottom:18px !important; left:26px !important;
-  width:min(600px, calc(100vw - 52px)) !important;
-  max-height:calc(100vh - 32px - 210px) !important;
-  padding:18px 20px !important;
-  display:block !important;
-  background:linear-gradient(160deg,
-    rgba(255,255,255,.05) 0%,
-    rgba(255,255,255,.014) 45%,
-    rgba(255,255,255,.005) 100%),
-    rgba(var(--fnos-hero-tint, 25,25,26), .09) !important;
-  /* brightness \u538B\u6697\u73BB\u7483\u540E\u7684\u753B\u9762\u800C\u4E0D\u662F\u53E0\u4E0D\u900F\u660E\u8272\uFF08Apple dark vibrancy \u624B\u6CD5\uFF09\u2014\u2014
-     \u6D77\u62A5\u7ED3\u6784\u900F\u73BB\u7483\u53EF\u89C1\uFF0C\u767D\u5B57\u5728\u4EAE\u90E8\u6D77\u62A5\u4E0A\u4ECD\u6709\u5BF9\u6BD4\uFF08\u7528\u6237\u8981\u6C42\u534A\u900F\u89C1\u5E95\uFF0C\u7981\u518D\u52A0 tint\uFF09 */
-  backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
-  -webkit-backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
-  border:none !important;
-  box-shadow:0 18px 54px rgba(0,0,0,.32) !important;
-  border-radius:22px !important;
-  box-sizing:border-box !important;
-  overflow:hidden !important;
-  z-index:2 !important;
-  animation:fnos-series-panel-in .5s cubic-bezier(.22,.61,.36,1) both;
-}
-body.fnos-series-panel ${SERIES_PANEL}:has(> .fnos-beautify-card){
-  width:min(1020px, calc(100vw - 52px)) !important;
-}
-@keyframes fnos-series-panel-in{
-  from{ opacity:0; transform:translateY(14px); }
-  to{ opacity:1; transform:none; }
-}
-/* \u9762\u677F\u5185\u6052\u6697\u6750\u8D28 \u2192 Semi \u6587\u672C\u53D8\u91CF\u91CD\u5B9A\u4E49\u4E3A\u6D45\u8272\uFF08I \u6BB5\u5361\u6837\u5F0F\u96F6\u6539\u52A8\u81EA\u52A8\u8DDF\u968F\uFF09 */
-body.fnos-series-panel ${SERIES_PANEL}{
-  --semi-color-text-0:rgba(255,255,255,.94);
-  --semi-color-text-1:rgba(255,255,255,.72);
-  --semi-color-text-2:rgba(255,255,255,.58);
-  --semi-color-text-3:rgba(255,255,255,.42);
-}
-/* N6. \u7B80\u4ECB\uFF1A\u5168\u6587\u5C55\u793A\uFF08tmdbCard.ts \u4ECE React fiber props.intro \u56DE\u586B\uFF0C\u539F\u751F\u88AB\u622A\u6210 1 \u884C\u4E14\u300C\u66F4\u591A\u300D\u70B9\u51FB\u65E0\u6548\uFF09\u3002
-   \u56DE\u586B\u6210\u529F\u540E\u6253 .fnos-intro-full \u6807\u8BB0\u9690\u85CF\u300C\u66F4\u591A\u300D\uFF08\u5168\u6587\u5DF2\u793A\uFF0C\u6309\u94AE\u65E0\u529F\u80FD\u4E14 native \u70B9\u51FB\u4E0D\u5C55\u5F00\uFF09\u3002
-   \u26A0 \u4E0D\u80FD innerHTML \u6574\u4F53\u66FF\u6362\uFF1A\u90A3\u662F React \u7BA1\u7406\u7684\u5B50\u6811\uFF0C\u66FF\u6362\u540E React \u5378\u8F7D\u65F6 removeChild \u4F1A\u70B8\uFF1B
-   \u53EA\u6539\u6587\u672C\u8282\u70B9 data\uFF08\u622A\u65AD\u5E93\u540C\u6B3E\u624B\u6CD5\uFF09\uFF0C\u5E93\u5728 resize \u65F6\u4F1A\u6309\u5B83\u95ED\u5305\u91CC\u7684\u5168\u6587\u91CD\u65B0\u622A\u65AD \u2192
-   tmdbCard.ts \u7684 resize \u76D1\u542C\u91CC\u91CD\u8DD1\u56DE\u586B\uFF08220ms \u53BB\u6296\uFF0C\u665A\u4E8E\u5E93\u7684\u540C\u6B65 handler\uFF0C\u6700\u7EC8\u6001\u5FC5\u662F\u6211\u4EEC\uFF09\u3002 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="text-justify"]{
-  margin:0 !important; width:100% !important;
-  font-size:14px !important; line-height:1.7 !important;
-  color:rgba(255,255,255,.88) !important;
-  text-shadow:0 1px 8px rgba(0,0,0,.38) !important;
-}
-body.fnos-series-panel ${SERIES_PANEL}:has(> .fnos-beautify-card) > div[class*="text-justify"]{
-  width:calc(57% - 15px) !important;
-}
-body.fnos-series-panel .fnos-intro-full [class*="ml-1"][class*="cursor-pointer"]{
-  display:none !important;
-}
-/* N7. \u5B63\u9009\u62E9\uFF1AApple TV \u5F0F\u6A2A\u6ED1\u884C\u3002[lc-1021] \u7528\u6237\u5B9A\u7A3F\uFF1A\u6D77\u62A5\u4FDD\u6301**\u539F\u751F\u7AD6\u7248 2:3**\uFF08\u64A4\u9500 lc-1010 \u7684
-   16:9 \u6A2A\u7248\u5F3A\u8F6C\u2014\u2014\u5B9E\u673A\u53D1\u73B0\u5F3A\u8F6C\u540E\u5B63\u884C\u53F3\u4FA7\u51FA\u73B0\u9ED1\u5757\uFF0C\u4E14\u6A2A\u7248\u4E22\u6389\u4E86\u6D77\u62A5\u539F\u753B\u7684\u7AD6\u7248\u6784\u56FE\uFF09\uFF1B
-   \u591A\u5B63\u5E03\u5C40 = \u5361\u5BBD 25%-11px\uFF08600/1020 \u4E24\u79CD\u9762\u677F\u5BBD\u4E0B\u90FD\u6070\u597D 4 \u5F20\u6574\u5361\u4E00\u5C4F\uFF0C\u4E0D\u51FA\u73B0\u88C1\u8FB9\u788E\u7247\uFF09\uFF0C
-   \u8D85\u51FA\u6A2A\u5411\u6ED1\u52A8\uFF08\u6EDA\u52A8\u6761\u9690\u85CF\uFF09\u3002
-   \u5B63\u5361 = .card-root\uFF1Amainwin.ts \u2469 \u4F1A\u7ED9\u5B83\u73BB\u7483\u5361\u5B9E\u5FC3\u5E95+\u8FB9\u6846 \u2192 \u5728\u9762\u677F\u5185\u5168\u90E8\u53BB\u6846\u53BB\u5B9E\u5FC3\uFF08\u7528\u6237\u70B9\u540D\uFF09\u3002
-   \u26A0 \u9ED1\u8FB9\u771F\u51F6\uFF08lc-1021 \u6D3B\u4F53 CDP \u5B9E\u8BC1\uFF0CNAS CSS \u539F\u6587\uFF09\uFF1A
-     .card-root{width:var(--card-width)}
-     .card-root .poster-box{--poster-box-width:var(--card-width);
-       aspect-ratio:var(--poster-aspect-ratio,2/3); width:var(--poster-box-width);
-       border:1px solid var(--semi-color-card-border); border-radius:8px; overflow:hidden}
-   \u6D77\u62A5\u5BBD\u5EA6\u662F**\u53D8\u91CF\u9489\u6B7B**\u7684\uFF08\u4E0D\u8DDF\u968F\u5361\u7247\u5B9E\u9645\u5BBD\u5EA6\uFF09\uFF1Alc-1010 \u628A\u5361\u5F3A\u6491 238px \u65F6\u6D77\u62A5\u505C\u5728 ~162px
-   \u2192 \u53F3\u4FA7 76px \u7A7A\u5E26\u9732\u51FA\u6DF1\u8272\u6E10\u53D8/\u5E95\u56FE = \u7528\u6237\u622A\u56FE\u7684\u9ED1\u8FB9\uFF1B\u53CD\u8FC7\u6765\u5361\u6536\u7A84\u540E\u6D77\u62A5\u4F1A\u6EA2\u51FA\u538B\u5230\u90BB\u5361\u3002
-   \u2234 \u5FC5\u987B\u628A poster-box \u5BBD\u5EA6\u6539\u56DE 100% \u8DDF\u968F\u5361\u7247\uFF0C\u539F\u751F 1px \u63CF\u8FB9\u4E0E\u300C\u65E0\u7EBF\u6761\u300D\u73BB\u7483\u4E00\u5E76\u53BB\u6846\u3002 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"]{
-  margin:14px 0 0 !important; width:100% !important;
-  display:flex !important; flex-wrap:nowrap !important;
-  overflow-x:auto !important; overflow-y:hidden !important;
-  gap:14px !important; padding:2px !important;
-  scrollbar-width:none !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"]::-webkit-scrollbar{ display:none !important; }
-body.fnos-series-panel ${SERIES_PANEL}:has(> .fnos-beautify-card) > div[class*="flex-wrap"]{
-  width:calc(57% - 15px) !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] > [data-id="details"]{
-  width:calc(25% - 11px) !important; flex:0 0 auto !important;
-  background:transparent !important; border:none !important; box-shadow:none !important;
-  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-}
-/* \u6D77\u62A5\u7AD6\u7248 2:3\uFF08\u539F\u751F\u6BD4\u4F8B\uFF09+ \u5BBD\u5EA6\u8DDF\u968F\u5361\u7247\uFF08\u6390\u6389\u9ED1\u8FB9\u6839\u6E90\uFF0C\u89C1 N7 \u5934\u6CE8\uFF09+ \u53BB\u539F\u751F 1px \u63CF\u8FB9\uFF1A
-   \u5BB9\u5668\u7ED9\u6BD4\u4F8B\u4E0E\u5BBD\u5EA6\u3001\u5185\u90E8 absolute \u586B\u6EE1\u94FE\u4E0D\u52A8\uFF08\u540C lc-986 \u7ED3\u8BBA\uFF09 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] .poster-box{
-  width:100% !important;
-  aspect-ratio:2 / 3 !important;
-  border:none !important;
-}
-/* [lc-1021] \u5B63\u5361\u5185\u5C42\u9632\u9ED1\u5757\u4FDD\u9669\uFF1A\u539F\u751F\u6D77\u62A5\u5BB9\u5668/\u5360\u4F4D\u5C42\u7684\u6DF1\u8272\u5E95\uFF08--semi-color-bg-placeholder\uFF09
-   \u5728\u73BB\u7483\u4E0A\u4E00\u5F8B\u900F\u660E\u5316/\u5F31\u5316 \u2014\u2014 \u56FE\u7247\u52A0\u8F7D\u671F\u95F4\u73BB\u7483\u4E0A\u4E0D\u518D\u95EA\u6DF1\u8272\u5757 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] .poster-box,
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] > div:first-child{
-  background:transparent !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] [class*="bg-[var(--semi-color-bg-placeholder)]"]{
-  background:rgba(255,255,255,.06) !important;
-}
-/* \u5E95\u90E8\u6E10\u53D8\u5C42\uFF1A\u7AD6\u7248 198px \u9AD8\u7ED9 64px\uFF08\u539F 76px \u4E3A 2:3 \u8BBE\u8BA1\uFF0C\u4EC5\u5FAE\u8C03\uFF09 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] > div:first-child [class*="bg-gradient-to-t"]{
-  height:64px !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] p{
-  text-align:left !important; margin:6px 0 0 1px !important;
-  font-size:12px !important;
-  color:rgba(255,255,255,.9) !important;
-}
-/* \u6807\u9898/\u526F\u9898\u6587\u672C\u5757\u662F a.flex.flex-col.items-center \u2192 flex \u5C45\u4E2D\u538B\u8FC7 text-align\uFF0C\u6539\u5BB9\u5668\u5BF9\u9F50 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] > a[class*="items-center"]{
-  align-items:flex-start !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex-wrap"] [data-id="details"] p + p{
-  margin:2px 0 0 1px !important;
-  font-size:11px !important;
-  color:rgba(255,255,255,.55) !important;
-}
-/* J \u6BB5\u4F1A\u7ED9\u5B63\u5361\u6807\u9898\u8FFD\u52A0\u6E05\u6670\u5EA6\u80F6\u56CA\uFF08\u5B63\u5361\u540C\u6837\u5E26 data-id=details + \u89D2\u6807\u4F4D\u56FE\uFF0C\u590D\u7528\u96C6\u5361\u903B\u8F91\uFF09\uFF1A
-   \u539F\u751F\u6807\u9898 p \u82E5\u5E26 truncate \u4F1A\u628A\u80F6\u56CA\u88C1\u6CA1 \u2192 \u540C J \u6BB5\u7684\u89E3\u7981\u89C4\u5219\uFF0C\u6B64\u5904\u6309\u9762\u677F\u4F5C\u7528\u57DF\u91CD\u5199 */
-body.fnos-series-panel ${SERIES_PANEL} [data-id="details"] p:has(> .fnos-ep-res){
-  white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
-}
-/* N8. \u539F\u751F\u5916\u94FE\u884C\uFF08\u94FE\u63A5\uFF1AIMDB\u94FE\u63A5\uFF09\u9690\u85CF \u2014\u2014 \u4E0E\u5B63\u9875 A \u6BB5\u540C\u4E00\u51B3\u7B56\uFF08lc-988 \u7528\u6237\u660E\u786E\u8981\u6C42\u53BB\u6389\uFF09\uFF0C
-   \u5361\u5185 N8b \u5916\u94FE\u533A\u5DF2\u8986\u76D6\uFF1B\u53CC\u6761\u4EF6\u540C A \u6BB5\uFF08\u6709\u5916\u94FE \u4E14 \u65E0\u4EBA\u7269\u94FE\u63A5\uFF09\u3002 */
-body.fnos-series-panel ${SERIES_PANEL} > div[class*="flex flex-col gap-4"]:has(a[href*="imdb.com"], a[href*="themoviedb.org"]):not(:has(a[href*="/v/person/"])){
-  display:none !important;
-}
-/* N8b. TMDB \u5361\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5230\u53F3\u5217\uFF08\u9762\u677F\u9AD8\u5EA6\u53EA\u7531\u5DE6\u5217\u7B80\u4ECB+\u5B63\u9009\u9A71\u52A8\uFF0C\u5361\u8D85\u9AD8\u65F6\u5185\u90E8\u6EDA\u52A8\uFF0C
-   \u4E0D\u4F1A\u50CF grid \u6D41\u5185\u5B50\u9879\u90A3\u6837\u628A\u6574\u9762\u677F\u6491\u5230 max-height\uFF09\u3002\u5361\u81EA\u8EAB\u65E0\u6846\u65E0\u5E95 \u2014\u2014 \u73BB\u7483\u5C31\u662F\u5BB9\u5668\uFF08\u7528\u6237\u70B9\u540D\uFF09\u3002
-   \u5206\u8282\u53D1\u4E1D\u7EBF\u5728\u672C\u9875\u53BB\u9664\uFF1A\u73BB\u7483\u4E0A\u4E0D\u518D\u53E0\u7EBF\u6761\u3002
-   \u26A0 [lc-1037] \u4E91\u6BCD\u5F00\u542F\u65F6\u672C\u6761 transparent \u4ECD\u80FD\u751F\u6548\u7684\u524D\u63D0\uFF1AtmdbCard \u5728\u4E00\u7EA7\u9875\u7ED9\u5361\u6253\u4E86
-   data-fntv-glass-exclude\u2014\u2014\u5426\u5219 glassUI \u2461 [class*="card"] \u78E8\u7802\u5E95 (0,6,1) \u538B\u8FC7\u672C\u6761 (0,3,2)\uFF0C
-   \u5361\u88AB\u6253\u56DE\u78E8\u7802\u767D\uFF08\u7528\u6237\u62A5\u969C\u300C\u767D\u70B9\u663E\u793A\u4E0D\u7A33\u5B9A\u300D\u7684\u6839\u56E0\uFF09\u3002\u5220\u90A3\u884C attr \u672C\u6761\u5728\u4E91\u6BCD\u4E0B\u5373\u5931\u6548\u3002 */
-body.fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card{
-  position:absolute !important;
-  top:16px !important; bottom:16px !important;
-  left:calc(57% + 6px) !important; right:16px !important;
-  width:auto !important;
-  margin:0 !important; padding:2px 10px 2px 4px !important;
-  background:transparent !important; border:none !important; box-shadow:none !important;
-  overflow-y:auto !important; overflow-x:hidden !important;
-  scrollbar-width:thin !important;
-  scrollbar-color:rgba(255,255,255,.16) transparent !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card::-webkit-scrollbar{ width:4px !important; }
-body.fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,.16) !important; border-radius:2px !important;
-}
-body.fnos-series-panel ${SERIES_PANEL} .fnos-showinfo__sec{
-  border-top:none !important; padding-top:12px !important;
-}
-
-/* ===== O. Movie \u4E00\u7EA7\u9875\uFF1A\u6EE1\u5C4F\u6D77\u62A5 + \u5DE6\u4E0B\u67D4\u5149\u73BB\u7483\u805A\u7C07 + TMDB \u7535\u5F71\u5361\uFF08lc-1028\uFF09=====
-   \u8BC9\u6C42\uFF08\u7528\u6237\uFF09\uFF1A\u300C\u5267\u96C6\u7684\u4E00\u7EA7\u548C\u4E8C\u7EA7\u8BE6\u60C5\u9875\u90FD\u4F18\u5316\u597D\u4E86\uFF0C\u4F46\u662F\u7535\u5F71\u7684\u8BE6\u60C5\u9875\u6CA1\u6709\u4F18\u5316\uFF0C\u7535\u5F71\u53EA\u8981\u4E00\u4E2A
-   \u8BE6\u60C5\u9875\u300D\u3002\u63A2\u67E5\u7ED3\u8BBA\uFF08dest/_verify/lc1028-explore/ \u6D3B\u4F53\u5B9E\u91C7\uFF09\uFF1A\u7535\u5F71\u9875\u4E0E Series \u4E00\u7EA7\u9875\u540C\u65CF\u540C\u6784
-   \uFF08\u540C col/wrapper/hero \u7C7B\u540D/.gradient/logo \u951A\u70B9/mt-4 \u6309\u94AE\u884C\uFF09\uFF0C\u5DEE\u5F02\u4EC5\u5728 col.children[1..3]
-   = \u7B80\u4ECB(px-[46px]) / \u6F14\u804C\u4EBA\u5458(mb-10) / \u6587\u4EF6\u4FE1\u606F+IMDB(px-[46px] gap-4)\u3002
-   \u672C\u6BB5\u955C\u50CF N \u6BB5\u7684\u8BBE\u8BA1\u8BED\u8A00\uFF08\u7528\u6237\u5DF2\u5B9A\u7A3F\uFF09\uFF0C\u5DEE\u5F02\u70B9\uFF1A
-   \xB7 \u9762\u677F = \u7B80\u4ECB\u5BB9\u5668\uFF08O5\uFF09\uFF0C\u805A\u7C07\u91CC\u6CA1\u6709\u5B63\u9009 \u2192 \u9762\u677F\u9AD8\u5EA6\u53EA\u5269\u7B80\u4ECB\u9A71\u52A8\uFF08--fnos-cluster-h \u540C\u540D\u590D\u7528\uFF09\uFF1B
-   \xB7 \u6309\u94AE\u884C\u542B\u8FDB\u5EA6\u6761 + \u53CC\u884C meta\uFF08\u5E74\u4EFD/\u7247\u957F/\u7C7B\u578B/\u5730\u533A/\u5FBD\u7AE0/\u6765\u6E90 + \u5B57\u5E55/\u97F3\u8F68\u9009\u62E9\u5668\uFF09\uFF0C\u9AD8\u4E8E Series
-     \u7684\u5355\u884C\u6309\u94AE \u2192 logo \u4E0A\u79FB\u91CF +20px\uFF08O3 \u7528 +120px\uFF09\uFF1B
-   \xB7 fiber \u5168\u6587\u5B57\u6BB5\u662F overview \u4E0D\u662F intro\uFF08tmdbCard._fillSeriesIntro \u53CC\u952E\u515C\u5E95\uFF09\uFF1B
-   \xB7 \u6F14\u804C\u4EBA\u5458/\u6587\u4EF6\u4FE1\u606F/\u89C6\u9891\u4FE1\u606F\u4FDD\u7559\u5728\u9996\u5C4F\u6298\u53E0\u7EBF\u4EE5\u4E0B\u81EA\u7136\u6EDA\u52A8\uFF08\u7535\u5F71\u72EC\u6709\u6570\u636E\uFF0C\u4E0D\u9690\u85CF\uFF09\uFF1B
-   \xB7 K/L/M/\u80CC\u666F\u900F\u660E\u5316\u56E0 hero/\u9876\u680F\u7C7B\u540D\u540C\u65CF\u65E9\u5DF2\u8986\u76D6\u672C\u9875\uFF0C\u672C\u6BB5\u53EA\u8865\u5E03\u5C40\u4E0E\u805A\u7C07\u3002
-   \u95E8\u63A7 = body.fnos-movie-panel\uFF08tmdbCard._armSeriesPanel \u6309\u8DEF\u7531\u6253\uFF0CMovie \u9875\u4E0D\u518D\u5403 N \u6BB5\uFF09\u3002 */
-/* O1. col \u6EE1\u5C4F\u5BB9\u5668\uFF08\u540C N1\uFF09 */
-body.fnos-movie-panel ${MOVIE_COL}{
-  position:relative !important;
-  min-height:calc(100vh - 32px) !important;
-  margin-bottom:0 !important;
-}
-/* O2. hero \u6EE1\u5C4F + \u4E0A\u63D0\u5403\u6389 32px \u6807\u9898\u680F\uFF08\u76F4\u63A5\u91C7\u7528 N2+lc-1024 \u7684\u6700\u7EC8\u5F62\u6001\uFF0C\u7528\u6237\u5DF2\u9A8C\u6536\uFF09 */
-body.fnos-movie-panel .trim-mc__details--key-version{
-  height:100vh !important;
-  min-height:0 !important; max-height:none !important;
-  margin-top:-32px !important;
-}
-/* \u5E95\u90E8\u6E10\u53D8\u906E\u7F69\u91CD\u505A\uFF08\u540C N2\uFF1A25deg \u5BF9\u89D2\u6E10\u9690\uFF0C\u53EA\u62A4\u5DE6\u4E0B\u805A\u7C07\u6587\u5B57\u533A\uFF1B\u53CC\u7C7B\u540D\u6253\u5E73 L \u6BB5\u540C\u9009\u62E9\u5668\uFF09 */
-body.fnos-movie-panel .trim-mc__details--key-version.trim-mc__details--key-version .gradient{
-  height:58% !important;
-  background-image:linear-gradient(25deg,
-    rgba(var(--fnos-hero-tint, 25,25,26), .62) 0%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .34) 30%,
-    rgba(var(--fnos-hero-tint, 25,25,26), .10) 55%,
-    rgba(var(--fnos-hero-tint, 25,25,26), 0) 75%) !important;
-}
-/* O2b. \u9876\u680F\u5168\u900F\uFF08\u540C N2b\uFF1AL \u6BB5\u73BB\u7483\u6761\u5728\u6EE1\u5C4F\u6D77\u62A5\u4E0A\u8BFB\u4F5C\u6697\u5E26\uFF1B\u56FE\u6807 K \u6BB5\u767D\u8272 + drop-shadow\uFF09 */
-body.fnos-movie-panel div[class*="h-[80px]"][class*="top-0"]::before{
-  content:none !important;
-}
-body.fnos-movie-panel div[class*="h-[80px]"][class*="top-0"] svg{
-  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
-}
-/* O2c. \u6807\u9898\u680F\u6458\u6761\u9650\u5B9A**\u975E\u73BB\u7483\u6A21\u5F0F**\uFF08\u540C N2c [lc-1030]\uFF1B\u73BB\u7483\u6A21\u5F0F\u8D70 P1 \u78E8\u7802\u53D6\u8272\u6761\uFF09 */
-html:not([data-fntv-glass]) body.fnos-movie-panel #custom-titlebar[data-fntv-tb]::before{
-  content:none !important;
-}
-body.fnos-movie-panel #custom-titlebar[data-fntv-tb] button svg{
-  filter:drop-shadow(0 1px 6px rgba(0,0,0,.4));
-}
-/* O3. logo \u4E0A\u79FB\uFF08\u540C N3\uFF1B+120px\uFF1A\u7535\u5F71\u6309\u94AE\u884C\u542B\u8FDB\u5EA6\u6761+\u53CC\u884C meta\uFF0C\u6BD4 Series \u5355\u884C\u9AD8 ~20px\uFF09 */
-body.fnos-movie-panel .trim-mc__details--key-version > [class*="inset-x-[46px]"][class*="bottom-[30px]"]{
-  bottom:calc(var(--fnos-cluster-h, 360px) + 120px) !important;
-}
-/* O4. \u6309\u94AE\u884C\u60AC\u6D6E\uFF08\u540C N4\uFF1BMOVIE_BTNROW \u4E0E SERIES_BTNROW \u540C\u6784\uFF0C\u8FDB\u5EA6\u6761/meta \u884C\u968F\u884C\u4E00\u8D77\u60AC\u6D6E\uFF09*/
-body.fnos-movie-panel ${MOVIE_BTNROW}{
-  position:absolute !important;
-  bottom:calc(var(--fnos-cluster-h, 360px) + 16px) !important;
-  left:26px !important;
-  width:min(1020px, calc(100vw - 52px)) !important;
-  padding:0 20px !important; margin:0 !important;
-  box-sizing:border-box !important; z-index:3 !important;
-}
-/* \u6309\u94AE/\u6587\u5B57/\u56FE\u6807\u6D45\u8272\u5316\uFF08\u7535\u5F71\u9875 meta \u8D70 div \u800C\u975E span\uFF0C\u9700\u8865 div/divider \u4E24\u7C7B\uFF09 */
-body.fnos-movie-panel ${MOVIE_BTNROW} span{
-  color:rgba(255,255,255,.78) !important;
-  text-shadow:0 1px 2px rgba(0,0,0,.6), 0 2px 18px rgba(0,0,0,.5) !important;
-}
-body.fnos-movie-panel ${MOVIE_BTNROW} svg{ color:rgba(255,255,255,.92) !important; }
-body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="text-[var(--semi-color-text"]{ color:rgba(255,255,255,.78) !important; }
-body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="text-[var(--semi-color-divider"]{ color:rgba(255,255,255,.35) !important; }
-body.fnos-movie-panel ${MOVIE_BTNROW} img{ filter:drop-shadow(0 1px 4px rgba(0,0,0,.45)); }
-/* \u5706\u5F62\u6309\u94AE\uFF08\u6536\u85CF/\u5DF2\u770B/\u66F4\u591A\uFF09\uFF1A\u534A\u900F\u73BB\u7483\u3001\u65E0\u8FB9\u6846\uFF08\u539F\u751F border+fill-0 \u5B9E\u5FC3\u5E95\u4E00\u5E76\u53BB\u6389\uFF09 */
-body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="size-[54px]"]{
-  background:rgba(255,255,255,.10) !important;
-  backdrop-filter:blur(20px) saturate(150%) !important;
-  -webkit-backdrop-filter:blur(20px) saturate(150%) !important;
-  border:none !important;
-}
-body.fnos-movie-panel ${MOVIE_BTNROW} div[class*="size-[54px]"]:hover{
-  background:rgba(255,255,255,.18) !important;
-}
-/* O5. \u7B80\u4ECB\u9762\u677F\uFF1A\u534A\u900F\u67D4\u5149\u73BB\u7483\uFF08\u53C2\u6570=N5 \u7528\u6237\u4E09\u8F6E\u5B9A\u7A3F\u503C\uFF1Atint .09/blur 26/brightness .86\uFF09
-   \u65E0\u5361 600px\uFF1B\u6709\u5361 1020px\uFF08:has \u95E8\u63A7\uFF09\u3002\u26A0 \u6574\u4E32\u7CBE\u786E\u7C7B\u540D\uFF08\u65E0 gap-4\uFF09\u4E0E\u6587\u4EF6\u4FE1\u606F\u533A\u533A\u5206\u3002 */
-body.fnos-movie-panel ${MOVIE_PANEL}{
-  position:absolute !important;
-  /* [lc-1031] min-height \u8BA9 TMDB \u5361(absolute, top/bottom:16)\u4E0D\u518D\u88AB\u7B80\u77ED\u7B80\u4ECB\u9501\u6210\u77EE\u6761\uFF1A
-     \u7535\u5F71\u7B80\u4ECB\u5E38\u53EA\u6709\u4E00\u4E24\u884C\uFF0C\u9762\u677F\u968F\u4E4B\u53EA\u5269 ~150px\uFF0C\u5361\u5185\u5BB9\u88AB\u88C1\u5F97\u53EA\u5269\u8BC4\u5206+meta\u3002 */
-  min-height:320px !important;
-  /* [lc-1028] top \u951A\u5B9A\u800C\u975E bottom\uFF1ASeries \u9875\u9762\u677F\u662F col \u672B\u5B50\u8282\u70B9\uFF08bottom:18=\u8D34\u9996\u5C4F\u5E95\uFF09\uFF0C
-     \u7535\u5F71\u9875 col \u5728\u9762\u677F\u4E4B\u540E\u8FD8\u6709\u6F14\u804C\u4EBA\u5458/\u6587\u4EF6\u4FE1\u606F\uFF08\u6298\u53E0\u7EBF\u4E0B\u5EF6\u4F38\uFF09\uFF0Ccol \u5E95\u8FDC\u5728\u89C6\u53E3\u5916\u2014\u2014
-     bottom \u4F1A\u628A\u9762\u677F\u951A\u5230\u89C6\u7A97\u5916\uFF08\u9996\u7248\u771F\u673A\u622A\u753B\u9762\u677F\u6D88\u5931\u7684\u6839\u56E0\uFF09\u3002top = 100vh - 32(body
-     \u9876padding, \u5217\u9876\u968F\u4E4B\u4E0B\u79FB) - cluster-h\uFF08cluster-h=\u9762\u677F\u9AD8+18\uFF0CJS \u5B9E\u6D4B\u56DE\u586B\uFF09\u6070\u4F7F\u9762\u677F
-     \u5E95\u6CBF\u8D34\u5728\u9996\u5C4F\u5E95\u6CBF\u4E0A\u65B9 18px\uFF0C\u4E0E\u5217\u9AD8\u89E3\u8026\uFF08\u6D3B\u4F53 geom.cjs\uFF1A-32 \u524D\u5E95\u6CBF 1014\uFF0C\u540E 982\uFF09\u3002 */
-  top:calc(100vh - 32px - var(--fnos-cluster-h, 360px)) !important; left:26px !important;
-  width:min(600px, calc(100vw - 52px)) !important;
-  max-height:calc(100vh - 32px - 230px) !important;
-  padding:18px 20px !important;
-  display:block !important;
-  background:linear-gradient(160deg,
-    rgba(255,255,255,.05) 0%,
-    rgba(255,255,255,.014) 45%,
-    rgba(255,255,255,.005) 100%),
-    rgba(var(--fnos-hero-tint, 25,25,26), .09) !important;
-  backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
-  -webkit-backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
-  border:none !important;
-  box-shadow:0 18px 54px rgba(0,0,0,.32) !important;
-  border-radius:22px !important;
-  box-sizing:border-box !important;
-  overflow:hidden !important;
-  z-index:2 !important;
-  animation:fnos-series-panel-in .5s cubic-bezier(.22,.61,.36,1) both;
-}
-body.fnos-movie-panel ${MOVIE_PANEL}:has(> .fnos-beautify-card){
-  width:min(1020px, calc(100vw - 52px)) !important;
-}
-/* \u9762\u677F\u5185\u6052\u6697\u6750\u8D28 \u2192 Semi \u6587\u672C\u53D8\u91CF\u91CD\u5B9A\u4E49\u4E3A\u6D45\u8272\uFF08I \u6BB5\u5361\u6837\u5F0F\u96F6\u6539\u52A8\u81EA\u52A8\u8DDF\u968F\uFF09 */
-body.fnos-movie-panel ${MOVIE_PANEL}{
-  --semi-color-text-0:rgba(255,255,255,.94);
-  --semi-color-text-1:rgba(255,255,255,.72);
-  --semi-color-text-2:rgba(255,255,255,.58);
-  --semi-color-text-3:rgba(255,255,255,.42);
-}
-/* O6. \u7B80\u4ECB\uFF1A\u5168\u6587\u5C55\u793A\uFF08tmdbCard \u56DE\u586B fiber props.overview\uFF0C\u539F\u751F\u622A\u65AD+\u300C\u66F4\u591A\u300D\u540C\u6B3E\u5931\u6548\uFF09+ \u9690\u85CF\u300C\u66F4\u591A\u300D */
-body.fnos-movie-panel ${MOVIE_PANEL} > div[class*="text-justify"]{
-  margin:0 !important; width:100% !important;
-  font-size:14px !important; line-height:1.7 !important;
-  color:rgba(255,255,255,.88) !important;
-  text-shadow:0 1px 8px rgba(0,0,0,.38) !important;
-}
-body.fnos-movie-panel ${MOVIE_PANEL}:has(> .fnos-beautify-card) > div[class*="text-justify"]{
-  width:calc(57% - 15px) !important;
-}
-body.fnos-movie-panel .fnos-intro-full [class*="ml-1"][class*="cursor-pointer"]{
-  display:none !important;
-}
-/* O8b. TMDB \u7535\u5F71\u5361\uFF1A\u7EDD\u5BF9\u5B9A\u4F4D\u5230\u9762\u677F\u53F3\u5217\uFF08\u540C N8b\uFF1B\u5185\u90E8\u6EDA\u52A8\u4E0D\u6491\u9AD8\u9762\u677F\uFF1B\u5361\u81EA\u8EAB\u65E0\u6846\u65E0\u5E95\uFF09 */
-body.fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card{
-  position:absolute !important;
-  top:16px !important; bottom:16px !important;
-  left:calc(57% + 6px) !important; right:16px !important;
-  width:auto !important;
-  margin:0 !important; padding:2px 10px 2px 4px !important;
-  background:transparent !important; border:none !important; box-shadow:none !important;
-  overflow-y:auto !important; overflow-x:hidden !important;
-  scrollbar-width:thin !important;
-  scrollbar-color:rgba(255,255,255,.16) transparent !important;
-}
-body.fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card::-webkit-scrollbar{ width:4px !important; }
-body.fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,.16) !important; border-radius:2px !important;
-}
-body.fnos-movie-panel ${MOVIE_PANEL} .fnos-showinfo__sec{
-  border-top:none !important; padding-top:12px !important;
-}
-/* O10. \u4E00\u5C4F\u8BED\u4E49\uFF08\u7528\u6237\u6307\u5B9A\u300C\u4E0D\u8981\u6EDA\u52A8\u9875\u9762\u300D\uFF0Clc-1029\uFF09\uFF1A\u6F14\u804C\u4EBA\u5458/\u6587\u4EF6\u4FE1\u606F/\u89C6\u9891\u4FE1\u606F/IMDB \u884C
-   \u6574\u4F53\u9690\u85CF\u2014\u2014\u4EBA\u5458\u4FE1\u606F\u7531 TMDB \u7535\u5F71\u5361\u7684\u5BFC\u6F14/\u7F16\u5267/\u4E3B\u6F14\u8986\u76D6\uFF0C\u6587\u4EF6\u7EC6\u8282\uFF08\u8DEF\u5F84/\u5927\u5C0F/\u7F16\u7801\uFF09\u4E0D\u53C2\u4E0E
-   \u6D4F\u89C8\u51B3\u7B56\uFF08\u6E05\u6670\u5EA6\u5FBD\u7AE0/\u5B57\u5E55/\u97F3\u8F68\u9009\u62E9\u5668\u5DF2\u5728\u805A\u7C07 meta \u884C\uFF09\u3002col \u53EA\u5269 wrapper(100vh) +
-   \u9762\u677F(absolute) \u2192 \u9875\u9762\u65E0\u6EDA\u52A8\uFF0C\u4E0E Series \u4E00\u7EA7\u9875\u540C\u4E00\u5C4F\u8BED\u4E49\u3002
-   \u26A0 \u53D6\u4EE3\u9996\u7248 O9\uFF08\u6F14\u5458\u533A\u7CBE\u4FEE\uFF09\uFF1A\u533A\u5DF2\u9690\u85CF\uFF0C\u7CBE\u4FEE\u65E0\u5BF9\u8C61\u3002\u6F14\u804C\u4EBA\u5458\u7D22\u5F15 = col.children[2]
-     (nth-child(3))\uFF0C\u6587\u4EF6\u4FE1\u606F\u533A = nth-child(4)\u3002 */
-body.fnos-movie-panel ${MOVIE_COL} > :nth-child(3),
-body.fnos-movie-panel ${MOVIE_COL} > :nth-child(4){
-  display:none !important;
-}
-
-/* ===== P. \u4E91\u6BCD\u589E\u5F3A\uFF08Glass UI\uFF09\u8054\u52A8\uFF1A\u73BB\u7483\u6A21\u5F0F\u4E0B\u805A\u7C07/\u6807\u9898\u680F\u6750\u8D28\u7EDF\u4E00\uFF08lc-1030\uFF09=====
-   \u7528\u6237\u62A5\u969C\uFF08\u73BB\u7483\u5F00\u542F + \u6D45\u8272\u6D77\u62A5\u622A\u56FE\uFF09\uFF1A\u2460 \u5DE6\u4E0B\u805A\u7C07\u662F\u300C\u6D77\u62A5\u53D6\u8272\u6DF1\u8272\u73BB\u7483\u300D\uFF08heroTint \u6052\u6697
-   L<=0.20 + brightness(.86) \u538B\u6697\uFF09\uFF0C\u538B\u5728\u6D45\u8272\u6D77\u62A5\u4E0A\u8BFB\u4F5C\u4E00\u5757\u6697\u8272\u6C61\u6E0D\uFF0C\u4E0E\u5168\u5C4F\u73BB\u7483\u6750\u8D28\u4E0D\u534F\u8C03\uFF1B
-   \u2461 \u9876\u680F\u8F6F\u4EF6\u63A7\u5236\u680F\u6A2A\u6761\uFF08N2c/O2c \u6458\u6761\u540E=\u88F8\u6D77\u62A5+\u767D\u7A97\u63A7\u952E\uFF09\u4E0D\u534F\u8C03\uFF0C\u8981\u6C42\u6539\u56DE\u81EA\u52A8\u53D6\u8272\u3002
-   \u65B9\u6848\uFF1A\u73BB\u7483\u6A21\u5F0F\u4E0B \u2460 \u805A\u7C07\u6539\u7528**\u73BB\u7483\u8272\u677F\u4E2D\u6027\u78E8\u7802**\uFF08--fntv-glass-tint-* \u968F html.dark \u81EA\u9002\u5E94\uFF1A
-   \u6D45\u8272\u4E3B\u9898\u767D\u78E8\u7802/\u6DF1\u8272\u4E3B\u9898\u6DF1\u78E8\u7802\uFF09\uFF0C\u53BB\u6389 brightness \u538B\u6697\uFF0C\u9762\u677F\u6587\u5B57\u968F\u73BB\u7483\u4E3B\u9898\u7FFB\u6DF1/\u7FFB\u767D\uFF1B
-   \u2461 \u6807\u9898\u680F\u53D6\u8272\u6761\u56DE\u5F52\u5E76\u78E8\u7802\u5316\uFF08\u534A\u900F\u53D6\u8272 + blur\uFF0C\u6DF1 tint \u4FDD\u767D\u56FE\u6807\u5BF9\u6BD4\u5EA6\uFF0C\u6BDB\u73BB\u7483\u8FB9\u81EA\u7136\u878D\u5165\u6D77\u62A5\uFF09\u3002
-   \u975E\u73BB\u7483\u6A21\u5F0F\u4E0D\u5339\u914D\u672C\u6BB5\u4EFB\u4F55\u89C4\u5219 = \u5DF2\u9A8C\u6536\u7684\u53D6\u8272\u73BB\u7483\u539F\u6837\u3002 */
-/* P1. \u6807\u9898\u680F\u81EA\u52A8\u53D6\u8272\u6761\u56DE\u5F52\uFF08\u78E8\u7802\u5316\uFF1BM \u6BB5\u5B9E\u5FC3 alpha1 \u5728\u73BB\u7483\u6A21\u5F0F\u4E0B\u88AB\u672C\u6761\u8986\u76D6\u4E3A\u534A\u900F\u78E8\u7802\uFF09 */
-html[data-fntv-glass] body.fnos-series-panel #custom-titlebar[data-fntv-tb]::before,
-html[data-fntv-glass] body.fnos-movie-panel #custom-titlebar[data-fntv-tb]::before{
-  background:rgba(var(--fnos-hero-tint, 25,25,26), .45) !important;
-  backdrop-filter:blur(18px) saturate(1.2);
-  -webkit-backdrop-filter:blur(18px) saturate(1.2);
-}
-/* P2. [lc-1031] \u805A\u7C07\u6750\u8D28\u6781\u6027\u8DDF**\u6D77\u62A5\u660E\u6697**\u8D70\uFF08\u4E0D\u8DDF\u4E3B\u9898\u2014\u2014\u9762\u677F\u7684\u5B9E\u9645\u89C2\u611F\u7531 blur \u80CC\u540E\u7684
-   \u6D77\u62A5\u51B3\u5B9A\uFF0C\u6D45\u8272\u4E3B\u9898+\u6DF1\u6D77\u62A5\u7684\u7EC4\u5408\u4E0B\u767D\u78E8\u7802+\u6DF1\u5B57\u4F1A\u770B\u4E0D\u6E05\uFF0C\u7528\u6237\u5B9E\u62CD\u7FFB\u8F66\uFF09\uFF1A
-   \xB7 \u6697\u6D77\u62A5\uFF08\u9ED8\u8BA4\uFF0CheroTint \u5B9E\u6D4B\u5747\u4EAE <0.5\uFF09\u2192 \u53D6\u8272\u6DF1\u78E8\u7802 rgba(tint,.32) + brightness(.86)
-     \u538B\u6697 + \u6D45\u5B57\uFF08N/O \u539F\u6781\u6027\uFF1Btint \u4E0E\u6D77\u62A5\u540C\u8272\u7CFB = \u81EA\u52A8\u53D6\u8272\uFF09\uFF1B
-   \xB7 \u4EAE\u6D77\u62A5\uFF08body[data-fntv-hero-bright=1]\uFF0CheroTint \u5168\u56FE\u5E73\u5747\u611F\u77E5\u4EAE\u5EA6 \u22650.5\uFF09\u2192 \u767D\u78E8\u7802
-     \u65E0\u538B\u6697 + \u6DF1\u5B57\uFF08P3\uFF09\u3002 */
-html[data-fntv-glass] body.fnos-series-panel ${SERIES_PANEL},
-html[data-fntv-glass] body.fnos-movie-panel ${MOVIE_PANEL}{
-  background:linear-gradient(160deg,
-    rgba(255,255,255,.06) 0%,
-    rgba(255,255,255,.015) 45%,
-    rgba(255,255,255,.005) 100%),
-    rgba(var(--fnos-hero-tint, 25,25,26), .32) !important;
-  backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
-  -webkit-backdrop-filter:blur(26px) saturate(155%) brightness(.86) !important;
-  box-shadow:0 18px 54px rgba(0,0,0,.24) !important;
-}
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL},
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL}{
-  background:linear-gradient(160deg,
-    rgba(255,255,255,.10) 0%,
-    rgba(255,255,255,.03) 45%,
-    rgba(255,255,255,.012) 100%),
-    rgba(255,255,255,.38) !important;
-  backdrop-filter:blur(26px) saturate(155%) !important;
-  -webkit-backdrop-filter:blur(26px) saturate(155%) !important;
-  box-shadow:0 18px 54px rgba(0,0,0,.16) !important;
-}
-/* P3. \u6587\u5B57\u6781\u6027\u968F\u6D77\u62A5\uFF1A\u4EAE\u6D77\u62A5 \u2192 \u9762\u677F Semi \u53D8\u91CF\u7FFB\u6DF1 + N6/O6 \u663E\u5F0F\u767D\u5B57\u7FFB\u6DF1 + \u5B63\u5361\u6587\u672C\u7FFB\u6DF1
-   + \u79FB\u9664\u767D\u5B57\u9634\u5F71\uFF1B\u6697\u6D77\u62A5\u4E0D\u5339\u914D = N/O \u539F\u6D45\u5B57\u4E0E\u9634\u5F71 */
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL},
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL}{
-  --semi-color-text-0:rgba(28,28,30,.92);
-  --semi-color-text-1:rgba(28,28,30,.72);
-  --semi-color-text-2:rgba(28,28,30,.58);
-  --semi-color-text-3:rgba(28,28,30,.42);
-}
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} > div[class*="text-justify"],
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL} > div[class*="text-justify"]{
-  color:rgba(28,28,30,.88) !important; text-shadow:none !important;
-}
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} [data-id="details"] p{
-  color:rgba(28,28,30,.9) !important; text-shadow:none !important;
-}
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} [data-id="details"] p + p{
-  color:rgba(28,28,30,.55) !important;
-}
-/* P4. \u4EAE\u6D77\u62A5\u6D45\u78E8\u7802\u4E0A\u5361\u6EDA\u52A8\u6761\u6539\u6DF1\u8272\u53EF\u89C1 */
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-series-panel ${SERIES_PANEL} > .fnos-beautify-card,
-html[data-fntv-glass] body[data-fntv-hero-bright="1"].fnos-movie-panel ${MOVIE_PANEL} > .fnos-beautify-card{
-  scrollbar-color:rgba(0,0,0,.22) transparent !important;
-}
-
-/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-   [v1.4.0] \u624B\u673A\u7F51\u9875\uFF08\u7A84\u5C4F\u89E6\u5C4F\uFF09\u672B\u6BB5\u8986\u76D6 \u2014\u2014 \u5FC5\u987B\u653E\u5728\u6574\u5F20\u6837\u5F0F\u8868\u7684\u6700\u540E\uFF01
-   \u5C42\u53E0\u89C4\u5219\uFF1A\u540C\u7279\u5F02\u6027\u6309\u6E90\u987A\u5E8F\uFF0C\u540E\u8005\u80DC\u3002\u684C\u9762\u6BB5(\u4E24\u680F grid/\u7EDD\u5BF9\u5B9A\u4F4D\u5361)\u4E0E\u5355\u5217\u6BB5
-   \u7684\u9009\u62E9\u5668\u7279\u5F02\u6027\u5B8C\u5168\u76F8\u540C\uFF08\u540C\u4E00\u6761 COL \u94FE + \u540C\u6837\u7684 !important\uFF09\uFF0C\u9760\u58F0\u660E\u987A\u5E8F\u51B3\u80DC\u3002
-   \u95E8\u63A7\u7528 html.fnos-touch-narrow \u6807\u8BB0\u7C7B\uFF08injectBeautifyStyle \u5B89\u88C5\uFF1A\u89E6\u5C4F\u80FD\u529B\u4E00\u6B21\u6027
-   \u5224\u5B9A + min-width \u5A92\u4F53\u67E5\u8BE2\u8DDF\u89C6\u53E3\u5BBD\uFF09\uFF0C\u4E0D\u7528 @media (pointer:coarse)\u2014\u2014\u540E\u8005\u4F1A\u88AB
-   \u622A\u56FE\u5DE5\u5177/\u5916\u63A5\u9F20\u6807\u7B49\u573A\u666F\u4E2D\u9014\u7FFB\u8F6C\uFF0C\u5E03\u5C40\u5728\u4E24\u680F/\u5355\u5217\u95F4\u8DF3\u53D8\u3002
-   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-html.fnos-touch-narrow body.fnos-beautify ${COL}{
-  grid-template-columns:minmax(0,1fr) !important;
-  grid-template-rows:auto auto auto !important;
-  column-gap:0 !important;
-}
-html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(2){ grid-area:2 / 1 / 3 / 2 !important; }
-html.fnos-touch-narrow body.fnos-beautify ${COL} > :nth-child(3){ grid-area:3 / 1 / 4 / 2 !important; }
-/* \u5E8F\u53F7\u89C6\u56FE\uFF1Acontents \u5316\u7EF4\u6301\uFF08\u6807\u9898/\u6F14\u5458\u4ECD\u8981\u6C89\u5230\u5361\u4E0B\u65B9\uFF09\uFF0C\u5361\u4ECE\u7EDD\u5BF9\u5B9A\u4F4D\u6539\u56DE\u6D41\u5185 row3 */
-html.fnos-touch-narrow body.fnos-beautify ${COL_NUM}{
-  grid-template-rows:auto auto auto auto auto !important;
-}
-html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > .fnos-beautify-card{
-  position:static !important;
-  grid-area:3 / 1 / 4 / 2 !important;
-  left:auto !important; right:auto !important;
-}
-html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > p.semi-typography{
-  grid-area:4 / 1 / 5 / 2 !important;
-  margin:28px 0 0 !important;   /* \u5355\u5217\u4E0B\u65E0\u9700\u7ED9\u53F3\u680F\u5267\u7167\u7559\u7A7A\u5F53\uFF0C\u5E38\u89C4\u6BB5\u95F4\u8DDD */
-}
-html.fnos-touch-narrow body.fnos-beautify ${COL_NUM} > :nth-child(3) > div.relative > .ms-container{
-  grid-area:5 / 1 / 6 / 2 !important;
-}
-`;
-  function injectBeautifyStyle() {
-    if (!document.getElementById(STYLE_ID3)) {
-      const st = document.createElement("style");
-      st.id = STYLE_ID3;
-      st.textContent = BEAUTIFY_CSS;
-      (document.head || document.documentElement).appendChild(st);
-    }
-    installMobileFlag();
-  }
-  var _mobileFlagMq = null;
-  var MOBILE_FLAG_MQ = "(min-width: 641px)";
-  function isTouchCapable() {
-    try {
-      return "ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0;
-    } catch {
-      return false;
-    }
-  }
-  function installMobileFlag() {
-    if (!isTouchCapable()) return;
-    const apply = () => {
-      const narrow = !_mobileFlagMq || !_mobileFlagMq.matches;
-      document.documentElement.classList.toggle("fnos-touch-narrow", narrow);
-    };
-    if (!_mobileFlagMq && typeof window.matchMedia === "function") {
-      try {
-        _mobileFlagMq = window.matchMedia(MOBILE_FLAG_MQ);
-        const handler = () => apply();
-        if (_mobileFlagMq.addEventListener) _mobileFlagMq.addEventListener("change", handler);
-        else _mobileFlagMq.addListener(handler);
-      } catch {
-      }
-    }
-    apply();
   }
 
   // src/preload/plugins/embyWall/detail/backdrop.ts

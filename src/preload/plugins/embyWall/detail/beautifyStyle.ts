@@ -1469,16 +1469,18 @@ export function injectBeautifyStyle(): void {
   installMobileFlag();
 }
 
-/** [v1.4.0] html.fnos-touch-narrow 标记：触屏设备 + 窄视口。视口宽用 min-width 媒体
- *  查询（由 CSS 引擎评估，不受指针模拟重置影响），触屏能力一次性判定后缓存。 */
+/** [v1.4.0→v1.4.1] html.fnos-touch-narrow 标记：触屏设备 + 窄视口。视口宽用 min-width 媒体
+ *  查询（由 CSS 引擎评估，不受指针模拟重置影响），触屏能力一次性判定后缓存。
+ *  [v1.4.1] 导出：播放页底部控件触屏段（danmakuWeb）依赖同一标记，播放页可能先于
+ *  详情页出现 → 该处注入样式时也调用（幂等，Mq 只装一次）。 */
 let _mobileFlagMq: MediaQueryList | null = null;
 const MOBILE_FLAG_MQ = '(min-width: 641px)';   // ≥641px = 桌面宽，摘除标记
 
-function isTouchCapable(): boolean {
+export function isTouchCapable(): boolean {
   try { return 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0; } catch { return false; }
 }
 
-function installMobileFlag(): void {
+export function installMobileFlag(): void {
   if (!isTouchCapable()) return;               // 无触摸能力：永不加标记（桌面/宽屏语义）
   const apply = (): void => {
     const narrow = !_mobileFlagMq || !_mobileFlagMq.matches;   // (min-width:641px) 不匹配 = ≤640
