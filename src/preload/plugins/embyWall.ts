@@ -4245,6 +4245,16 @@ btn.style.cssText = 'box-sizing:border-box;width:100%;padding:10px 12px;border-r
         const heads = document.querySelectorAll('strong,h2,h3').length;
         const known = document.querySelectorAll('.relative.flex.flex-col.gap-6 > div').length;
         log('[lc-939] ensureHomepageEnhanced: 重试 6 次仍未找到媒体库区块, 放弃重建; diag headings=' + heads + ' knownLayoutDivs=' + known + ' pathname=' + location.pathname);
+        // [v1.4.6] 主导航(home 键)回首页时媒体库 section 常在 React 异步渲染, 1.5s 窗口可能整体错过
+        //   (旧版到此彻底放弃 → 轮播丢失, 用户被迫强刷)。延迟兜底再试两轮: 3s/6s, 命中即止。
+        for (const delay of [3000, 6000]) {
+          setTimeout(() => {
+            if (!(S.carouselContainer && document.body.contains(S.carouselContainer)) && !S.carouselInited) {
+              log('[v1.4.6] ensureHomepageEnhanced 延迟兜底重注入(' + delay + 'ms)');
+              injectCarousel();
+            }
+          }, delay);
+        }
         return;
       }
       const diagShows = (S.apiShows || []).slice(0, 12).map((s: any) => ({ t: (s.title || '').substring(0, 8), hasBlob: !!s._backdropBlob, portrait: !!s._backdropIsPortrait, back: !!(s.backdrop) }));

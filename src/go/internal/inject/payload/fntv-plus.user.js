@@ -10317,7 +10317,6 @@ html.fnos-perf.dark{
     if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
       S.carouselInited = false;
       S.carouselContainer = null;
-      S.carouselWrapper = null;
       S.carouselPosterStrip = null;
     }
   }
@@ -17070,6 +17069,14 @@ html.fntv-boot-hide #root{visibility:hidden}
           const heads = document.querySelectorAll("strong,h2,h3").length;
           const known = document.querySelectorAll(".relative.flex.flex-col.gap-6 > div").length;
           log7("[lc-939] ensureHomepageEnhanced: \u91CD\u8BD5 6 \u6B21\u4ECD\u672A\u627E\u5230\u5A92\u4F53\u5E93\u533A\u5757, \u653E\u5F03\u91CD\u5EFA; diag headings=" + heads + " knownLayoutDivs=" + known + " pathname=" + location.pathname);
+          for (const delay of [3e3, 6e3]) {
+            setTimeout(() => {
+              if (!(S.carouselContainer && document.body.contains(S.carouselContainer)) && !S.carouselInited) {
+                log7("[v1.4.6] ensureHomepageEnhanced \u5EF6\u8FDF\u515C\u5E95\u91CD\u6CE8\u5165(" + delay + "ms)");
+                injectCarousel();
+              }
+            }, delay);
+          }
           return;
         }
         const diagShows = (S.apiShows || []).slice(0, 12).map((s) => ({ t: (s.title || "").substring(0, 8), hasBlob: !!s._backdropBlob, portrait: !!s._backdropIsPortrait, back: !!s.backdrop }));

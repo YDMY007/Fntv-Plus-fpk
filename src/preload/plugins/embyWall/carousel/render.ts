@@ -19,11 +19,16 @@ export function destroyCarousel(): void {
   // [lc-946] 注意: 此处不置空 S.carouselResume。离开首页(_stopCarouselOffHome→destroyCarousel)后,
   //   返回首页需靠它重启自动轮播; 该闭包自带 document.body.contains(container) 守卫, 指向已游离轮播时自动 no-op, 保留安全。
   // [lc-967] 若轮播 DOM 已脱离文档(父容器在离开首页时被 fnOS 移除, 而非仅 display:none 隐藏),
-  //   必须重置 inited 与各 DOM 引用, 否则下次 injectCarousel 因 S.carouselInited===true 提前 return → 轮播永久消失, 直到下次数据拉取。
+  //   必须重置 inited, 否则下次 injectCarousel 因 S.carouselInited===true 提前 return → 轮播永久消失, 直到下次数据拉取。
+  // [v1.4.6] ⚠ 不再置空 S.carouselWrapper: ensureHomepageEnhanced 的「复用游离 wrapper 挂回新
+  //   section(零重载, 海报/简介保留)」分支(lc-950)依赖该引用——此处置 null 使其永远死代码,
+  //   每次返回首页都走全量重建, 撞上 fnOS 主导航(home 键)回首页时媒体库 section 尚在 React
+  //   异步渲染的窗口: 1.5s 重试期内拿不到最终 section(或注入后又被重渲染冲掉) → 轮播丢失,
+  //   用户被迫强刷。wrapper 是自包含 DOM(海报为 base64 data URL), 游离保存零成本;
+  //   injectCarousel 重建路径检测到 wrapper 在文档外时走 findMediaLibrarySection 挂回, 不会嵌套。
   if (S.carouselContainer && !document.body.contains(S.carouselContainer)) {
     S.carouselInited = false;
     S.carouselContainer = null;
-    S.carouselWrapper = null;
     S.carouselPosterStrip = null;
     // carouselInfos/Shows/Base 为数据字段(非 DOM 引用), injectCarousel 重建时会重新赋值, 无需置空
   }
