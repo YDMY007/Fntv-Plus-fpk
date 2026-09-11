@@ -238,9 +238,10 @@ func (b *Bridge) danmuPickEpisode(hit map[string]any, ep int64) map[string]any {
 	return nil
 }
 
-func (b *Bridge) danmuFetchItems(episodeID float64) []map[string]any {
+func (b *Bridge) danmuFetchItems(episodeID int64) []map[string]any {
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, _ := http.NewRequest(http.MethodGet, b.danmuBase()+fmt.Sprintf("/api/v2/comment/%v?format=xml", episodeID), nil)
+	// [v1.4.5] 参数改 int64：%v 对 float64 出科学计数法（id≥1e7），URL 会被弹幕服务 404
+	req, _ := http.NewRequest(http.MethodGet, b.danmuBase()+fmt.Sprintf("/api/v2/comment/%d?format=xml", episodeID), nil)
 	req.Header.Set("User-Agent", biliUA)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -278,7 +279,7 @@ func (b *Bridge) danmuAutoFetch(title string, ep int64, season int64) ([]map[str
 		if id <= 0 {
 			continue
 		}
-		if items := b.danmuFetchItems(id); len(items) > 0 {
+		if items := b.danmuFetchItems(int64(id)); len(items) > 0 {
 			return items, "命中"
 		}
 	}
@@ -311,8 +312,10 @@ func (b *Bridge) danmuCandidates(title string, ep int64, season int64) []map[str
 		if epTitle != "" {
 			full += " · " + epTitle
 		}
+		// [v1.4.5] ⚠ 必须整数化字符串：%v 对 float64 走 %g，id≥1e7 时输出科学计数法
+		// （如 "1.2345678e+07"）→ pick 端解析必败报「自建源候选 id 无效」（用户实测踩过）。
 		out = append(out, map[string]any{
-			"bvid":           danmuIDPrefix + fmt.Sprintf("%v", id),
+			"bvid":           danmuIDPrefix + strconv.FormatInt(int64(id), 10),
 			"title":          full,
 			"source":         "自建源",
 			"is_compilation": false,

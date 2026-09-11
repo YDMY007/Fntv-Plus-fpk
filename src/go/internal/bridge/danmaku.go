@@ -894,9 +894,11 @@ func (b *Bridge) danmakuPick(w http.ResponseWriter, r *http.Request) {
 	var items []map[string]any
 	source := "bilibili"
 	if strings.HasPrefix(bvid, danmuIDPrefix) {
-		// 自建源：按 episodeId 直取
-		id := jsNum(map[string]any{"v": strings.TrimPrefix(bvid, danmuIDPrefix)}["v"])
-		if id <= 0 {
+		// 自建源：按 episodeId 直取。[v1.4.5] 解析改为整数字符串直解（旧 jsNum 只认
+		// float64，字符串恒 0 → 历史/异构端生成的合法 id 一律报「自建源候选 id 无效」）。
+		idStr := strings.TrimSpace(strings.TrimPrefix(bvid, danmuIDPrefix))
+		id, perr := strconv.ParseInt(idStr, 10, 64)
+		if perr != nil || id <= 0 {
 			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "自建源候选 id 无效"})
 			return
 		}
