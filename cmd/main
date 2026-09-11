@@ -28,8 +28,30 @@ start() {
   chmod +x "$BIN" 2>>"$LOG" || log "WARN: chmod +x failed (继续尝试)"
   log "BIN perms: $(ls -la "$BIN")"
 
+  # ── 安装向导端口配置（wizard/install → install_callback 落盘 wizard.env）──
+  #   FNTV_SERVICE_PORT：用户安装时选的服务端口；空则用系统注入的 $TRIM_SERVICE_PORT。
+  #     ⚠ manifest service_port 是 fnOS 健康检查(checkport)与访问入口的端口——若系统固定分配，
+  #       此处向导值应与其一致（向导默认值即 22350）。
+  #   FNTV_UPSTREAM_PORT：飞牛影视(fnOS 影视应用)的 Web 端口；空则走二进制内置优先级
+  #     （FNTV_UPSTREAM 环境变量 > TRIM_SYS_WEB_PORT > 默认 5666）。
+  SVC_PORT="$TRIM_SERVICE_PORT"
+  UPSTREAM_ARG=""
+  if [ -f "$TRIM_PKGETC/wizard.env" ]; then
+    # shellcheck disable=SC1091
+    . "$TRIM_PKGETC/wizard.env"
+    if [ -n "$FNTV_SERVICE_PORT" ]; then
+      SVC_PORT="$FNTV_SERVICE_PORT"
+    fi
+    if [ -n "$FNTV_UPSTREAM_PORT" ]; then
+      UPSTREAM_ARG="--upstream http://127.0.0.1:$FNTV_UPSTREAM_PORT"
+    fi
+    log "wizard.env: FNTV_SERVICE_PORT=$FNTV_SERVICE_PORT FNTV_UPSTREAM_PORT=$FNTV_UPSTREAM_PORT"
+  fi
+  log "effective: SVC_PORT=$SVC_PORT UPSTREAM_ARG=${UPSTREAM_ARG:-<builtin>}"
+
   nohup "$BIN" \
-    --port "$TRIM_SERVICE_PORT" \
+    --port "$SVC_PORT" \
+    $UPSTREAM_ARG \
     --etc "$TRIM_PKGETC" \
     --var "$TRIM_PKGVAR" \
     --dest "$TRIM_APPDEST" \
