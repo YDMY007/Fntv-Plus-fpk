@@ -185,7 +185,17 @@ func (b *Bridge) doubanMarkInterest(subjectID, interest, cookie string) (bool, s
 		if r, ok := out["r"].(float64); ok && r == 0 {
 			return true, "", false
 		}
-		if st == http.StatusUnauthorized || strings.Contains(data, "please login") || strings.Contains(data, "please_login") {
+		// [v1.4.3] {"r":1,"code":403}（HTTP 200）= ck 无效/风控拒——实测假 ck 即此形态。
+		// 旧版落到"HTTP 200 ..."当作普通失败还重试一次；识别为 cookie 失效立即止损。
+		if r, ok := out["r"].(float64); ok && r != 0 {
+			if code, ok := out["code"].(float64); ok && code == 403 {
+				doubanCkMu.Lock()
+				doubanCkCached = ""
+				doubanCkMu.Unlock()
+				return false, "cookie 失效（豆瓣 code 403），请重新粘贴", true
+			}
+		}
+		if st == http.StatusUnauthorized || st == http.StatusForbidden || strings.Contains(data, "please login") || strings.Contains(data, "please_login") {
 			doubanCkMu.Lock()
 			doubanCkCached = ""
 			doubanCkMu.Unlock()
@@ -211,19 +221,21 @@ func (b *Bridge) doubanMarkInterest(subjectID, interest, cookie string) (bool, s
 }
 
 // doubanMarkWithRetry 标记 + 失败重试 1 次（cookie 失效不重试）。
-func (b *Bridge) doubanMarkWithRetry(subjectID, interest, cookie string) {
+// [v1.4.3] 返回最终是否标记成功——调用方据实写状态/回报，不再失败也谎报成功。
+func (b *Bridge) doubanMarkWithRetry(subjectID, interest, cookie string) bool {
 	for i := 0; i <= 1; i++ {
 		ok, _, expired := b.doubanMarkInterest(subjectID, interest, cookie)
 		if ok {
-			return
+			return true
 		}
 		if expired {
-			return
+			return false
 		}
 		if i == 0 {
 			time.Sleep(800 * time.Millisecond)
 		}
 	}
+	return false
 }
 
 func minInt(a, b int) int {
@@ -410,18 +422,24 @@ func (b *Bridge) doubanSyncProgress(w http.ResponseWriter, r *http.Request) {
 	}
 	if alreadyWatched {
 		if state != "collect" {
-			b.doubanMarkWithRetry(subjectID, "collect", cookie)
-			doubanStateSet(req.GUID, "collect")
-			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标记看过（飞牛侧已观看）", "subject_id": subjectID})
+			if b.doubanMarkWithRetry(subjectID, "collect", cookie) {
+				doubanStateSet(req.GUID, "collect")
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标记看过（飞牛侧已观看）", "subject_id": subjectID})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "标记看过失败（cookie 可能失效或被风控），稍后重试", "subject_id": subjectID})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标看过，跳过"})
 		return
 	}
 	if state == "" {
-		b.doubanMarkWithRetry(subjectID, "do", cookie)
-		doubanStateSet(req.GUID, "doing")
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标记在看", "subject_id": subjectID})
+		if b.doubanMarkWithRetry(subjectID, "do", cookie) {
+			doubanStateSet(req.GUID, "doing")
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标记在看", "subject_id": subjectID})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "标记在看失败（cookie 可能失效或被风控），稍后重试", "subject_id": subjectID})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标在看，跳过"})
@@ -457,7 +475,12 @@ func (b *Bridge) doubanSyncWatched(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "无法解析 douban_id（标题搜索无匹配或未配 Cookie）"})
 		return
 	}
-	b.doubanMarkWithRetry(subjectID, "collect", cookie)
-	doubanStateSet(req.GUID, "collect")
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标记看过", "subject_id": subjectID})
+	// [v1.4.3] 按真实结果写状态：失败不写 collect（换有效 cookie 后下次上报还能补标），
+	// 且把失败如实回给前端（旧版失败也写状态+谎报"已标记看过"，状态被永久污染）。
+	if b.doubanMarkWithRetry(subjectID, "collect", cookie) {
+		doubanStateSet(req.GUID, "collect")
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "已标记看过", "subject_id": subjectID})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "标记看过失败（cookie 可能失效或被风控），稍后重试", "subject_id": subjectID})
 }
