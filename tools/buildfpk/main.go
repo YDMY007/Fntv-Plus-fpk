@@ -63,8 +63,10 @@ func run() error {
 	fmt.Println("==============================================")
 	fmt.Printf("项目根: %s\n\n", root)
 
-	// ---- Step 0: 版号自动 +1（用户要求：每次打包自动加一点）----
-	bumpManifestVersion()
+	// ---- Step 0: 开发版号 = git commit 数（用户要求：开发包小 v + commit 数）----
+	devVer := devCommitVersion()
+	writeVersion(devVer)
+	fmt.Printf("开发版号: %s (git commit 数)\n", devVer)
 
 	// ---- Step 1: 重建 payload（可选）----
 	syncPayload()
@@ -188,6 +190,13 @@ func pack() (string, error) {
 	if st, err := os.Stat(out); err != nil || st.Size() < 1024 {
 		return "", fmt.Errorf("fnpack 未产出有效的 fntvplus.fpk（请检查上方报错）")
 	}
+	// 开发包命名: 小 v + commit 数（用户要求 Fntv-Plus-v192 形态区分发布版大写 V）
+	if ver := manifestVersion(); strings.HasPrefix(ver, "0.0.") {
+		named := filepath.Join(root, "Fntv-Plus-v"+strings.TrimPrefix(ver, "0.0.")+".fpk")
+		if err := os.Rename(out, named); err == nil {
+			return named, nil
+		}
+	}
 	return out, nil
 }
 
@@ -209,31 +218,34 @@ func findFnpack() (string, error) {
 		filepath.Join("fntvplus", "tools", "fnpack.exe"))
 }
 
-// bumpManifestVersion 把 manifest 的 version 尾段 +1（1.5.0 -> 1.5.1）并写回。
-// 用户要求：一键打包每次执行自动升一版，省去手动改 manifest。
-// 仅支持三段式 x.y.z；其他形态不动，打包流程不受影响。
-func bumpManifestVersion() string {
-	path := filepath.Join(root, "manifest")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "?"
+// devCommitVersion 开发版号 = git 提交数（用户要求：开发包版号按 commit 数，
+// 如 192 个提交 → version=0.0.192、包名 Fntv-Plus-v192.fpk）。git 不可用时回退尾段 +1。
+func devCommitVersion() string {
+	out, err := exec.Command("git", "rev-list", "--count", "HEAD").Output()
+	if err == nil {
+		if n, err := strconv.Atoi(strings.TrimSpace(string(out))); err == nil && n > 0 {
+			return fmt.Sprintf("0.0.%d", n)
+		}
 	}
 	ver := manifestVersion()
 	parts := strings.Split(ver, ".")
-	if len(parts) != 3 {
-		return ver
+	if len(parts) == 3 {
+		if n, err := strconv.Atoi(strings.TrimSpace(parts[2])); err == nil {
+			return fmt.Sprintf("%s.%s.%d", parts[0], parts[1], n+1)
+		}
 	}
-	n, err := strconv.Atoi(strings.TrimSpace(parts[2]))
+	return ver
+}
+
+// writeVersion 把 version 写回 manifest（开发版流程用；发布版号存 release_version 独立键）。
+func writeVersion(ver string) {
+	path := filepath.Join(root, "manifest")
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return ver
+		return
 	}
-	next := fmt.Sprintf("%s.%s.%d", parts[0], parts[1], n+1)
-	updated := regexp.MustCompile(`(?m)^(\s*version\s*=\s*)\S+`).ReplaceAllString(string(data), "${1}"+next)
-	if werr := os.WriteFile(path, []byte(updated), 0o644); werr != nil {
-		return ver
-	}
-	fmt.Printf("version: %s -> %s\n", ver, next)
-	return next
+	updated := regexp.MustCompile(`(?m)^(\s*version\s*=\s*)\S+`).ReplaceAllString(string(data), "${1}"+ver)
+	_ = os.WriteFile(path, []byte(updated), 0o644)
 }
 
 func manifestVersion() string {

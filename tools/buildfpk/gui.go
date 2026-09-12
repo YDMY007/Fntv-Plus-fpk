@@ -2,7 +2,7 @@
 //
 // 用户需求：网页界面控制 ①应用显示名（飞牛应用商店真实展示名，写 manifest display_name）
 // ②应用正式版号（写 manifest version），点「打包」执行完整流程，产物重命名为
-// Fntv-Plus-v<版号去点>.fpk（如 v1.5.2 → Fntv-Plus-v152.fpk），打包完成后版号尾段自动 +1
+// Fntv-Plus-V<版号去点>.fpk（大写 V，如 1.5.2 → Fntv-Plus-V152.fpk），版号由用户填写
 //（每次打一次加一点），网页实时回显打包日志。
 package main
 
@@ -45,7 +45,7 @@ func manifestSetString(key, value string) error {
 }
 
 // packNamed 网页模式完整打包：写 display_name/version → payload → 后端 → fnpack
-// → 产物重命名 Fntv-Plus-vXYZ.fpk → version 尾段 +1（下一次默认值）。
+// → 产物重命名 Fntv-Plus-VXYZ.fpk（大写 V）。版号完全由用户在网页上控制。
 func packNamed(displayName, version string) (string, error) {
 	if displayName == "" {
 		return "", fmt.Errorf("显示名不能为空")
@@ -69,11 +69,12 @@ func packNamed(displayName, version string) (string, error) {
 		return "", err
 	}
 	compact := strings.ReplaceAll(version, ".", "")
-	named := filepath.Join(root, "Fntv-Plus-v"+compact+".fpk")
+	named := filepath.Join(root, "Fntv-Plus-V"+compact+".fpk")  // 发布版大写 V（用户要求区分测试版小 v）
 	if err := os.Rename(out, named); err != nil {
 		return out, nil // 重命名失败不致命，返回原名
 	}
-	bumpManifestVersion()
+	// [v1.6.0] 发布版号完全由用户在网页上控制（写 manifest version），不再自动 +1——
+	// 自动 +1 属于开发版流程（git commit 数版号），两套版本号互不相干。
 	return named, nil
 }
 
@@ -104,12 +105,12 @@ const guiPageTpl = `<!DOCTYPE html>
 </style></head><body>
 <div class="card">
   <h1>Fntv-Plus 应用打包</h1>
-  <div class="sub">显示名将出现在飞牛应用商店与应用详情；版号为应用正式版号，每次打包完成自动 +1。</div>
+  <div class="sub">显示名与版号都会写入应用清单——飞牛应用商店与应用详情按此显示。本页为正式发布版，与开发测试版（commit 数版号）互不相干。</div>
   <label>应用显示名（飞牛商店展示名）</label>
   <input id="dn" value="__NAME__">
   <label>正式版号（x.y.z）</label>
   <input id="ver" value="__VER__">
-  <div class="hint">打包完成后版号输入框自动显示下一次的值（尾段 +1）。产物：Fntv-Plus-v&lt;版号去点&gt;.fpk</div>
+  <div class="hint">产物：Fntv-Plus-V&lt;版号去点&gt;.fpk（大写 V=正式发布版；小写 v=开发测试版，按 commit 数自动命名）。版号完全由你填写。</div>
   <button id="go" onclick="pack()">打 包</button>
   <div class="done" id="done"></div>
   <pre id="log"></pre>
