@@ -27,6 +27,19 @@ import (
 var root string
 
 func main() {
+	// 三种调用：
+	//   build-fpk.exe            —— 一次性 CLI 打包（旧用法，版号自动 +1）
+	//   build-fpk.exe build      —— 同上（显式子命令，与 bat 注释一致）
+	//   build-fpk.exe --serve    —— 网页 GUI（设置显示名/正式版号，点按钮打包，包名 Fntv-Plus-vXYZ）
+	for _, a := range os.Args[1:] {
+		if a == "--serve" {
+			serveGUI()
+			return
+		}
+		if a == "build" {
+			break
+		}
+	}
 	// 注意：不做交互式 Scanln 阻塞（避免管道/自动化场景卡死）；
 	// 双击使用请走 一键打包.bat，由 bat pause 停住窗口。
 	if err := run(); err != nil {
