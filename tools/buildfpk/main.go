@@ -190,11 +190,15 @@ func pack() (string, error) {
 	if st, err := os.Stat(out); err != nil || st.Size() < 1024 {
 		return "", fmt.Errorf("fnpack 未产出有效的 fntvplus.fpk（请检查上方报错）")
 	}
-	// 开发包命名: 小 v + commit 数（Fntv-Plus-v192 形态区分发布版大写 V）
-	if ver := manifestVersion(); strings.HasPrefix(ver, "0.9.") {
-		named := filepath.Join(root, "Fntv-Plus-v"+strings.TrimPrefix(ver, "0.9.")+".fpk")
-		if err := os.Rename(out, named); err == nil {
-			return named, nil
+	// 开发包命名: 小 v + commit 数（Fntv-Plus-v194 形态区分发布版大写 V）
+	// 四段测试版号 1.0.0.<commit> → 取第四段
+	if ver := manifestVersion(); strings.Contains(ver, ".") {
+		segs := strings.Split(ver, ".")
+		if len(segs) == 4 {
+			named := filepath.Join(root, "Fntv-Plus-v"+segs[3]+".fpk")
+			if err := os.Rename(out, named); err == nil {
+				return named, nil
+			}
 		}
 	}
 	return out, nil
@@ -218,26 +222,28 @@ func findFnpack() (string, error) {
 		filepath.Join("fntvplus", "tools", "fnpack.exe"))
 }
 
-// devCommitVersion 开发测试版号 = 0.9.<git 提交数>（如 192 提交 → 0.9.192）。
-// 设计约束（用户问题：测试版号过高会挡住未来正式版覆盖安装）：
-//   · 0.9.x 永远 < 1.0.0 → 正式版上架（1.0.0 起）可直接覆盖安装；
-//   · 每次提交数递增 → 0.9.193 > 0.9.192 → 测试包互相覆盖正常；
-//   · 迁移一次性成本：NAS 上若装过 1.4.6 等旧测试包（>0.9.x），需卸载后重装一次。
-// git 不可用时回退：读当前 0.9.x 尾段 +1。
+// devCommitVersion 开发测试版号 = <发布版基号>.<git 提交数> 四段式。
+// 用户诉求两全：测试包要能覆盖已装的正式版（>正式版号），又不能挡住下一个正式版（<下一正式版号）。
+// 纯三段无解 → 四段式：正式版基号(release_version, 默认 1.0.0) + 第四段 commit 数，
+// 如 1.0.0.193：> 1.0.0(可覆盖正式版)；下一正式版 1.0.1 > 1.0.0.193(semver 逐段比较)→可覆盖测试版。
+// ⚠ 依赖飞牛安装器支持四段版本号比较——fnpack 无 version 格式校验(实勘仅 CheckAppName/CheckWizard)，
+//   安装侧行为需 NAS 实测；若安装器拒绝四段，回退方案=测试前卸载正式版。
+// git 不可用时回退：读当前第四段 +1。
 func devCommitVersion() string {
+	base := manifestGetString("release_version", "1.0.0")
 	out, err := exec.Command("git", "rev-list", "--count", "HEAD").Output()
 	if err == nil {
 		if n, err := strconv.Atoi(strings.TrimSpace(string(out))); err == nil && n > 0 {
-			return fmt.Sprintf("0.9.%d", n)
+			return base + "." + fmt.Sprintf("%d", n)
 		}
 	}
 	ver := manifestVersion()
-	if strings.HasPrefix(ver, "0.9.") {
-		if n, err := strconv.Atoi(strings.TrimPrefix(ver, "0.9.")); err == nil {
-			return fmt.Sprintf("0.9.%d", n+1)
+	if strings.HasPrefix(ver, base+".") {
+		if n, err := strconv.Atoi(strings.TrimPrefix(ver, base+".")); err == nil {
+			return base + "." + fmt.Sprintf("%d", n+1)
 		}
 	}
-	return "0.9.0"
+	return base + ".0"
 }
 
 // writeVersion 把 version 写回 manifest（开发版流程用；发布版号存 release_version 独立键）。

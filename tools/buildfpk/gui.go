@@ -56,6 +56,11 @@ func packNamed(displayName, version string) (string, error) {
 	if err := manifestSetString("display_name", displayName); err != nil {
 		return "", err
 	}
+	// [v1.6.3] 双轨版号: release_version = 正式版号(用户填写, 测试版号基号);
+	//            version = 本次安装包实际版本号(发布=正式版号本身)。
+	if err := manifestSetString("release_version", version); err != nil {
+		return "", err
+	}
 	if err := manifestSetString("version", version); err != nil {
 		return "", err
 	}
@@ -169,7 +174,7 @@ func serveGUI() {
 	addr := "127.0.0.1:8199"
 
 	page := strings.ReplaceAll(guiPageTpl, "__NAME__", htmlEscape(manifestGetString("display_name", "Fntv-Plus")))
-	page = strings.ReplaceAll(page, "__VER__", htmlEscape(manifestVersion()))
+	page = strings.ReplaceAll(page, "__VER__", htmlEscape(manifestGetString("release_version", "1.0.0")))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -183,7 +188,7 @@ func serveGUI() {
 		w.Header().Set("content-type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(map[string]string{
 			"displayName": manifestGetString("display_name", "Fntv-Plus"),
-			"version":     manifestVersion(),
+			"version":     manifestGetString("release_version", "1.0.0"),
 		})
 	})
 	http.HandleFunc("/api/pack", func(w http.ResponseWriter, r *http.Request) {
@@ -233,11 +238,11 @@ func serveGUI() {
 		json.NewEncoder(w).Encode(map[string]any{
 			"event":       "done",
 			"file":        filepath.Base(file),
-			"nextVersion": manifestVersion(),
+			"nextVersion": manifestGetString("release_version", "1.0.0"),
 		})
 	})
 	fmt.Printf("Fntv-Plus 网页打包器: http://%s  (显示名=%s 版号=%s)\n",
-		addr, manifestGetString("display_name", "Fntv-Plus"), manifestVersion())
+		addr, manifestGetString("display_name", "Fntv-Plus"), manifestGetString("release_version", "1.0.0"))
 	_ = exec.Command("cmd", "/c", "start", "http://"+addr).Start()
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		fmt.Printf("[X] 监听失败(端口可能被占用): %v\n", err)
