@@ -190,9 +190,9 @@ func pack() (string, error) {
 	if st, err := os.Stat(out); err != nil || st.Size() < 1024 {
 		return "", fmt.Errorf("fnpack 未产出有效的 fntvplus.fpk（请检查上方报错）")
 	}
-	// 开发包命名: 小 v + commit 数（用户要求 Fntv-Plus-v192 形态区分发布版大写 V）
-	if ver := manifestVersion(); strings.HasPrefix(ver, "0.0.") {
-		named := filepath.Join(root, "Fntv-Plus-v"+strings.TrimPrefix(ver, "0.0.")+".fpk")
+	// 开发包命名: 小 v + commit 数（Fntv-Plus-v192 形态区分发布版大写 V）
+	if ver := manifestVersion(); strings.HasPrefix(ver, "0.9.") {
+		named := filepath.Join(root, "Fntv-Plus-v"+strings.TrimPrefix(ver, "0.9.")+".fpk")
 		if err := os.Rename(out, named); err == nil {
 			return named, nil
 		}
@@ -218,23 +218,26 @@ func findFnpack() (string, error) {
 		filepath.Join("fntvplus", "tools", "fnpack.exe"))
 }
 
-// devCommitVersion 开发版号 = git 提交数（用户要求：开发包版号按 commit 数，
-// 如 192 个提交 → version=0.0.192、包名 Fntv-Plus-v192.fpk）。git 不可用时回退尾段 +1。
+// devCommitVersion 开发测试版号 = 0.9.<git 提交数>（如 192 提交 → 0.9.192）。
+// 设计约束（用户问题：测试版号过高会挡住未来正式版覆盖安装）：
+//   · 0.9.x 永远 < 1.0.0 → 正式版上架（1.0.0 起）可直接覆盖安装；
+//   · 每次提交数递增 → 0.9.193 > 0.9.192 → 测试包互相覆盖正常；
+//   · 迁移一次性成本：NAS 上若装过 1.4.6 等旧测试包（>0.9.x），需卸载后重装一次。
+// git 不可用时回退：读当前 0.9.x 尾段 +1。
 func devCommitVersion() string {
 	out, err := exec.Command("git", "rev-list", "--count", "HEAD").Output()
 	if err == nil {
 		if n, err := strconv.Atoi(strings.TrimSpace(string(out))); err == nil && n > 0 {
-			return fmt.Sprintf("0.0.%d", n)
+			return fmt.Sprintf("0.9.%d", n)
 		}
 	}
 	ver := manifestVersion()
-	parts := strings.Split(ver, ".")
-	if len(parts) == 3 {
-		if n, err := strconv.Atoi(strings.TrimSpace(parts[2])); err == nil {
-			return fmt.Sprintf("%s.%s.%d", parts[0], parts[1], n+1)
+	if strings.HasPrefix(ver, "0.9.") {
+		if n, err := strconv.Atoi(strings.TrimPrefix(ver, "0.9.")); err == nil {
+			return fmt.Sprintf("0.9.%d", n+1)
 		}
 	}
-	return ver
+	return "0.9.0"
 }
 
 // writeVersion 把 version 写回 manifest（开发版流程用；发布版号存 release_version 独立键）。
