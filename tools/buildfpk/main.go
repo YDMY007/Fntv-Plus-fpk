@@ -1,0 +1,254 @@
+// buildfpk —— Fntv-Plus 一键打包成飞牛 FPK 应用（Windows 测试用）。
+//
+// 编译（在 fntvplus/ 仓库根）：
+//	go build -o build-fpk.exe ./tools/buildfpk
+//
+// 功能（双击 一键打包.bat 或命令行运行 build-fpk.exe）：
+//  1. （可选）node scripts/build-userjs.mjs 重建网页端 payload，并同步到 Go embed 目录
+//  2. go build 交叉编译 linux/amd64 后端 -> app/server/fntvplus
+//     （fnpack 只打包 app/ 目录内容，二进制必须在这里才能进包）
+//  3. fnpack build 打出 fntvplus.fpk
+//
+// 任何一步缺工具（node/go/fnpack）都会降级或给出明确提示。
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"sort"
+	"strings"
+)
+
+var root string
+
+func main() {
+	// 注意：不做交互式 Scanln 阻塞（避免管道/自动化场景卡死）；
+	// 双击使用请走 一键打包.bat，由 bat pause 停住窗口。
+	if err := run(); err != nil {
+		fmt.Printf("\n[X] %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	root = filepath.Dir(exe)
+	if _, err := os.Stat(filepath.Join(root, "manifest")); err != nil {
+		return fmt.Errorf("在 %s 找不到 manifest，请把 build-fpk.exe 放在 fntvplus 仓库根目录", root)
+	}
+
+	fmt.Println("==============================================")
+	fmt.Println(" Fntv-Plus 一键打包成飞牛 FPK 应用")
+	fmt.Println("==============================================")
+	fmt.Printf("项目根: %s\n\n", root)
+
+	// ---- Step 0: 版号自动 +1（用户要求：每次打包自动加一点）----
+	bumpManifestVersion()
+
+	// ---- Step 1: 重建 payload（可选）----
+	syncPayload()
+
+	// ---- Step 2: 交叉编译后端 ----
+	bin := filepath.Join(root, "app", "server", "fntvplus")
+	if err := buildBackend(bin); err != nil {
+		return err
+	}
+
+	// ---- Step 3: fnpack 打包 ----
+	fpk, err := pack()
+	if err != nil {
+		return err
+	}
+
+	ver := manifestVersion()
+	sizeMB := "0"
+	if st, err := os.Stat(fpk); err == nil {
+		sizeMB = fmt.Sprintf("%.1f", float64(st.Size())/1024/1024)
+	}
+	fmt.Println("\n==============================================")
+	fmt.Println("[OK] 打包完成！")
+	fmt.Printf("  产物: %s (%s MB)\n", fpk, sizeMB)
+	fmt.Printf("  版本: %s\n", ver)
+	fmt.Println("  安装: 把该 .fpk 上传到飞牛 fnOS 应用中心本地安装，")
+	fmt.Println("        或用 appcenter-cli install-local 安装测试。")
+	fmt.Println("==============================================")
+	return nil
+}
+
+// syncPayload 若 node 可用则重建 dist/fntv-plus.user.js 并同步到 Go embed 目录；
+// node 不可用则沿用仓库里已提交的 embed payload。
+func syncPayload() {
+	node, _ := exec.LookPath("node")
+	if node == "" {
+		fmt.Println("[skip] 未找到 node，使用已内置的 payload（如改了网页端源码请装 node 后重跑）")
+		return
+	}
+	script := filepath.Join(root, "scripts", "build-userjs.mjs")
+	if _, err := os.Stat(script); err != nil {
+		fmt.Println("[skip] scripts/build-userjs.mjs 不存在，跳过 payload 重建")
+		return
+	}
+	fmt.Println("[1/3] 重建网页端 payload (esbuild)...")
+	cmd := exec.Command(node, script)
+	cmd.Dir = root
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("[warn] payload 重建失败（%v），继续使用现有 payload\n", err)
+		return
+	}
+	dist := filepath.Join(root, "dist", "fntv-plus.user.js")
+	embed := filepath.Join(root, "src", "go", "internal", "inject", "payload", "fntv-plus.user.js")
+	if err := copyFile(dist, embed); err != nil {
+		fmt.Printf("[warn] payload 同步到 embed 目录失败: %v\n", err)
+		return
+	}
+	fmt.Println("       dist/fntv-plus.user.js -> src/go/internal/inject/payload/ 同步完成")
+}
+
+// buildBackend 交叉编译 linux/amd64 后端到 app/server/fntvplus。
+func buildBackend(bin string) error {
+	fmt.Println("[2/3] 交叉编译后端 (linux/amd64)...")
+	goBin, _ := exec.LookPath("go")
+	if goBin == "" {
+		if _, err := os.Stat(bin); err == nil {
+			fmt.Println("[skip] 未找到 go，复用已有 app/server/fntvplus")
+			return nil
+		}
+		return fmt.Errorf("未找到 go 工具链，且 app/server/fntvplus 不存在；请安装 Go 1.23+ 后重跑")
+	}
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		return err
+	}
+	// 先编译到 src/go 目录内（个别环境下 -o 指向目录外会静默失败），再移动到 app/server/
+	tmp := filepath.Join(root, "src", "go", "fntvplus_linux_amd64")
+	cmd := exec.Command(goBin, "build", "-o", "fntvplus_linux_amd64", "./cmd/fntvplus")
+	cmd.Dir = filepath.Join(root, "src", "go")
+	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("后端编译失败: %w", err)
+	}
+	if _, err := os.Stat(tmp); err != nil {
+		return fmt.Errorf("编译命令成功但产物缺失: %s", tmp)
+	}
+	if err := os.Rename(tmp, bin); err != nil {
+		// rename 跨盘等场景兜底用复制
+		if err2 := copyFile(tmp, bin); err2 != nil {
+			return fmt.Errorf("移动编译产物失败: %v / %v", err, err2)
+		}
+		_ = os.Remove(tmp)
+	}
+	if _, err := os.Stat(bin); err != nil {
+		return fmt.Errorf("编译产物最终缺失: %s", bin)
+	}
+	fmt.Println("       app/server/fntvplus 编译完成")
+	return nil
+}
+
+// pack 调 fnpack build 打出 .fpk。
+func pack() (string, error) {
+	fnpack, err := findFnpack()
+	if err != nil {
+		return "", err
+	}
+	fmt.Printf("[3/3] fnpack 打包 (%s)...\n", fnpack)
+
+	// 清理旧包，避免误报成功
+	old := filepath.Join(root, "fntvplus.fpk")
+	_ = os.Remove(old)
+
+	cmd := exec.Command(fnpack, "build")
+	cmd.Dir = root
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("fnpack build 失败: %w", err)
+	}
+	out := filepath.Join(root, "fntvplus.fpk")
+	if st, err := os.Stat(out); err != nil || st.Size() < 1024 {
+		return "", fmt.Errorf("fnpack 未产出有效的 fntvplus.fpk（请检查上方报错）")
+	}
+	return out, nil
+}
+
+// findFnpack 依次查找 tools/fnpack.exe、用户 Downloads 下的 fnpack*。
+func findFnpack() (string, error) {
+	local := filepath.Join(root, "tools", "fnpack.exe")
+	if _, err := os.Stat(local); err == nil {
+		return local, nil
+	}
+	home, _ := os.UserHomeDir()
+	hits, _ := filepath.Glob(filepath.Join(home, "Downloads", "fnpack*"))
+	sort.Strings(hits) // 稳定顺序，取最新版本名（字典序对 1.2.3 这类版本号够用）
+	for _, h := range hits {
+		if st, err := os.Stat(h); err == nil && !st.IsDir() {
+			return h, nil
+		}
+	}
+	return "", fmt.Errorf("找不到 fnpack：请把 fnpack-<ver>-windows-amd64 复制为 %s（或放到 Downloads 下）",
+		filepath.Join("fntvplus", "tools", "fnpack.exe"))
+}
+
+// bumpManifestVersion 把 manifest 的 version 尾段 +1（1.5.0 -> 1.5.1）并写回。
+// 用户要求：一键打包每次执行自动升一版，省去手动改 manifest。
+// 仅支持三段式 x.y.z；其他形态不动，打包流程不受影响。
+func bumpManifestVersion() string {
+	path := filepath.Join(root, "manifest")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "?"
+	}
+	ver := manifestVersion()
+	parts := strings.Split(ver, ".")
+	if len(parts) != 3 {
+		return ver
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(parts[2]))
+	if err != nil {
+		return ver
+	}
+	next := fmt.Sprintf("%s.%s.%d", parts[0], parts[1], n+1)
+	updated := regexp.MustCompile(`(?m)^(\s*version\s*=\s*)\S+`).ReplaceAllString(string(data), "${1}"+next)
+	if werr := os.WriteFile(path, []byte(updated), 0o644); werr != nil {
+		return ver
+	}
+	fmt.Printf("version: %s -> %s\n", ver, next)
+	return next
+}
+
+func manifestVersion() string {
+	data, err := os.ReadFile(filepath.Join(root, "manifest"))
+	if err != nil {
+		return "?"
+	}
+	m := regexp.MustCompile(`(?m)^\s*version\s*=\s*(\S+)`).FindStringSubmatch(string(data))
+	if len(m) < 2 {
+		return "?"
+	}
+	return strings.TrimSpace(m[1])
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
+}

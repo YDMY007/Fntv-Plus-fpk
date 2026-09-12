@@ -8,9 +8,11 @@ server/
 src/server/
 app/server/
 
-# 一键打包工具产物（源码在 tools/buildfpk/，fnpack.exe 为官方工具本地副本）
+# 一键打包工具产物（打包器源码在 tools/buildfpk/ 随库管理；fnpack.exe 为官方工具本地副本）
 build-fpk.exe
-tools/
+tools/*
+!tools/buildfpk/
+tools/buildfpk/*.exe
 *.fpk
 
 # 本地测试残留
